@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- HTML Meta Tags -->
+    <title>OutageHub</title>
+    <meta
+      name="description"
+      content="OutageHub is a platform for monitoring Canadian power outages."
+    />
+
+    <!-- Facebook Meta Tags -->
+    <meta property="og:url" content="https://canadianpoweroutages.ca" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="OutageHub" />
+    <meta
+      property="og:description"
+      content="OutageHub is a platform for monitoring Canadian power outages."
+    />
+    <meta
+      property="og:image"
+      content="https://canadianpoweroutages.ca/images/outage-hub-card.png"
+    />
+
+    <!-- Twitter Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta property="twitter:domain" content="canadianpoweroutages.ca" />
+    <meta property="twitter:url" content="https://canadianpoweroutages.ca" />
+    <meta name="twitter:title" content="OutageHub" />
+    <meta
+      name="twitter:description"
+      content="OutageHub is a platform for monitoring Canadian power outages."
+    />
+    <meta
+      name="twitter:image"
+      content="https://canadianpoweroutages.ca/images/outage-hub-card.png"
+    />
+  </head>
+  <body>
+    <div id="app" class="isolate h-screen w-screen overflow-hidden m-0 p-0"></div>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8FX82J8YGR"></script>
+    <script>
+      window.dataLayer = window.dataLayer || []
+      function gtag() {
+        dataLayer.push(arguments)
+      }
+      gtag('js', new Date())
+      gtag('config', 'G-8FX82J8YGR')
+    </script>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

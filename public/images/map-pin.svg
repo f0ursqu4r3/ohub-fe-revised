@@ -1,0 +1,15 @@
+
+<svg width="28px" height="48px" viewBox="0 0 28 48" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <defs>
+        <radialGradient cx="50%" cy="29.3925183%" fx="50%" fy="29.3925183%" r="123.464094%" gradientTransform="translate(0.5, 0.2939), scale(1, 0.5833), rotate(90), translate(-0.5, -0.2939)" id="radialGradient-y545-dljqg-1">
+            <stop stop-color="#8BD2D5" offset="0%"></stop>
+            <stop stop-color="#3BA0A5" offset="100%"></stop>
+        </radialGradient>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="48x48" transform="translate(-10, 0)" stroke="#FFFFFF" stroke-width="2">
+            <path d="M24,1 C27.5898509,1 30.8398509,2.45507456 33.1923882,4.80761184 C35.5449254,7.16014913 37,10.4101491 37,14 C37,21.4660832 32.626748,32.1627379 23.9985527,46.1079335 C15.372701,32.1613901 11,21.4656129 11,14 C11,10.4101491 12.4550746,7.16014913 14.8076118,4.80761184 C17.1601491,2.45507456 20.4101491,1 24,1 Z" id="Oval" fill="url(#radialGradient-y545-dljqg-1)"></path>
+            <circle id="Oval" cx="24" cy="14" r="5"></circle>
+        </g>
+    </g>
+</svg>
