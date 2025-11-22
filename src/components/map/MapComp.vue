@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import 'leaflet/dist/leaflet.css'
-import L from 'leaflet'
+import L, { type LeafletEvent } from 'leaflet'
 import { ref, watchEffect } from 'vue'
 import {
   useLeafletMap,
@@ -19,6 +19,10 @@ const props = withDefaults(
   },
 )
 
+const emit = defineEmits<{
+  (e: 'setZoom', level: number): void
+}>()
+
 const el = ref<HTMLElement | null>(null)
 const map = useLeafletMap(el, {
   zoomControl: false,
@@ -28,6 +32,8 @@ const map = useLeafletMap(el, {
   inertiaDeceleration: 3000,
   minZoom: 4,
   maxZoom: 19,
+  center: [61.0, -104.0],
+  zoom: props.zoomLevel,
 })
 const tileLayer = useLeafletTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution:
@@ -39,9 +45,11 @@ const tileLayer = useLeafletTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x
 
 useLeafletDisplayLayer(map, tileLayer)
 
-useLeafletEvent(map, 'zoom', (event) => {
-  // You can handle zoom events here if needed
-  console.log('Zoom event:', event)
+useLeafletEvent(map, 'zoomend', (event: LeafletEvent) => {
+  const target = event.target
+  if (target instanceof L.Map) {
+    emit('setZoom', target.getZoom())
+  }
 })
 
 async function setMarkers() {
@@ -63,12 +71,6 @@ async function setMarkers() {
     marker.addTo(map.value!)
   })
 }
-
-watchEffect(() => {
-  if (!map.value) return
-  // Set initial view to Canada (approximate center)
-  map.value.setView([61.0, -104.0], props.zoomLevel)
-})
 
 watchEffect(() => {
   setMarkers()
