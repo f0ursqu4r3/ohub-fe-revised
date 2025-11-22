@@ -35,9 +35,7 @@ const mapMarkers = computed<MapMarker[]>(() =>
   })),
 )
 
-const setZoomLevel = (level: number) => {
-  zoomLevel.value = level
-}
+const setZoomLevel = (level: number) => (zoomLevel.value = level)
 </script>
 
 <template>

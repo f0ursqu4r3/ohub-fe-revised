@@ -94,3 +94,4 @@ watchEffect(() => {
   height: 100%;
 }
 </style>
+, useLeafletScaleControl

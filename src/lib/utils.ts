@@ -7,9 +7,9 @@ type Circle = [Point, number]
 const EARTH_RADIUS_KM = 6371
 const EARTH_CIRCUMFERENCE_KM = 40075
 const WORLD_BOUNDS: [number, number, number, number] = [-180, -85, 180, 85]
-const KM_RANGE: [number, number] = [200, 0.01]
-const ZOOM_RANGE: [number, number] = [4, 18]
-const SINGLETON_ZOOM = 19
+const KM_RANGE: [number, number] = [0.01, 100]
+const ZOOM_RANGE: [number, number] = [4, 19]
+const SINGLETON_ZOOM = 16
 
 type OutageFeatureProps = {
   outage: Outage
@@ -32,17 +32,12 @@ export type GroupedOutage = {
 }
 
 /**
- * Clusters outages using supercluster, respecting the provided zoom level.
+ * Clusters outages into grouped representations based on the current zoom level.
  *
- * The zoom level is converted to an approximate kilometer threshold and pixel radius so
- * `supercluster` can group outages consistently with the map. Each resulting cluster is
- * expanded back into its underlying outages to compute derived metadata (providers,
- * centroid, radius, polygons, and most recent timestamp). Extremely high zoom levels
- * bypass clustering, returning single-outage groups for stability.
- *
- * @param outages - The list of outages to process into clusters.
- * @param zoomLevel - The Leaflet zoom level currently displayed.
- * @returns An array of grouped outage summaries including cluster metadata.
+ * @param outages - The list of outages to cluster.
+ * @param zoomLevel - The current map zoom level used to determine clustering sensitivity.
+ * @returns An array of grouped outage summaries, either individual outages when zoomed in
+ *          or clustered groups when zoomed out.
  */
 export const clusterOutages = (outages: Outage[], zoomLevel: number): GroupedOutage[] => {
   if (!outages.length) {
@@ -104,11 +99,12 @@ const kmToRadiusPixels = (km: number, zoom: number): number => {
 }
 
 const zoomToThresholdKm = (zoom: number): number => {
-  const [kmMax, kmMin] = KM_RANGE
+  const [kmMin, kmMax] = KM_RANGE
   const [zoomMin, zoomMax] = ZOOM_RANGE
   const clampedZoom = clamp(zoom, zoomMin, zoomMax)
   const factor = (clampedZoom - zoomMin) / (zoomMax - zoomMin)
-  const km = kmMax + factor * (kmMin - kmMax)
+  const biasedFactor = Math.pow(factor, 2) // slows the drop, so lower zooms cluster more
+  const km = kmMax + biasedFactor * (kmMin - kmMax)
   return clamp(km, kmMin, kmMax)
 }
 
