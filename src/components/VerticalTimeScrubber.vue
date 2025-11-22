@@ -234,7 +234,7 @@ onMounted(() => {
             >
               <span
                 v-if="tick.label"
-                class="pointer-events-none absolute left-14 w-14 top-1/2 -translate-y-1/2 text-[10px] font-medium text-white/70"
+                class="pointer-events-none absolute left-14 w-14 top-1/2 -translate-y-1/2 text-[10px] font-medium text-black/70"
               >
                 {{ tick.label }}
               </span>

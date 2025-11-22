@@ -5,10 +5,8 @@ import type { Outage } from '@/types/outage'
 type Point = [number, number]
 type Circle = [Point, number]
 const EARTH_RADIUS_KM = 6371
-const EARTH_CIRCUMFERENCE_KM = 40075
 const WORLD_BOUNDS: [number, number, number, number] = [-180, -85, 180, 85]
-const KM_RANGE: [number, number] = [0.01, 100]
-const ZOOM_RANGE: [number, number] = [4, 19]
+const CLUSTER_RADIUS_PX = 40 // match Leaflet/supercluster defaults for predictable falloff
 const SINGLETON_ZOOM = 16
 
 type OutageFeatureProps = {
@@ -47,11 +45,8 @@ export const clusterOutages = (outages: Outage[], zoomLevel: number): GroupedOut
     return outages.map((outage) => summarizeCluster([outage]))
   }
 
-  const thresholdKm = zoomToThresholdKm(zoomLevel)
-  const radiusPixels = kmToRadiusPixels(thresholdKm, zoomLevel)
-
   const index = new Supercluster<OutageFeatureProps, ClusterProperties>({
-    radius: radiusPixels,
+    radius: CLUSTER_RADIUS_PX,
     minZoom: 0,
     maxZoom: 19,
   })
@@ -92,24 +87,6 @@ export const clusterOutages = (outages: Outage[], zoomLevel: number): GroupedOut
     })
     .filter((group): group is GroupedOutage => Boolean(group))
 }
-
-const kmToRadiusPixels = (km: number, zoom: number): number => {
-  const kmPerPixel = EARTH_CIRCUMFERENCE_KM / (512 * 2 ** zoom)
-  return Math.max(1, Math.round(km / kmPerPixel))
-}
-
-const zoomToThresholdKm = (zoom: number): number => {
-  const [kmMin, kmMax] = KM_RANGE
-  const [zoomMin, zoomMax] = ZOOM_RANGE
-  const clampedZoom = clamp(zoom, zoomMin, zoomMax)
-  const factor = (clampedZoom - zoomMin) / (zoomMax - zoomMin)
-  const biasedFactor = Math.pow(factor, 2) // slows the drop, so lower zooms cluster more
-  const km = kmMax + biasedFactor * (kmMin - kmMax)
-  return clamp(km, kmMin, kmMax)
-}
-
-const clamp = (value: number, min: number, max: number): number =>
-  Math.min(Math.max(value, min), max)
 
 const isClusterFeature = (
   feature: PointFeature<OutageFeatureProps> | ClusterFeature<ClusterProperties>,

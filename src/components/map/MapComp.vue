@@ -9,9 +9,16 @@ import {
   useLeafletEvent,
 } from 'vue-use-leaflet'
 
+type MarkerData = {
+  lat: number
+  lng: number
+  popupText?: string
+  count?: number
+}
+
 const props = withDefaults(
   defineProps<{
-    markers: Array<{ lat: number; lng: number; popupText?: string }>
+    markers: MarkerData[]
     zoomLevel?: number
   }>(),
   {
@@ -45,6 +52,8 @@ const tileLayer = useLeafletTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x
 
 useLeafletDisplayLayer(map, tileLayer)
 
+const markerLayer = ref<L.LayerGroup | null>(null)
+
 useLeafletEvent(map, 'zoomend', (event: LeafletEvent) => {
   const target = event.target
   if (target instanceof L.Map) {
@@ -52,23 +61,37 @@ useLeafletEvent(map, 'zoomend', (event: LeafletEvent) => {
   }
 })
 
+const createClusterIcon = (count: number): L.DivIcon => {
+  const sizeClass = count >= 100 ? 'cluster-large' : count >= 10 ? 'cluster-medium' : 'cluster-small'
+  const size = sizeClass === 'cluster-large' ? 48 : sizeClass === 'cluster-medium' ? 40 : 32
+
+  return L.divIcon({
+    html: `<div class="cluster-count">${count}</div>`,
+    className: `cluster-marker ${sizeClass}`,
+    iconSize: [size, size],
+  })
+}
+
 async function setMarkers() {
   if (!map.value) return
 
-  // Clear existing markers
-  map.value.eachLayer((layer) => {
-    if (layer instanceof L.Marker) {
-      map.value?.removeLayer(layer)
-    }
-  })
+  if (!markerLayer.value) {
+    markerLayer.value = L.layerGroup().addTo(map.value)
+  }
+
+  markerLayer.value.clearLayers()
 
   // Add new markers from props
   props.markers.forEach((markerData) => {
-    const marker = L.marker([markerData.lat, markerData.lng])
+    const count = markerData.count ?? 1
+    const isCluster = count > 1
+    const marker = isCluster
+      ? L.marker([markerData.lat, markerData.lng], { icon: createClusterIcon(count) })
+      : L.marker([markerData.lat, markerData.lng])
     if (markerData.popupText) {
       marker.bindPopup(markerData.popupText)
     }
-    marker.addTo(map.value!)
+    marker.addTo(markerLayer.value!)
   })
 }
 
@@ -93,5 +116,38 @@ watchEffect(() => {
   width: 100%;
   height: 100%;
 }
+
+:global(.cluster-marker) {
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  font-weight: 700;
+  color: #0f172a;
+  background: radial-gradient(circle at 30% 30%, #a2d2ff, #3b82f6);
+  border: 2px solid #e2e8f0;
+  box-shadow:
+    0 6px 12px rgba(0, 0, 0, 0.18),
+    0 0 0 2px rgba(255, 255, 255, 0.6) inset;
+  cursor: pointer;
+}
+
+:global(.cluster-marker .cluster-count) {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+:global(.cluster-marker.cluster-small) {
+  width: 32px;
+  height: 32px;
+}
+
+:global(.cluster-marker.cluster-medium) {
+  width: 40px;
+  height: 40px;
+}
+
+:global(.cluster-marker.cluster-large) {
+  width: 48px;
+  height: 48px;
+}
 </style>
-, useLeafletScaleControl

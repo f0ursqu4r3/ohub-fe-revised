@@ -10,6 +10,7 @@ type MapMarker = {
   lat: number
   lng: number
   popupText?: string
+  count: number
 }
 
 const outageStore = useOutageStore()
@@ -18,6 +19,7 @@ const { selectedBlockOutages } = storeToRefs(outageStore)
 const zoomLevel = ref(4)
 
 const eventsAtZoomLevel = computed<GroupedOutage[]>(() => {
+  console.log('Computing clustered outages at zoom level:', zoomLevel.value)
   const zoom = zoomLevel.value
   const outages = selectedBlockOutages.value
   if (!outages.length) return []
@@ -28,6 +30,7 @@ const mapMarkers = computed<MapMarker[]>(() =>
   eventsAtZoomLevel.value.map((group) => ({
     lat: group.center[0],
     lng: group.center[1],
+    count: group.outages.length,
     popupText:
       group.outages.length === 1
         ? (group.providers[0] ?? 'Outage')
