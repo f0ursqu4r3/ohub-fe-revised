@@ -16,13 +16,20 @@ type MarkerData = {
   count?: number
 }
 
+type PolygonData = {
+  rings: [number, number][][]
+  isCluster: boolean
+}
+
 const props = withDefaults(
   defineProps<{
     markers: MarkerData[]
+    polygons?: PolygonData[]
     zoomLevel?: number
   }>(),
   {
     zoomLevel: 4,
+    polygons: () => [],
   },
 )
 
@@ -57,6 +64,7 @@ const tileLayer = useLeafletTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x
 useLeafletDisplayLayer(map, tileLayer)
 
 const markerLayer = ref<L.LayerGroup | null>(null)
+const polygonLayer = ref<L.LayerGroup | null>(null)
 const debounceTimer = ref<number | null>(null)
 
 useLeafletEvent(map, 'zoomstart', () => {
@@ -106,6 +114,10 @@ async function setMarkers() {
   }
 
   markerLayer.value.clearLayers()
+  if (!polygonLayer.value) {
+    polygonLayer.value = L.layerGroup().addTo(activeMap)
+  }
+  polygonLayer.value.clearLayers()
 
   // Add new markers from props
   props.markers.forEach((markerData) => {
@@ -118,6 +130,20 @@ async function setMarkers() {
       marker.bindPopup(markerData.popupText)
     }
     marker.addTo(markerLayer.value!)
+  })
+
+  props.polygons?.forEach((polygonData) => {
+    if (!polygonData.rings.length) return
+    const isClusterPoly = polygonData.isCluster
+    const polygon = L.polygon(polygonData.rings as L.LatLngExpression[][], {
+      color: isClusterPoly ? '#2563eb' : '#ea580c',
+      weight: 2,
+      opacity: 0.9,
+      fillColor: isClusterPoly ? '#60a5fa' : '#fb923c',
+      fillOpacity: 0.12,
+      interactive: false,
+    })
+    polygon.addTo(polygonLayer.value!)
   })
 }
 

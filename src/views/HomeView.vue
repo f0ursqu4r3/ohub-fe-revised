@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useOutageStore } from '@/stores/outages'
 import { storeToRefs } from 'pinia'
-import { clusterOutages, type GroupedOutage } from '@/lib/utils'
+import { clusterOutages, parsePolygonWKT, type GroupedOutage } from '@/lib/utils'
 import MapComp from '@/components/map/MapComp.vue'
 import VerticalTimeScrubber from '@/components/VerticalTimeScrubber.vue'
 
@@ -11,6 +11,11 @@ type MapMarker = {
   lng: number
   popupText?: string
   count: number
+}
+
+type MapPolygon = {
+  rings: [number, number][][]
+  isCluster: boolean
 }
 
 const outageStore = useOutageStore()
@@ -37,6 +42,20 @@ const mapMarkers = computed<MapMarker[]>(() =>
   })),
 )
 
+const mapPolygons = computed<MapPolygon[]>(() =>
+  eventsAtZoomLevel.value
+    .map((group) => {
+      if (!group.polygon) return null
+      const rings = parsePolygonWKT(group.polygon)
+      if (!rings.length) return null
+      return {
+        rings,
+        isCluster: group.outages.length > 1,
+      }
+    })
+    .filter((poly): poly is MapPolygon => Boolean(poly)),
+)
+
 const setZoomLevel = (level: number) => (zoomLevel.value = level)
 </script>
 
@@ -44,6 +63,7 @@ const setZoomLevel = (level: number) => (zoomLevel.value = level)
   <div class="flex relative w-full h-full">
     <MapComp
       :markers="mapMarkers"
+      :polygons="mapPolygons"
       :zoom-level="zoomLevel"
       class="z-0"
       @setZoom="(level) => setZoomLevel(level)"
