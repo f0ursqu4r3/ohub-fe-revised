@@ -16,6 +16,11 @@ type MarkerData = {
   count?: number
 }
 
+const CANADA_BOUNDS: L.LatLngBoundsExpression = [
+  [36, -170], // a bit south/west of Canada to give slight padding
+  [90, -40], // extends slightly east and to the pole
+]
+
 type PolygonData = {
   rings: [number, number][][]
   isCluster: boolean
@@ -50,6 +55,7 @@ const map = useLeafletMap(el, {
   inertiaDeceleration: 3000,
   minZoom: 4,
   maxZoom: 19,
+  maxBounds: CANADA_BOUNDS,
   center: [61.0, -104.0],
   zoom: props.zoomLevel,
 })
