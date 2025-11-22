@@ -19,7 +19,6 @@ const { selectedBlockOutages } = storeToRefs(outageStore)
 const zoomLevel = ref(4)
 
 const eventsAtZoomLevel = computed<GroupedOutage[]>(() => {
-  console.log('Computing clustered outages at zoom level:', zoomLevel.value)
   const zoom = zoomLevel.value
   const outages = selectedBlockOutages.value
   if (!outages.length) return []

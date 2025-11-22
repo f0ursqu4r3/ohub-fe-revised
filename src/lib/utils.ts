@@ -2,12 +2,11 @@ import Supercluster, { type ClusterFeature, type PointFeature } from 'superclust
 import moment from 'moment'
 import type { Outage } from '@/types/outage'
 
-type Point = [number, number]
-type Circle = [Point, number]
 const EARTH_RADIUS_KM = 6371
 const WORLD_BOUNDS: [number, number, number, number] = [-180, -85, 180, 85]
-const CLUSTER_RADIUS_PX = 40 // match Leaflet/supercluster defaults for predictable falloff
 const SINGLETON_ZOOM = 16
+const CLUSTER_ZOOM_RANGE: [number, number] = [4, 16] // start easing clustering at 4, end right before singletons
+const CLUSTER_RADIUS_PX_RANGE: [number, number] = [64, 18] // heavy grouping at low zoom, light at high zoom
 
 type OutageFeatureProps = {
   outage: Outage
@@ -19,6 +18,9 @@ type ClusterProperties = {
   point_count: number
   point_count_abbreviated: string
 }
+
+export type Point = [number, number]
+export type Circle = [Point, number]
 
 export type GroupedOutage = {
   outages: Outage[]
@@ -38,20 +40,29 @@ export type GroupedOutage = {
  *          or clustered groups when zoomed out.
  */
 export const clusterOutages = (outages: Outage[], zoomLevel: number): GroupedOutage[] => {
-  if (!outages.length) {
+  const validOutages = outages.filter(
+    (o) =>
+      Number.isFinite(o.latitude) &&
+      Number.isFinite(o.longitude) &&
+      Math.abs(o.latitude) <= 90 &&
+      Math.abs(o.longitude) <= 180,
+  )
+  if (!validOutages.length) {
     return []
   }
   if (zoomLevel >= SINGLETON_ZOOM) {
-    return outages.map((outage) => summarizeCluster([outage]))
+    return validOutages.map((outage) => summarizeCluster([outage]))
   }
 
+  const radiusPx = clusterRadiusForZoom(zoomLevel)
+
   const index = new Supercluster<OutageFeatureProps, ClusterProperties>({
-    radius: CLUSTER_RADIUS_PX,
+    radius: radiusPx,
     minZoom: 0,
     maxZoom: 19,
   })
 
-  const features: PointFeature<OutageFeatureProps>[] = outages.map((outage, idx) => ({
+  const features: PointFeature<OutageFeatureProps>[] = validOutages.map((outage, idx) => ({
     type: 'Feature' as const,
     id: idx,
     properties: { outage },
@@ -69,7 +80,7 @@ export const clusterOutages = (outages: Outage[], zoomLevel: number): GroupedOut
     .map((feature: PointFeature<OutageFeatureProps> | ClusterFeature<ClusterProperties>) => {
       if (isClusterFeature(feature)) {
         const clusterId = feature.properties.cluster_id
-        const leaves = index.getLeaves(clusterId, outages.length)
+        const leaves = index.getLeaves(clusterId, validOutages.length)
         const clusterOutagesList = leaves
           .map((leaf: PointFeature<OutageFeatureProps>) => leaf.properties?.outage)
           .filter((outage: Outage | undefined): outage is Outage => Boolean(outage))
@@ -88,11 +99,40 @@ export const clusterOutages = (outages: Outage[], zoomLevel: number): GroupedOut
     .filter((group): group is GroupedOutage => Boolean(group))
 }
 
+/**
+ * Returns a pixel radius for clustering that eases down as you zoom in, so
+ * clusters break apart earlier at mid/high zoom levels.
+ */
+const clusterRadiusForZoom = (zoom: number): number => {
+  const [zMin, zMax] = CLUSTER_ZOOM_RANGE
+  const [rMax, rMin] = CLUSTER_RADIUS_PX_RANGE
+  const t = clamp((zoom - zMin) / (zMax - zMin), 0, 1)
+  const eased = t * t // bias toward keeping larger radius at low zooms
+  const radius = rMax + (rMin - rMax) * eased
+  return Math.max(8, Math.round(radius))
+}
+
+const clamp = (value: number, min: number, max: number): number =>
+  Math.min(Math.max(value, min), max)
+
+/**
+ * Determines whether the provided feature is a cluster feature by checking
+ * for the presence of the `cluster` flag in its properties.
+ *
+ * @param feature - The feature to evaluate.
+ * @returns `true` if the feature represents a cluster; otherwise, `false`.
+ */
 const isClusterFeature = (
   feature: PointFeature<OutageFeatureProps> | ClusterFeature<ClusterProperties>,
 ): feature is ClusterFeature<ClusterProperties> =>
   Boolean(feature.properties && 'cluster' in feature.properties)
 
+/**
+ * Summarizes a cluster of outages into a `GroupedOutage`.
+ *
+ * @param cluster - An array of outage objects to summarize.
+ * @returns A `GroupedOutage` that includes the computed center point, maximum radius, list of providers, optional polygon, timestamp, and the original outages.
+ */
 const summarizeCluster = (cluster: Outage[]): GroupedOutage => {
   let sumLat = 0
   let sumLon = 0
@@ -120,6 +160,14 @@ const summarizeCluster = (cluster: Outage[]): GroupedOutage => {
   }
 }
 
+/**
+ * Calculates the great-circle distance between two geographic points using the
+ * Haversine formula.
+ *
+ * @param a - The first point specified as a tuple `[latitude, longitude]` in decimal degrees.
+ * @param b - The second point specified as a tuple `[latitude, longitude]` in decimal degrees.
+ * @returns The distance between the two points in kilometers.
+ */
 const haversineDistance = (a: Point, b: Point): number => {
   const lat1 = (a[0] * Math.PI) / 180
   const lat2 = (b[0] * Math.PI) / 180
@@ -132,6 +180,20 @@ const haversineDistance = (a: Point, b: Point): number => {
   return 2 * EARTH_RADIUS_KM * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)))
 }
 
+/**
+ * Computes the minimum enclosing circle that contains all provided points using
+ * Welzl's randomized algorithm. Intermediate helper routines construct circles
+ * from two or three boundary points and cache computed circles to avoid redundant
+ * calculations. Input points are shuffled before running the recursive algorithm,
+ * so the result may vary slightly between invocations due to floating-point
+ * precision, but it will always return the smallest circle that encloses all
+ * given points.
+ *
+ * @param points - An array of 2D points represented as `[x, y]`.
+ * @returns The enclosing circle represented as `[center, radius]`, where
+ * `center` is a point `[x, y]` and `radius` is the distance from the center to
+ * the circle boundary.
+ */
 export function minimumEnclosingCircle(points: Point[]): Circle {
   const distanceSquared = (p1: Point, p2: Point): number => {
     const dx = p2[0] - p1[0]
@@ -146,12 +208,27 @@ export function minimumEnclosingCircle(points: Point[]): Circle {
     return distanceSquared(p, center) <= radius * radius + 1e-8
   }
 
+  /**
+   * Computes a circle defined by two points lying on its diameter.
+   *
+   * @param p - The first endpoint of the diameter.
+   * @param q - The second endpoint of the diameter.
+   * @returns A tuple containing the circle's center point and its radius.
+   */
   const circleFromTwoPoints = (p: Point, q: Point): Circle => {
     const center: Point = [(p[0] + q[0]) * 0.5, (p[1] + q[1]) * 0.5]
     const radius = distance(p, center)
     return [center, radius]
   }
 
+  /**
+   * Computes the unique circle passing through three non-collinear points.
+   *
+   * @param p - First point on the circle.
+   * @param q - Second point on the circle.
+   * @param r - Third point on the circle.
+   * @returns The circle defined by its center and radius, or `null` if the points are collinear.
+   */
   const circleFromThreePoints = (p: Point, q: Point, r: Point): Circle | null => {
     const [ax, ay] = p
     const [bx, by] = q
@@ -174,18 +251,32 @@ export function minimumEnclosingCircle(points: Point[]): Circle {
     return [center, radius]
   }
 
-  const circleCache = new Map<string, Circle>()
+  const CIRCLE_CACHE = new Map<string, Circle>()
+  /**
+   * Retrieves or creates a cached circle for the specified points.
+   *
+   * @param pts - The array of points defining the circle, used to generate a cache key.
+   * @param createCircleFn - A callback that creates the circle if it is not already cached.
+   * @returns The circle instance associated with the provided points, either from cache or newly created.
+   */
   const getCachedCircle = (pts: Point[], createCircleFn: () => Circle): Circle => {
     const key = pts
       .map((pt) => pt.join(','))
       .sort()
       .join('|')
-    if (!circleCache.has(key)) {
-      circleCache.set(key, createCircleFn())
+    if (!CIRCLE_CACHE.has(key)) {
+      CIRCLE_CACHE.set(key, createCircleFn())
     }
-    return circleCache.get(key) as Circle
+    return CIRCLE_CACHE.get(key) as Circle
   }
 
+  /**
+   * Computes the minimum enclosing circle for a set of points using Welzl's randomized algorithm.
+   *
+   * @param pts - The array of points still to be processed. This array is modified during execution.
+   * @param R - The array of boundary points defining the current circle. This array is mutated and restored by recursive calls.
+   * @returns The smallest circle that encloses all points from the original set.
+   */
   const welzl = (pts: Point[], R: Point[]): Circle => {
     if (pts.length === 0 || R.length === 3) {
       if (R.length === 0) return [[0, 0], 0]
@@ -231,6 +322,13 @@ export function minimumEnclosingCircle(points: Point[]): Circle {
     return result
   }
 
+  /**
+   * Returns a new array containing the elements of the provided point array
+   * in randomized order using the Fisher-Yates shuffle algorithm.
+   *
+   * @param array - The array of points to shuffle.
+   * @returns A new array with the points shuffled.
+   */
   const shuffleArray = (array: Point[]): Point[] => {
     const result = [...array]
     for (let i = result.length - 1; i > 0; i -= 1) {
@@ -242,14 +340,20 @@ export function minimumEnclosingCircle(points: Point[]): Circle {
     return result
   }
 
-  if (circleCache.size > 1000) {
-    circleCache.clear()
+  if (CIRCLE_CACHE.size > 1000) {
+    CIRCLE_CACHE.clear()
   }
 
   const shuffledPoints = shuffleArray(points)
   return welzl(shuffledPoints, [])
 }
 
+/**
+ * Formats various date inputs into a human-readable string.
+ *
+ * @param input - The value to format, which can be a Date instance, a timestamp (in seconds or milliseconds), or a string representation of a date or numeric timestamp.
+ * @returns A formatted date string in the "MMM D, YYYY h:mm:ss a" format.
+ */
 export const formatDate = (input: number | string | Date): string => {
   let value: Date
 
@@ -271,4 +375,80 @@ export const formatDate = (input: number | string | Date): string => {
   return moment(value).format('MMM D, YYYY h:mm:ss a')
 }
 
-export type { Point, Circle }
+/**
+ * Merges multiple WKT polygon strings into a single MULTIPOLYGON representation.
+ *
+ * @param polygons - An array of WKT polygon strings.
+ * @returns A WKT MULTIPOLYGON string if there is at least one valid polygon; otherwise, null.
+ */
+export const mergePolygons = (polygons: string[]): string | null => {
+  if (polygons.length === 0) {
+    return null
+  }
+  if (polygons.length === 1) {
+    return polygons[0]!
+  }
+
+  const wktPolygons = polygons
+    .map((wkt) => wkt.replace('POLYGON', '').trim())
+    .filter((wkt) => wkt.length > 0)
+
+  if (wktPolygons.length === 0) {
+    return null
+  }
+
+  const mergedWkt = `MULTIPOLYGON(${wktPolygons.map((poly) => `(${poly})`).join(', ')})`
+  return mergedWkt
+}
+
+/**
+ * Parses a WKT POLYGON or MULTIPOLYGON string into an array of polygon rings.
+ *
+ * @param wkt - The WKT string representing a POLYGON or MULTIPOLYGON geometry.
+ * @returns An array of polygons, where each polygon is represented as an array of `[latitude, longitude]` points.
+ *
+ * @example
+ * ```ts
+ * const wkt = 'POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))';
+ * const polygons = parsePolygonWKT(wkt);
+ * // [[[10, 30], [40, 40], [40, 20], [20, 10], [10, 30]]]
+ * ```
+ */
+export const parsePolygonWKT = (wkt: string): Point[][] => {
+  const polygons: Point[][] = []
+
+  const multiPolygonMatch = wkt.match(/^MULTIPOLYGON\s*\(\s*(\(.+\))\s*\)$/i)
+  const polygonMatch = wkt.match(/^POLYGON\s*\(\s*(\(.+\))\s*\)$/i)
+
+  const polygonStrings: string[] = []
+
+  if (multiPolygonMatch) {
+    const inner = multiPolygonMatch[1] ?? ''
+    const regex = /\(\s*\(([^()]+)\)\s*\)/g
+    let match
+    while ((match = regex.exec(inner)) !== null) {
+      polygonStrings.push(`(${match[1]})`)
+    }
+  } else if (polygonMatch) {
+    polygonStrings.push(polygonMatch[1]!)
+  } else {
+    return polygons
+  }
+
+  for (const polyStr of polygonStrings) {
+    const ringMatch = polyStr.match(/\(\s*([^)]+)\s*\)/)
+    if (ringMatch) {
+      const coordsStr = ringMatch[1]!
+      const coordPairs = coordsStr.split(',').map((pair) => pair.trim())
+      const points: Point[] = coordPairs.map((pair) => {
+        const trimmed = pair.split(' ').map((s) => s.trim())
+        const lonStr = trimmed[0] ?? '0'
+        const latStr = trimmed[1] ?? '0'
+        return [parseFloat(latStr) || 0, parseFloat(lonStr) || 0]
+      })
+      polygons.push(points)
+    }
+  }
+
+  return polygons
+}

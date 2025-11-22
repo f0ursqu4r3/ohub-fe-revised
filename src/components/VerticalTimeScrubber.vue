@@ -199,82 +199,81 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full">
-    <div
-      class="scrubber-panel glass flex h-full w-32 flex-col gap-6 border border-black/15 bg-white/10 p-4 text-black shadow-2xl shadow-black/40 backdrop-blur-sm transition-all duration-500 ease-out touch-none select-none"
-      :class="[
-        open
-          ? 'translate-x-0 opacity-100'
-          : '-translate-x-32 opacity-0 pointer-events-none md:opacity-100 md:pointer-events-auto md:translate-x-0',
-        $attrs.class,
-      ]"
-    >
-      <div class="space-y-1 text-right">
-        <p class="text-[10px] font-semibold uppercase tracking-[0.35em] text-black/60">Selected</p>
-        <p class="text-xl font-semibold leading-tight text-black">{{ selectedLabel }}</p>
-        <p class="text-xs text-black/60">{{ selectedDateLabel }}</p>
-        <p v-if="selectedBlock" class="text-xs font-semibold text-amber-900">
-          {{ selectedCountLabel }}
-        </p>
-      </div>
-
+  <div class="h-full flex items-end">
+    <transition name="slide">
       <div
-        ref="scrubber"
-        class="relative flex-1"
-        style="min-height: 280px"
-        @pointerdown="onPointerDown"
-        @wheel.passive="onWheel"
+        v-show="open"
+        class="scrubber-panel glass flex h-full w-32 flex-col gap-6 border border-black/15 bg-white/10 p-4 text-black shadow-2xl shadow-black/40 backdrop-blur-sm transition-all duration-500 ease-out touch-none select-none"
+        :class="[$attrs.class]"
       >
-        <div class="relative mx-0 h-full w-12">
-          <template v-for="(tick, index) in ticks" :key="`tick-${index}`">
-            <div
-              class="absolute left-0"
-              :class="tickClass(tick.type)"
-              :style="{ top: tick.position + '%' }"
-            >
-              <span
-                v-if="tick.label"
-                class="pointer-events-none absolute left-14 w-14 top-1/2 -translate-y-1/2 text-[10px] font-medium text-black/70"
-              >
-                {{ tick.label }}
-              </span>
-            </div>
-
-            <div
-              v-if="histogramData[index]"
-              class="absolute left-0 h-1 rounded-r-full bg-linear-to-r from-rose-400/80 via-orange-300/80 to-amber-200/80 shadow-[0_0_12px_rgba(251,191,36,0.4)]"
-              :style="{
-                top: `${tick.position}%`,
-                width: `${histogramData[index].widthPercentage}%`,
-                height: `${histogramHeight}%`,
-              }"
-            ></div>
-          </template>
+        <div class="space-y-1 text-right">
+          <p class="text-[10px] font-semibold uppercase tracking-[0.35em] text-black/60">
+            Selected
+          </p>
+          <p class="text-xl font-semibold leading-tight text-black">{{ selectedLabel }}</p>
+          <p class="text-xs text-black/60">{{ selectedDateLabel }}</p>
+          <p v-if="selectedBlock" class="text-xs font-semibold text-amber-900">
+            {{ selectedCountLabel }}
+          </p>
         </div>
 
         <div
-          class="pointer-events-none absolute inset-x-0"
-          :style="{
-            top: `${selectedRatio * 100}%`,
-            height: `${histogramHeight}%`,
-          }"
+          ref="scrubber"
+          class="relative flex-1"
+          style="min-height: 280px"
+          @pointerdown="onPointerDown"
+          @wheel.passive="onWheel"
         >
-          <div class="flex h-full w-full items-center justify-end gap-2 pr-1 relative">
-            <span class="h-1/4 w-full rounded-full bg-white/70 absolute"></span>
-            <!-- handle -->
-            <span
-              class="flex z-10 h-5 w-10 items-center justify-center rounded-full border border-white/70 bg-white font-semibold"
-            >
-              <UIcon name="i-heroicons-bars-3" class="text-black/80" />
-            </span>
+          <div class="relative mx-0 h-full w-12">
+            <template v-for="(tick, index) in ticks" :key="`tick-${index}`">
+              <div
+                class="absolute left-0"
+                :class="tickClass(tick.type)"
+                :style="{ top: tick.position + '%' }"
+              >
+                <span
+                  v-if="tick.label"
+                  class="pointer-events-none absolute left-14 w-14 top-1/2 -translate-y-1/2 text-[10px] font-medium text-black/70"
+                >
+                  {{ tick.label }}
+                </span>
+              </div>
+
+              <div
+                v-if="histogramData[index]"
+                class="absolute left-0 h-1 rounded-r-full bg-linear-to-r from-blue-600/80 to-blue-300/80 shadow-[0_0_12px_rgba(251,191,36,0.4)]"
+                :style="{
+                  top: `${tick.position}%`,
+                  width: `${histogramData[index].widthPercentage}%`,
+                  height: `${histogramHeight}%`,
+                }"
+              ></div>
+            </template>
+          </div>
+
+          <div
+            class="pointer-events-none absolute inset-x-0"
+            :style="{
+              top: `${selectedRatio * 100}%`,
+              height: `${histogramHeight}%`,
+            }"
+          >
+            <div class="flex h-full w-full items-center justify-end gap-2 pr-1 relative">
+              <span class="h-1/4 w-full rounded-full bg-secondary/70 absolute"></span>
+              <!-- handle -->
+              <span
+                class="flex -mr-4 z-10 h-5 w-10 items-center justify-center rounded-full border border-secondary/70 bg-secondary font-semibold"
+              >
+                <UIcon name="i-heroicons-bars-3" class="text-black/80" />
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </transition>
 
-    <button
-      class="btn btn-circle absolute bottom-4 border border-white/40 bg-white/90 p-2 text-slate-900 shadow-lg shadow-black/30 transition-all duration-300"
-      :class="[open ? 'left-36' : 'left-4']"
+    <UButton
+      class="rounded-3xl m-4 border border-white/40 bg-white/90 p-2 text-slate-900 shadow-lg shadow-black/30"
       @click="toggleScrubber"
       type="button"
       aria-label="Toggle timeline"
@@ -283,7 +282,7 @@ onMounted(() => {
         <UIcon v-if="!open" name="i-heroicons-clock" class="size-6" />
         <UIcon v-else name="i-heroicons-x-mark" class="size-6" />
       </transition>
-    </button>
+    </UButton>
   </div>
 </template>
 

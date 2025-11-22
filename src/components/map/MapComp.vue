@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import 'leaflet/dist/leaflet.css'
 import L, { type LeafletEvent } from 'leaflet'
-import { ref, watchEffect } from 'vue'
+import { ref, watchEffect, onBeforeUnmount } from 'vue'
 import {
   useLeafletMap,
   useLeafletTileLayer,
@@ -31,8 +31,12 @@ const emit = defineEmits<{
 }>()
 
 const el = ref<HTMLElement | null>(null)
+const isZooming = ref(false)
+const renderPending = ref(false)
 const map = useLeafletMap(el, {
   zoomControl: false,
+  zoomAnimation: false,
+  markerZoomAnimation: false,
   maxBoundsViscosity: 1.0,
   bounceAtZoomLimits: true,
   inertia: true,
@@ -53,12 +57,28 @@ const tileLayer = useLeafletTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x
 useLeafletDisplayLayer(map, tileLayer)
 
 const markerLayer = ref<L.LayerGroup | null>(null)
+const debounceTimer = ref<number | null>(null)
+
+useLeafletEvent(map, 'zoomstart', () => {
+  isZooming.value = true
+})
 
 useLeafletEvent(map, 'zoomend', (event: LeafletEvent) => {
   const target = event.target
   if (target instanceof L.Map) {
     emit('setZoom', target.getZoom())
   }
+  isZooming.value = false
+  if (renderPending.value) {
+    renderPending.value = false
+    setMarkers()
+  }
+})
+
+useLeafletEvent(map, 'unload', () => {
+  // Ensure we don't try to render against a torn-down map
+  renderPending.value = false
+  isZooming.value = false
 })
 
 const createClusterIcon = (count: number): L.DivIcon => {
@@ -73,10 +93,16 @@ const createClusterIcon = (count: number): L.DivIcon => {
 }
 
 async function setMarkers() {
-  if (!map.value) return
+  const activeMap = map.value
+  if (!activeMap) return
+
+  if (isZooming.value || (activeMap as unknown as { _animatingZoom?: boolean })._animatingZoom) {
+    renderPending.value = true
+    return
+  }
 
   if (!markerLayer.value) {
-    markerLayer.value = L.layerGroup().addTo(map.value)
+    markerLayer.value = L.layerGroup().addTo(activeMap)
   }
 
   markerLayer.value.clearLayers()
@@ -96,7 +122,19 @@ async function setMarkers() {
 }
 
 watchEffect(() => {
-  setMarkers()
+  if (debounceTimer.value) {
+    clearTimeout(debounceTimer.value)
+  }
+  debounceTimer.value = window.setTimeout(() => {
+    debounceTimer.value = null
+    setMarkers()
+  }, 200)
+})
+
+onBeforeUnmount(() => {
+  if (debounceTimer.value) {
+    clearTimeout(debounceTimer.value)
+  }
 })
 </script>
 
