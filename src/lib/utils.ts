@@ -1,10 +1,26 @@
+import Supercluster, { type ClusterFeature, type PointFeature } from 'supercluster'
 import moment from 'moment'
 import type { Outage } from '@/types/outage'
 
 type Point = [number, number]
 type Circle = [Point, number]
-type KilometerPoint = [number, number]
 const EARTH_RADIUS_KM = 6371
+const EARTH_CIRCUMFERENCE_KM = 40075
+const WORLD_BOUNDS: [number, number, number, number] = [-180, -85, 180, 85]
+const KM_RANGE: [number, number] = [200, 0.01]
+const ZOOM_RANGE: [number, number] = [4, 18]
+const SINGLETON_ZOOM = 19
+
+type OutageFeatureProps = {
+  outage: Outage
+}
+
+type ClusterProperties = {
+  cluster: true
+  cluster_id: number
+  point_count: number
+  point_count_abbreviated: string
+}
 
 export type GroupedOutage = {
   outages: Outage[]
@@ -16,136 +32,119 @@ export type GroupedOutage = {
 }
 
 /**
- * Clusters outages based on spatial proximity using a grid-based spatial index.
+ * Clusters outages using supercluster, respecting the provided zoom level.
  *
- * This function bins outages into grid cells determined by the provided threshold and
- * performs a depth-first search to build clusters of outages that fall within the
- * compared threshold distance of one another. Each cluster is summarized with its
- * minimum enclosing circle, unique providers, an optional polygon, and the most recent
- * timestamp.
+ * The zoom level is converted to an approximate kilometer threshold and pixel radius so
+ * `supercluster` can group outages consistently with the map. Each resulting cluster is
+ * expanded back into its underlying outages to compute derived metadata (providers,
+ * centroid, radius, polygons, and most recent timestamp). Extremely high zoom levels
+ * bypass clustering, returning single-outage groups for stability.
  *
  * @param outages - The list of outages to process into clusters.
- * @param threshold - The distance threshold used for determining proximity (in kilometers).
+ * @param zoomLevel - The Leaflet zoom level currently displayed.
  * @returns An array of grouped outage summaries including cluster metadata.
  */
-export const clusterOutages = (outages: Outage[], thresholdKm: number): GroupedOutage[] => {
-  const thresholdSquared = thresholdKm * thresholdKm
-
-  const toKilometerCoords = (lat: number, lon: number): KilometerPoint => {
-    const latRadians = (lat * Math.PI) / 180
-    const latKm = lat * 111.32
-    const lonKm = lon * 111.32 * Math.cos(latRadians)
-    return [latKm, lonKm]
+export const clusterOutages = (outages: Outage[], zoomLevel: number): GroupedOutage[] => {
+  if (!outages.length) {
+    return []
+  }
+  if (zoomLevel >= SINGLETON_ZOOM) {
+    return outages.map((outage) => summarizeCluster([outage]))
   }
 
-  const projected: KilometerPoint[] = outages.map((outage) =>
-    toKilometerCoords(outage.latitude, outage.longitude),
-  )
+  const thresholdKm = zoomToThresholdKm(zoomLevel)
+  const radiusPixels = kmToRadiusPixels(thresholdKm, zoomLevel)
 
-  const isWithinThreshold = (i: number, j: number): boolean => {
-    const coordA = projected[i]
-    const coordB = projected[j]
-    if (!coordA || !coordB) return false
-    const dx = coordB[0] - coordA[0]
-    const dy = coordB[1] - coordA[1]
-    return dx * dx + dy * dy <= thresholdSquared
-  }
-
-  const grouped: GroupedOutage[] = []
-  const visited = new Set<number>()
-  const spatialIndex = new Map<string, number[]>()
-  const cellSize = thresholdKm
-
-  const cellKey = (x: number, y: number): string => `${x},${y}`
-
-  outages.forEach((outage, idx) => {
-    const coords = projected[idx]
-    if (!coords) return
-    const [x, y] = coords
-    const cellX = Math.floor(x / cellSize)
-    const cellY = Math.floor(y / cellSize)
-
-    for (let nx = cellX - 1; nx <= cellX + 1; nx += 1) {
-      for (let ny = cellY - 1; ny <= cellY + 1; ny += 1) {
-        const key = cellKey(nx, ny)
-        if (!spatialIndex.has(key)) {
-          spatialIndex.set(key, [])
-        }
-        spatialIndex.get(key)?.push(idx)
-      }
-    }
+  const index = new Supercluster<OutageFeatureProps, ClusterProperties>({
+    radius: radiusPixels,
+    minZoom: 0,
+    maxZoom: 19,
   })
 
-  outages.forEach((_, i) => {
-    if (visited.has(i)) return
+  const features: PointFeature<OutageFeatureProps>[] = outages.map((outage, idx) => ({
+    type: 'Feature' as const,
+    id: idx,
+    properties: { outage },
+    geometry: {
+      type: 'Point' as const,
+      coordinates: [outage.longitude, outage.latitude],
+    },
+  }))
 
-    const cluster: Outage[] = []
-    const stack: number[] = [i]
+  index.load(features)
 
-    while (stack.length > 0) {
-      const idx = stack.pop()
-      if (idx === undefined || visited.has(idx)) {
-        continue
+  const clusters = index.getClusters(WORLD_BOUNDS, Math.round(zoomLevel))
+
+  return clusters
+    .map((feature: PointFeature<OutageFeatureProps> | ClusterFeature<ClusterProperties>) => {
+      if (isClusterFeature(feature)) {
+        const clusterId = feature.properties.cluster_id
+        const leaves = index.getLeaves(clusterId, outages.length)
+        const clusterOutagesList = leaves
+          .map((leaf: PointFeature<OutageFeatureProps>) => leaf.properties?.outage)
+          .filter((outage: Outage | undefined): outage is Outage => Boolean(outage))
+        if (!clusterOutagesList.length) {
+          return null
+        }
+        return summarizeCluster(clusterOutagesList)
       }
 
-      const outage = outages[idx]
+      const outage = feature.properties?.outage
       if (!outage) {
-        continue
+        return null
       }
-
-      visited.add(idx)
-      cluster.push(outage)
-
-      const coords = projected[idx]
-      if (!coords) {
-        continue
-      }
-
-      const [x, y] = coords
-      const cellX = Math.floor(x / cellSize)
-      const cellY = Math.floor(y / cellSize)
-      const potentialNeighbors = spatialIndex.get(cellKey(cellX, cellY)) ?? []
-
-      for (const j of potentialNeighbors) {
-        if (visited.has(j)) continue
-        const neighbor = outages[j]
-        if (!neighbor) continue
-        if (isWithinThreshold(idx, j)) {
-          stack.push(j)
-        }
-      }
-    }
-
-    if (!cluster.length) {
-      return
-    }
-
-    let sumLat = 0
-    let sumLon = 0
-    for (const outage of cluster) {
-      sumLat += outage.latitude
-      sumLon += outage.longitude
-    }
-    const center: Point = [sumLat / cluster.length, sumLon / cluster.length]
-    const radius = cluster.reduce((max, outage) => {
-      const distance = haversineDistance(center, [outage.latitude, outage.longitude])
-      return Math.max(max, distance)
-    }, 0)
-    const providers = Array.from(new Set(cluster.map((outage) => outage.provider)))
-    const polygon = cluster.find((outage) => outage.polygon)?.polygon ?? null
-    const ts = cluster.reduce((latest, outage) => Math.max(latest, outage.ts), cluster[0]!.ts)
-
-    grouped.push({
-      outages: cluster,
-      center,
-      radius,
-      providers,
-      polygon,
-      ts,
+      return summarizeCluster([outage])
     })
-  })
+    .filter((group): group is GroupedOutage => Boolean(group))
+}
 
-  return grouped
+const kmToRadiusPixels = (km: number, zoom: number): number => {
+  const kmPerPixel = EARTH_CIRCUMFERENCE_KM / (512 * 2 ** zoom)
+  return Math.max(1, Math.round(km / kmPerPixel))
+}
+
+const zoomToThresholdKm = (zoom: number): number => {
+  const [kmMax, kmMin] = KM_RANGE
+  const [zoomMin, zoomMax] = ZOOM_RANGE
+  const clampedZoom = clamp(zoom, zoomMin, zoomMax)
+  const factor = (clampedZoom - zoomMin) / (zoomMax - zoomMin)
+  const km = kmMax + factor * (kmMin - kmMax)
+  return clamp(km, kmMin, kmMax)
+}
+
+const clamp = (value: number, min: number, max: number): number =>
+  Math.min(Math.max(value, min), max)
+
+const isClusterFeature = (
+  feature: PointFeature<OutageFeatureProps> | ClusterFeature<ClusterProperties>,
+): feature is ClusterFeature<ClusterProperties> =>
+  Boolean(feature.properties && 'cluster' in feature.properties)
+
+const summarizeCluster = (cluster: Outage[]): GroupedOutage => {
+  let sumLat = 0
+  let sumLon = 0
+  for (const outage of cluster) {
+    sumLat += outage.latitude
+    sumLon += outage.longitude
+  }
+
+  const center: Point = [sumLat / cluster.length, sumLon / cluster.length]
+  const radius = cluster.reduce((max, outage) => {
+    const distance = haversineDistance(center, [outage.latitude, outage.longitude])
+    return Math.max(max, distance)
+  }, 0)
+  const providers = Array.from(new Set(cluster.map((outage) => outage.provider)))
+  const polygon = cluster.find((outage) => outage.polygon)?.polygon ?? null
+  const ts = cluster.reduce((latest, outage) => Math.max(latest, outage.ts), cluster[0]!.ts)
+
+  return {
+    outages: cluster,
+    center,
+    radius,
+    providers,
+    polygon,
+    ts,
+  }
 }
 
 const haversineDistance = (a: Point, b: Point): number => {
