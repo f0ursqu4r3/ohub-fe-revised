@@ -11,12 +11,12 @@ import {
 } from '@/lib/utils'
 import MapComp from '@/components/map/MapComp.vue'
 import VerticalTimeScrubber from '@/components/VerticalTimeScrubber.vue'
+import type { PopupData } from '@/components/map/types'
 
 type MapMarker = {
   lat: number
   lng: number
-  popupText?: string
-  popupHtml?: string
+  popupData?: PopupData
   count: number
 }
 
@@ -26,7 +26,7 @@ type MapPolygon = {
 }
 
 const outageStore = useOutageStore()
-const { selectedBlockOutages, loading, error } = storeToRefs(outageStore)
+const { selectedBlockOutages, selectedOutageTs, loading, error } = storeToRefs(outageStore)
 
 const zoomLevel = ref(4)
 
@@ -42,8 +42,7 @@ const mapMarkers = computed<MapMarker[]>(() =>
     lat: group.center[0],
     lng: group.center[1],
     count: group.outages.length,
-    popupHtml: buildPopupHtml(group),
-    popupText: group.outages.length === 1 ? group.providers[0] ?? 'Outage' : undefined,
+    popupData: buildPopupData(group, selectedOutageTs.value),
   })),
 )
 
@@ -64,40 +63,23 @@ const mapPolygons = computed<MapPolygon[]>(() =>
 const setZoomLevel = (level: number) => (zoomLevel.value = level)
 const retryFetch = () => outageStore.refetch()
 
-const buildPopupHtml = (group: GroupedOutage): string => {
+const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData | undefined => {
   const outages = group.outages
-  if (!outages.length) return ''
-  const title =
-    outages.length === 1
-      ? escapeHtml(outages[0]?.provider ?? 'Outage')
-      : `${outages.length} events`
-
+  if (!outages.length) return undefined
+  const title = outages.length === 1 ? outages[0]?.provider ?? 'Outage' : `${outages.length} events`
+  const timeLabel = blockTs !== null ? formatDate(blockTs) : formatDate(group.ts)
   const MAX_ROWS = 6
-  const rows = outages.slice(0, MAX_ROWS).map((outage) => {
-    const provider = escapeHtml(outage.provider)
-    const started = formatDate(outage.startTs)
-    return `<li class="popup-item"><span class="popup-provider">${provider}</span><span class="popup-time">${started}</span></li>`
-  })
-
-  if (outages.length > MAX_ROWS) {
-    rows.push(`<li class="popup-more">+${outages.length - MAX_ROWS} more…</li>`)
+  const items = outages.slice(0, MAX_ROWS).map((outage) => ({
+    provider: outage.provider,
+  }))
+  const extraCount = Math.max(0, outages.length - MAX_ROWS)
+  return {
+    title,
+    timeLabel,
+    items,
+    extraCount,
   }
-
-  return `
-    <div class="popup-content">
-      <div class="popup-title">${title}</div>
-      <ul class="popup-list">${rows.join('')}</ul>
-    </div>
-  `
 }
-
-const escapeHtml = (value: string): string =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
 </script>
 
 <template>

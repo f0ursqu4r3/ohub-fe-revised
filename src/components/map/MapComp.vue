@@ -2,7 +2,7 @@
 import 'leaflet/dist/leaflet.css'
 import L, { type LeafletEvent } from 'leaflet'
 import type { GeoJSON as LeafletGeoJSON } from 'leaflet'
-import { ref, watch, onBeforeUnmount } from 'vue'
+import { createApp, ref, watch, onBeforeUnmount } from 'vue'
 import type { Feature, MultiPolygon, Polygon } from 'geojson'
 import {
   useLeafletMap,
@@ -10,12 +10,13 @@ import {
   useLeafletDisplayLayer,
   useLeafletEvent,
 } from 'vue-use-leaflet'
+import MapPopupComp from './MapPopupComp.vue'
+import type { PopupData } from './types'
 
 type MarkerData = {
   lat: number
   lng: number
-  popupText?: string
-  popupHtml?: string
+  popupData?: PopupData
   count?: number
 }
 
@@ -175,14 +176,8 @@ async function setMarkers() {
     const marker = isCluster
       ? L.marker([markerData.lat, markerData.lng], { icon: createClusterIcon(count) })
       : L.marker([markerData.lat, markerData.lng], { icon: createIcon() })
-    if (markerData.popupHtml) {
-      marker.bindPopup(markerData.popupHtml, {
-        className: 'outage-popup',
-      })
-    } else if (markerData.popupText) {
-      marker.bindPopup(markerData.popupText, {
-        className: 'outage-popup',
-      })
+    if (markerData.popupData) {
+      attachPopupComponent(marker, markerData.popupData)
     }
     markerLayer.value!.addLayer(marker)
   })
@@ -212,6 +207,20 @@ const polygonStyle = (isCluster: boolean): L.PathOptions => ({
   fillColor: isCluster ? '#60a5fa' : '#fb923c',
   fillOpacity: 0.12,
 })
+
+const attachPopupComponent = (marker: L.Marker, data: PopupData) => {
+  const container = document.createElement('div')
+  const app = createApp(MapPopupComp, { data })
+  app.mount(container)
+  marker.bindPopup(container, {
+    className: 'outage-popup',
+  })
+  const teardown = () => {
+    app.unmount()
+  }
+  marker.on('popupclose', teardown)
+  marker.on('remove', teardown)
+}
 
 watch(
   [() => props.markers, () => props.polygons],
@@ -285,44 +294,6 @@ onBeforeUnmount(() => {
 :global(.cluster-marker.cluster-large) {
   width: 48px;
   height: 48px;
-}
-
-:global(.outage-popup .popup-content) {
-  min-width: 180px;
-  max-width: 260px;
-  color: #0f172a;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-}
-
-:global(.outage-popup .popup-title) {
-  font-weight: 700;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-:global(.outage-popup .popup-list) {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 6px;
-}
-
-:global(.outage-popup .popup-item) {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 12px;
-}
-
-:global(.outage-popup .popup-time) {
-  color: #475569;
-  white-space: nowrap;
-}
-
-:global(.outage-popup .popup-more) {
-  font-size: 12px;
-  color: #334155;
 }
 
 :global(.custom-marker) {

@@ -204,11 +204,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="h-full flex items-end">
+  <div class="h-full flex items-end pointer-events-none">
     <transition name="slide">
       <div
         v-show="open"
-        class="scrubber-panel glass flex h-full w-32 flex-col gap-6 border border-black/15 bg-white/10 p-4 text-black shadow-2xl shadow-black/40 backdrop-blur-sm transition-all duration-500 ease-out touch-none select-none"
+        class="scrubber-panel glass pointer-events-auto flex h-full w-32 flex-col gap-6 border border-black/15 bg-white/10 p-4 text-black shadow-2xl shadow-black/40 backdrop-blur-sm transition-all duration-500 ease-out touch-none select-none"
         :class="[$attrs.class]"
       >
         <div class="space-y-1 text-right">
@@ -224,7 +224,7 @@ onBeforeUnmount(() => {
 
         <div
           ref="scrubber"
-          class="relative flex-1"
+          class="relative flex-1 cursor-pointer select-none"
           style="min-height: 280px"
           @pointerdown="onPointerDown"
           @wheel.passive="onWheel"
@@ -278,7 +278,7 @@ onBeforeUnmount(() => {
     </transition>
 
     <UButton
-      class="rounded-3xl m-4 border border-white/40 bg-white/90 p-2 text-slate-900 shadow-lg shadow-black/30"
+      class="pointer-events-auto rounded-3xl m-4 border border-white/40 bg-white/90 p-2 text-slate-900 shadow-lg shadow-black/30 cursor-pointer"
       @click="toggleScrubber"
       type="button"
       aria-label="Toggle timeline"
