@@ -2,7 +2,13 @@
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useOutageStore } from '@/stores/outages'
-import { clusterOutages, wktToGeoJSON, type GeoPolygon, type GroupedOutage } from '@/lib/utils'
+import {
+  clusterOutages,
+  formatDate,
+  wktToGeoJSON,
+  type GeoPolygon,
+  type GroupedOutage,
+} from '@/lib/utils'
 import MapComp from '@/components/map/MapComp.vue'
 import VerticalTimeScrubber from '@/components/VerticalTimeScrubber.vue'
 
@@ -10,6 +16,7 @@ type MapMarker = {
   lat: number
   lng: number
   popupText?: string
+  popupHtml?: string
   count: number
 }
 
@@ -35,10 +42,8 @@ const mapMarkers = computed<MapMarker[]>(() =>
     lat: group.center[0],
     lng: group.center[1],
     count: group.outages.length,
-    popupText:
-      group.outages.length === 1
-        ? (group.providers[0] ?? 'Outage')
-        : `${group.outages.length} events · ${group.providers.slice(0, 3).join(', ')}`,
+    popupHtml: buildPopupHtml(group),
+    popupText: group.outages.length === 1 ? group.providers[0] ?? 'Outage' : undefined,
   })),
 )
 
@@ -58,6 +63,41 @@ const mapPolygons = computed<MapPolygon[]>(() =>
 
 const setZoomLevel = (level: number) => (zoomLevel.value = level)
 const retryFetch = () => outageStore.refetch()
+
+const buildPopupHtml = (group: GroupedOutage): string => {
+  const outages = group.outages
+  if (!outages.length) return ''
+  const title =
+    outages.length === 1
+      ? escapeHtml(outages[0]?.provider ?? 'Outage')
+      : `${outages.length} events`
+
+  const MAX_ROWS = 6
+  const rows = outages.slice(0, MAX_ROWS).map((outage) => {
+    const provider = escapeHtml(outage.provider)
+    const started = formatDate(outage.startTs)
+    return `<li class="popup-item"><span class="popup-provider">${provider}</span><span class="popup-time">${started}</span></li>`
+  })
+
+  if (outages.length > MAX_ROWS) {
+    rows.push(`<li class="popup-more">+${outages.length - MAX_ROWS} more…</li>`)
+  }
+
+  return `
+    <div class="popup-content">
+      <div class="popup-title">${title}</div>
+      <ul class="popup-list">${rows.join('')}</ul>
+    </div>
+  `
+}
+
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
 </script>
 
 <template>

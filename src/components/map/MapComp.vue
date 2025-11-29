@@ -15,6 +15,7 @@ type MarkerData = {
   lat: number
   lng: number
   popupText?: string
+  popupHtml?: string
   count?: number
 }
 
@@ -174,8 +175,14 @@ async function setMarkers() {
     const marker = isCluster
       ? L.marker([markerData.lat, markerData.lng], { icon: createClusterIcon(count) })
       : L.marker([markerData.lat, markerData.lng], { icon: createIcon() })
-    if (markerData.popupText) {
-      marker.bindPopup(markerData.popupText)
+    if (markerData.popupHtml) {
+      marker.bindPopup(markerData.popupHtml, {
+        className: 'outage-popup',
+      })
+    } else if (markerData.popupText) {
+      marker.bindPopup(markerData.popupText, {
+        className: 'outage-popup',
+      })
     }
     markerLayer.value!.addLayer(marker)
   })
@@ -278,6 +285,44 @@ onBeforeUnmount(() => {
 :global(.cluster-marker.cluster-large) {
   width: 48px;
   height: 48px;
+}
+
+:global(.outage-popup .popup-content) {
+  min-width: 180px;
+  max-width: 260px;
+  color: #0f172a;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+:global(.outage-popup .popup-title) {
+  font-weight: 700;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+:global(.outage-popup .popup-list) {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+:global(.outage-popup .popup-item) {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+:global(.outage-popup .popup-time) {
+  color: #475569;
+  white-space: nowrap;
+}
+
+:global(.outage-popup .popup-more) {
+  font-size: 12px;
+  color: #334155;
 }
 
 :global(.custom-marker) {
