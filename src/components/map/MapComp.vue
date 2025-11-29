@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import 'leaflet/dist/leaflet.css'
 import L, { type LeafletEvent } from 'leaflet'
-import { ref, watchEffect, onBeforeUnmount } from 'vue'
+import { ref, watch, onBeforeUnmount } from 'vue'
 import {
   useLeafletMap,
   useLeafletTileLayer,
@@ -17,7 +17,7 @@ type MarkerData = {
 }
 
 const CANADA_BOUNDS: L.LatLngBoundsExpression = [
-  [36, -170], // a bit south/west of Canada to give slight padding
+  [10, -170], // a bit south/west of Canada to give slight padding
   [90, -40], // extends slightly east and to the pole
 ]
 
@@ -42,10 +42,13 @@ const emit = defineEmits<{
   (e: 'setZoom', level: number): void
 }>()
 
+const POLYGON_VISIBLE_ZOOM = 8
+
 const el = ref<HTMLElement | null>(null)
 const isZooming = ref(false)
 const renderPending = ref(false)
 const map = useLeafletMap(el, {
+  preferCanvas: true,
   zoomControl: false,
   zoomAnimation: false,
   markerZoomAnimation: false,
@@ -59,6 +62,7 @@ const map = useLeafletMap(el, {
   center: [61.0, -104.0],
   zoom: props.zoomLevel,
 })
+
 const tileLayer = useLeafletTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution:
     '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
@@ -72,6 +76,18 @@ useLeafletDisplayLayer(map, tileLayer)
 const markerLayer = ref<L.LayerGroup | null>(null)
 const polygonLayer = ref<L.LayerGroup | null>(null)
 const debounceTimer = ref<number | null>(null)
+const polygonsVisible = ref(false)
+const canvasRenderer = L.canvas({ padding: 0.5 })
+
+const queueMarkerRender = () => {
+  if (debounceTimer.value) {
+    clearTimeout(debounceTimer.value)
+  }
+  debounceTimer.value = window.setTimeout(() => {
+    debounceTimer.value = null
+    setMarkers()
+  }, 200)
+}
 
 useLeafletEvent(map, 'zoomstart', () => {
   isZooming.value = true
@@ -86,6 +102,14 @@ useLeafletEvent(map, 'zoomend', (event: LeafletEvent) => {
   if (renderPending.value) {
     renderPending.value = false
     setMarkers()
+    return
+  }
+
+  if (target instanceof L.Map) {
+    const shouldRenderPolygons = target.getZoom() >= POLYGON_VISIBLE_ZOOM
+    if (shouldRenderPolygons !== polygonsVisible.value) {
+      queueMarkerRender()
+    }
   }
 })
 
@@ -95,8 +119,17 @@ useLeafletEvent(map, 'unload', () => {
   isZooming.value = false
 })
 
+const createIcon = () => {
+  return L.divIcon({
+    html: `<div class="custom-marker-icon"></div>`,
+    className: 'custom-marker',
+    iconSize: [24, 24],
+  })
+}
+
 const createClusterIcon = (count: number): L.DivIcon => {
-  const sizeClass = count >= 100 ? 'cluster-large' : count >= 10 ? 'cluster-medium' : 'cluster-small'
+  const sizeClass =
+    count >= 100 ? 'cluster-large' : count >= 10 ? 'cluster-medium' : 'cluster-small'
   const size = sizeClass === 'cluster-large' ? 48 : sizeClass === 'cluster-medium' ? 40 : 32
 
   return L.divIcon({
@@ -131,37 +164,42 @@ async function setMarkers() {
     const isCluster = count > 1
     const marker = isCluster
       ? L.marker([markerData.lat, markerData.lng], { icon: createClusterIcon(count) })
-      : L.marker([markerData.lat, markerData.lng])
+      : L.marker([markerData.lat, markerData.lng], { icon: createIcon() })
     if (markerData.popupText) {
       marker.bindPopup(markerData.popupText)
     }
     marker.addTo(markerLayer.value!)
   })
 
-  props.polygons?.forEach((polygonData) => {
-    if (!polygonData.rings.length) return
-    const isClusterPoly = polygonData.isCluster
-    const polygon = L.polygon(polygonData.rings as L.LatLngExpression[][], {
-      color: isClusterPoly ? '#2563eb' : '#ea580c',
-      weight: 2,
-      opacity: 0.9,
-      fillColor: isClusterPoly ? '#60a5fa' : '#fb923c',
-      fillOpacity: 0.12,
-      interactive: false,
+  const currentZoom = activeMap.getZoom()
+  if (currentZoom >= POLYGON_VISIBLE_ZOOM) {
+    polygonsVisible.value = true
+    props.polygons?.forEach((polygonData) => {
+      if (!polygonData.rings.length) return
+      const isClusterPoly = polygonData.isCluster
+      const polygon = L.polygon(polygonData.rings as L.LatLngExpression[][], {
+        color: isClusterPoly ? '#2563eb' : '#ea580c',
+        weight: 2,
+        opacity: 0.9,
+        fillColor: isClusterPoly ? '#60a5fa' : '#fb923c',
+        fillOpacity: 0.12,
+        interactive: false,
+        renderer: canvasRenderer,
+      })
+      polygon.addTo(polygonLayer.value!)
     })
-    polygon.addTo(polygonLayer.value!)
-  })
+  } else {
+    polygonsVisible.value = false
+  }
 }
 
-watchEffect(() => {
-  if (debounceTimer.value) {
-    clearTimeout(debounceTimer.value)
-  }
-  debounceTimer.value = window.setTimeout(() => {
-    debounceTimer.value = null
-    setMarkers()
-  }, 200)
-})
+watch(
+  [() => props.markers, () => props.polygons],
+  () => {
+    queueMarkerRender()
+  },
+  { deep: true, immediate: true },
+)
 
 onBeforeUnmount(() => {
   if (debounceTimer.value) {
@@ -219,5 +257,19 @@ onBeforeUnmount(() => {
 :global(.cluster-marker.cluster-large) {
   width: 48px;
   height: 48px;
+}
+
+:global(.custom-marker) {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 30% 30%, #ffb347, #ff7e5f);
+  border: 2px solid #ffffff;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    0 0 0 2px rgba(255, 255, 255, 0.6) inset;
+  cursor: pointer;
 }
 </style>
