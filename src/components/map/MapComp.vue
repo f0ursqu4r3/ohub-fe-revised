@@ -218,7 +218,6 @@ const attachPopupComponent = (marker: L.Marker, data: PopupData) => {
   const teardown = () => {
     app.unmount()
   }
-  marker.on('popupclose', teardown)
   marker.on('remove', teardown)
 }
 
