@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import 'leaflet/dist/leaflet.css'
 import L, { type LeafletEvent } from 'leaflet'
+import type { GeoJSON as LeafletGeoJSON } from 'leaflet'
 import { ref, watch, onBeforeUnmount } from 'vue'
+import type { Feature, MultiPolygon, Polygon } from 'geojson'
 import {
   useLeafletMap,
   useLeafletTileLayer,
@@ -22,7 +24,7 @@ const CANADA_BOUNDS: L.LatLngBoundsExpression = [
 ]
 
 type PolygonData = {
-  rings: [number, number][][]
+  geometry: Polygon | MultiPolygon
   isCluster: boolean
 }
 
@@ -74,7 +76,7 @@ const tileLayer = useLeafletTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x
 useLeafletDisplayLayer(map, tileLayer)
 
 const markerLayer = ref<L.LayerGroup | null>(null)
-const polygonLayer = ref<L.LayerGroup | null>(null)
+const geoJsonLayer = ref<LeafletGeoJSON | null>(null)
 const debounceTimer = ref<number | null>(null)
 const polygonsVisible = ref(false)
 const canvasRenderer = L.canvas({ padding: 0.5 })
@@ -153,10 +155,17 @@ async function setMarkers() {
   }
 
   markerLayer.value.clearLayers()
-  if (!polygonLayer.value) {
-    polygonLayer.value = L.layerGroup().addTo(activeMap)
+  if (!geoJsonLayer.value) {
+    geoJsonLayer.value = L.geoJSON([], {
+      style: (feature) => {
+        const isClusterPoly = Boolean(feature?.properties?.isCluster)
+        return polygonStyle(isClusterPoly)
+      },
+      interactive: false,
+    }) as LeafletGeoJSON
+    geoJsonLayer.value.addTo(activeMap)
   }
-  polygonLayer.value.clearLayers()
+  geoJsonLayer.value.clearLayers()
 
   // Add new markers from props
   props.markers.forEach((markerData) => {
@@ -168,30 +177,34 @@ async function setMarkers() {
     if (markerData.popupText) {
       marker.bindPopup(markerData.popupText)
     }
-    marker.addTo(markerLayer.value!)
+    markerLayer.value!.addLayer(marker)
   })
 
   const currentZoom = activeMap.getZoom()
   if (currentZoom >= POLYGON_VISIBLE_ZOOM) {
     polygonsVisible.value = true
     props.polygons?.forEach((polygonData) => {
-      if (!polygonData.rings.length) return
-      const isClusterPoly = polygonData.isCluster
-      const polygon = L.polygon(polygonData.rings as L.LatLngExpression[][], {
-        color: isClusterPoly ? '#2563eb' : '#ea580c',
-        weight: 2,
-        opacity: 0.9,
-        fillColor: isClusterPoly ? '#60a5fa' : '#fb923c',
-        fillOpacity: 0.12,
-        interactive: false,
-        renderer: canvasRenderer,
-      })
-      polygon.addTo(polygonLayer.value!)
+      const { geometry, isCluster } = polygonData
+      if (!geometry) return
+      const feature: Feature = {
+        type: 'Feature',
+        properties: { isCluster },
+        geometry,
+      }
+      geoJsonLayer.value!.addData(feature)
     })
   } else {
     polygonsVisible.value = false
   }
 }
+
+const polygonStyle = (isCluster: boolean): L.PathOptions => ({
+  color: isCluster ? '#2563eb' : '#ea580c',
+  weight: 2,
+  opacity: 0.9,
+  fillColor: isCluster ? '#60a5fa' : '#fb923c',
+  fillOpacity: 0.12,
+})
 
 watch(
   [() => props.markers, () => props.polygons],
@@ -205,6 +218,14 @@ onBeforeUnmount(() => {
   if (debounceTimer.value) {
     clearTimeout(debounceTimer.value)
   }
+  renderPending.value = false
+  markerLayer.value?.clearLayers()
+  geoJsonLayer.value?.clearLayers()
+  markerLayer.value?.remove()
+  geoJsonLayer.value?.remove()
+  tileLayer.value?.remove?.()
+  map.value?.off()
+  map.value?.remove()
 })
 </script>
 

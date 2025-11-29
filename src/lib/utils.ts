@@ -1,12 +1,12 @@
 import Supercluster, { type ClusterFeature, type PointFeature } from 'supercluster'
-import moment from 'moment'
+import type { Feature, GeoJsonObject, MultiPolygon, Polygon } from 'geojson'
 import type { Outage } from '@/types/outage'
 
 const EARTH_RADIUS_KM = 6371
-const WORLD_BOUNDS: [number, number, number, number] = [-180, -85, 180, 85]
-const SINGLETON_ZOOM = 16
+const CANADA_BOUNDS_BBOX: [number, number, number, number] = [-170, 10, -40, 90]
 const CLUSTER_ZOOM_RANGE: [number, number] = [4, 16] // start easing clustering at 4, end right before singletons
 const CLUSTER_RADIUS_PX_RANGE: [number, number] = [64, 18] // heavy grouping at low zoom, light at high zoom
+const CLUSTER_CACHE_LIMIT = 8
 
 type OutageFeatureProps = {
   outage: Outage
@@ -21,6 +21,7 @@ type ClusterProperties = {
 
 export type Point = [number, number]
 export type Circle = [Point, number]
+export type GeoPolygon = Polygon | MultiPolygon
 
 export type GroupedOutage = {
   outages: Outage[]
@@ -50,31 +51,11 @@ export const clusterOutages = (outages: Outage[], zoomLevel: number): GroupedOut
   if (!validOutages.length) {
     return []
   }
-  if (zoomLevel >= SINGLETON_ZOOM) {
-    return validOutages.map((outage) => summarizeCluster([outage]))
-  }
 
   const radiusPx = clusterRadiusForZoom(zoomLevel)
+  const index = getClusterIndex(validOutages, radiusPx)
 
-  const index = new Supercluster<OutageFeatureProps, ClusterProperties>({
-    radius: radiusPx,
-    minZoom: 0,
-    maxZoom: 19,
-  })
-
-  const features: PointFeature<OutageFeatureProps>[] = validOutages.map((outage, idx) => ({
-    type: 'Feature' as const,
-    id: idx,
-    properties: { outage },
-    geometry: {
-      type: 'Point' as const,
-      coordinates: [outage.longitude, outage.latitude],
-    },
-  }))
-
-  index.load(features)
-
-  const clusters = index.getClusters(WORLD_BOUNDS, Math.round(zoomLevel))
+  const clusters = index.getClusters(CANADA_BOUNDS_BBOX, Math.round(zoomLevel))
 
   return clusters
     .map((feature: PointFeature<OutageFeatureProps> | ClusterFeature<ClusterProperties>) => {
@@ -115,6 +96,63 @@ const clusterRadiusForZoom = (zoom: number): number => {
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max)
 
+const clusterIndexCache = new Map<string, Supercluster<OutageFeatureProps, ClusterProperties>>()
+
+const makeClusterCacheKey = (outages: Outage[], radiusPx: number): string =>
+  `${radiusPx}:${outages
+    .map(
+      (o) =>
+        `${o.id}:${o.latitude.toFixed(4)},${o.longitude.toFixed(4)}:${o.ts}:${o.startTs ?? ''}:${o.endTs ?? ''}`,
+    )
+    .join('|')}`
+
+const buildClusterIndex = (
+  outages: Outage[],
+  radiusPx: number,
+): Supercluster<OutageFeatureProps, ClusterProperties> => {
+  const index = new Supercluster<OutageFeatureProps, ClusterProperties>({
+    radius: radiusPx,
+    minZoom: 0,
+    maxZoom: 19,
+  })
+
+  const features: PointFeature<OutageFeatureProps>[] = outages.map((outage, idx) => ({
+    type: 'Feature' as const,
+    id: idx,
+    properties: { outage },
+    geometry: {
+      type: 'Point' as const,
+      coordinates: [outage.longitude, outage.latitude],
+    },
+  }))
+
+  index.load(features)
+  return index
+}
+
+const getClusterIndex = (
+  outages: Outage[],
+  radiusPx: number,
+): Supercluster<OutageFeatureProps, ClusterProperties> => {
+  const cacheKey = makeClusterCacheKey(outages, radiusPx)
+  const cached = clusterIndexCache.get(cacheKey)
+  if (cached) {
+    return cached
+  }
+
+  const index = buildClusterIndex(outages, radiusPx)
+  clusterIndexCache.set(cacheKey, index)
+
+  if (clusterIndexCache.size > CLUSTER_CACHE_LIMIT) {
+    const firstKey = clusterIndexCache.keys().next().value
+    if (firstKey) {
+      clusterIndexCache.delete(firstKey)
+    }
+  }
+
+  return index
+}
+
 /**
  * Determines whether the provided feature is a cluster feature by checking
  * for the presence of the `cluster` flag in its properties.
@@ -147,7 +185,10 @@ const summarizeCluster = (cluster: Outage[]): GroupedOutage => {
     return Math.max(max, distance)
   }, 0)
   const providers = Array.from(new Set(cluster.map((outage) => outage.provider)))
-  const polygon = cluster.find((outage) => outage.polygon)?.polygon ?? null
+  const polygons = cluster
+    .map((outage) => outage.polygon)
+    .filter((poly): poly is string => Boolean(poly))
+  const polygon = polygons.length ? mergePolygons(polygons) : null
   const ts = cluster.reduce((latest, outage) => Math.max(latest, outage.ts), cluster[0]!.ts)
 
   return {
@@ -372,7 +413,14 @@ export const formatDate = (input: number | string | Date): string => {
     }
   }
 
-  return moment(value).format('MMM D, YYYY h:mm:ss a')
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(value)
 }
 
 /**
@@ -386,11 +434,11 @@ export const mergePolygons = (polygons: string[]): string | null => {
     return null
   }
   if (polygons.length === 1) {
-    return polygons[0]!
+    return stripSrid(polygons[0]!)
   }
 
   const wktPolygons = polygons
-    .map((wkt) => wkt.replace('POLYGON', '').trim())
+    .map((wkt) => stripSrid(wkt).replace(/^POLYGON/i, '').trim())
     .filter((wkt) => wkt.length > 0)
 
   if (wktPolygons.length === 0) {
@@ -402,53 +450,121 @@ export const mergePolygons = (polygons: string[]): string | null => {
 }
 
 /**
- * Parses a WKT POLYGON or MULTIPOLYGON string into an array of polygon rings.
+ * Parses a WKT POLYGON or MULTIPOLYGON string into polygons with support for holes.
  *
  * @param wkt - The WKT string representing a POLYGON or MULTIPOLYGON geometry.
- * @returns An array of polygons, where each polygon is represented as an array of `[latitude, longitude]` points.
+ * @returns An array of polygons, where each polygon is an array of rings, and each ring is an array of `[latitude, longitude]` points.
  *
  * @example
  * ```ts
  * const wkt = 'POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))';
  * const polygons = parsePolygonWKT(wkt);
- * // [[[10, 30], [40, 40], [40, 20], [20, 10], [10, 30]]]
+ * // [
+ * //   [
+ * //     [10, 30],
+ * //     [40, 40],
+ * //     [40, 20],
+ * //     [20, 10],
+ * //     [10, 30],
+ * //   ],
+ * // ]
  * ```
  */
-export const parsePolygonWKT = (wkt: string): Point[][] => {
-  const polygons: Point[][] = []
+export const parsePolygonWKT = (wkt: string): Point[][][] => {
+  const normalized = stripSrid(wkt)
+  if (!normalized) return []
 
-  const multiPolygonMatch = wkt.match(/^MULTIPOLYGON\s*\(\s*(\(.+\))\s*\)$/i)
-  const polygonMatch = wkt.match(/^POLYGON\s*\(\s*(\(.+\))\s*\)$/i)
+  const upper = normalized.toUpperCase()
+  const isMulti = upper.startsWith('MULTIPOLYGON')
+  const isSingle = upper.startsWith('POLYGON')
+  if (!isMulti && !isSingle) return []
 
-  const polygonStrings: string[] = []
+  const body = trimParens(
+    normalized.replace(/^MULTIPOLYGON/i, '').replace(/^POLYGON/i, '').trim(),
+  )
+  const polygonStrings = isMulti ? splitTopLevelSegments(body) : [body]
 
-  if (multiPolygonMatch) {
-    const inner = multiPolygonMatch[1] ?? ''
-    const regex = /\(\s*\(([^()]+)\)\s*\)/g
-    let match
-    while ((match = regex.exec(inner)) !== null) {
-      polygonStrings.push(`(${match[1]})`)
+  return polygonStrings
+    .map((polyStr) => {
+      const ringStrings = splitTopLevelSegments(trimParens(polyStr))
+      const rings = ringStrings
+        .map((ring) => parseRing(ring))
+        .filter((ring) => ring.length > 2)
+      return rings.length ? rings : null
+    })
+    .filter((poly): poly is Point[][] => Boolean(poly))
+}
+
+export const wktToGeoJSON = (wkt: string): GeoPolygon | null => {
+  const polygons = parsePolygonWKT(wkt)
+  if (!polygons.length) return null
+
+  if (polygons.length === 1) {
+    return {
+      type: 'Polygon',
+      coordinates: polygons[0]!.map((ring) => ring.map(([lat, lon]) => [lon, lat])),
     }
-  } else if (polygonMatch) {
-    polygonStrings.push(polygonMatch[1]!)
-  } else {
-    return polygons
   }
 
-  for (const polyStr of polygonStrings) {
-    const ringMatch = polyStr.match(/\(\s*([^)]+)\s*\)/)
-    if (ringMatch) {
-      const coordsStr = ringMatch[1]!
-      const coordPairs = coordsStr.split(',').map((pair) => pair.trim())
-      const points: Point[] = coordPairs.map((pair) => {
-        const trimmed = pair.split(' ').map((s) => s.trim())
-        const lonStr = trimmed[0] ?? '0'
-        const latStr = trimmed[1] ?? '0'
-        return [parseFloat(latStr) || 0, parseFloat(lonStr) || 0]
-      })
-      polygons.push(points)
+  return {
+    type: 'MultiPolygon',
+    coordinates: polygons.map((poly) => poly.map((ring) => ring.map(([lat, lon]) => [lon, lat]))),
+  }
+}
+
+const stripSrid = (wkt: string): string => {
+  const trimmed = wkt.trim()
+  const sridIndex = trimmed.indexOf(';')
+  if (sridIndex !== -1 && trimmed.toUpperCase().startsWith('SRID=')) {
+    return trimmed.slice(sridIndex + 1).trim()
+  }
+  return trimmed
+}
+
+const trimParens = (value: string): string => {
+  const trimmed = value.trim()
+  if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
+    return trimmed.slice(1, -1).trim()
+  }
+  return trimmed
+}
+
+const splitTopLevelSegments = (input: string): string[] => {
+  const segments: string[] = []
+  let depth = 0
+  let start = 0
+
+  for (let i = 0; i < input.length; i += 1) {
+    const char = input[i]
+    if (char === '(') {
+      depth += 1
+    } else if (char === ')') {
+      depth = Math.max(0, depth - 1)
+    } else if (char === ',' && depth === 0) {
+      segments.push(input.slice(start, i).trim())
+      start = i + 1
     }
   }
 
-  return polygons
+  const tail = input.slice(start).trim()
+  if (tail) segments.push(tail)
+  return segments
+}
+
+const parseRing = (ringStr: string): Point[] => {
+  const ringBody = trimParens(ringStr)
+  return ringBody
+    .split(',')
+    .map((pair) => pair.trim())
+    .filter(Boolean)
+    .map((pair) => {
+      const [lonStr = '0', latStr = '0'] = pair.split(/\s+/).filter(Boolean)
+      const lat = Number.parseFloat(latStr)
+      const lon = Number.parseFloat(lonStr)
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return null
+      }
+      return [lat, lon] as Point
+    })
+    .filter((point): point is Point => Boolean(point))
 }

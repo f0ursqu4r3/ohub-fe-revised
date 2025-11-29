@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useOutageStore } from '@/stores/outages'
 
@@ -195,6 +195,11 @@ watch(
 
 onMounted(() => {
   open.value = window.innerWidth >= 768
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('pointerup', onPointerUp)
 })
 </script>
 

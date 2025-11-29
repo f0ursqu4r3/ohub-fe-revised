@@ -3,7 +3,7 @@ export interface Outage {
   provider: string
   latitude: number
   longitude: number
-  polygon: string | null // Now holds the WKT string from ST_AsText
+  polygon: string | null // WKT POLYGON or MULTIPOLYGON
   startTs: number
   endTs: number | null
   ts: number
@@ -11,8 +11,8 @@ export interface Outage {
 
 export interface OutageResponse {
   outages: Outage[]
-  blocks: Map<number, OutageBlock>
-  timeInterval: string
+  blocks: Record<number, OutageBlock> | OutageBlock[]
+  timeInterval: TimeInterval | string
   startTs: number
   endTs: number
   minCount: number

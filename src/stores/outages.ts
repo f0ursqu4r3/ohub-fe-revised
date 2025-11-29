@@ -28,6 +28,7 @@ export const useOutageStore = defineStore('outages', () => {
     data,
     isFetching: loading,
     error,
+    execute: refetch,
   } = useFetch(url, {
     immediate: true,
     refetch: true,
@@ -93,6 +94,7 @@ export const useOutageStore = defineStore('outages', () => {
     selectedBlockOutages,
     loading,
     error,
+    refetch,
   }
 })
 
