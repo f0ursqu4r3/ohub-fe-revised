@@ -63,7 +63,11 @@ const resetDropdown = () => {
   activeIndex.value = -1
 }
 
-const boundsFromBox = (boundingBox: Array<string | number>, lat: number, lon: number): BoundsLiteral => {
+const boundsFromBox = (
+  boundingBox: Array<string | number>,
+  lat: number,
+  lon: number,
+): BoundsLiteral => {
   if (boundingBox.length === 4) {
     const [southRaw, northRaw, westRaw, eastRaw] = boundingBox as [
       string | number,
@@ -261,33 +265,33 @@ const scrollActiveIntoView = () => {
       class="pointer-events-auto relative rounded-2xl border border-black/10 bg-white/90 shadow-[0_16px_35px_rgba(5,15,29,0.32)] backdrop-blur-md"
     >
       <div class="flex items-center gap-3 px-4 py-3">
-        <svg class="h-5 w-5 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 5.5 5.5a7.5 7.5 0 0 0 11.15 11.15Z"
-          />
-        </svg>
-        <input
+        <UInput
           v-model="query"
           type="search"
+          icon="i-heroicons-magnifying-glass"
           placeholder="Find a Canadian address"
-          class="h-10 w-full rounded-xl border border-transparent bg-white/60 px-3 text-sm font-medium text-slate-900 outline-none ring-2 ring-transparent transition focus:border-emerald-400 focus:ring-emerald-100"
+          size="lg"
+          class="flex-1"
+          :loading="isLoading"
+          :ui="{ trailing: 'pe-1', base: 'rounded-full' }"
           @focus="isFocused = true"
           @blur="closeDropdownSoon"
           @keydown="onKeydown"
-        />
-        <button
-          v-if="query.length"
-          type="button"
-          class="h-8 w-8 shrink-0 rounded-full bg-slate-100 text-slate-700 shadow-inner transition hover:bg-slate-200"
-          aria-label="Clear search"
-          @click="clearSearch"
         >
-          ×
-        </button>
-        <div class="w-12 text-right text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">
+          <template v-if="query.length" #trailing>
+            <UButton
+              icon="i-heroicons-x-mark"
+              color="gray"
+              variant="soft"
+              size="sm"
+              square
+              aria-label="Clear search"
+              class="cursor-pointer"
+              @click="clearSearch"
+            />
+          </template>
+        </UInput>
+        <div class="text-right text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">
           CA
         </div>
       </div>
