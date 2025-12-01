@@ -11,7 +11,7 @@ import {
   useLeafletEvent,
 } from 'vue-use-leaflet'
 import MapPopupComp from './MapPopupComp.vue'
-import type { PopupData } from './types'
+import type { BoundsLiteral, PopupData } from './types'
 
 type MarkerData = {
   lat: number
@@ -35,10 +35,12 @@ const props = withDefaults(
     markers: MarkerData[]
     polygons?: PolygonData[]
     zoomLevel?: number
+    focusBounds?: BoundsLiteral | null
   }>(),
   {
     zoomLevel: 4,
     polygons: () => [],
+    focusBounds: null,
   },
 )
 
@@ -86,11 +88,21 @@ const markerLayer = ref<L.LayerGroup | null>(null)
 const geoJsonLayer = ref<LeafletGeoJSON | null>(null)
 const debounceTimer = ref<number | null>(null)
 const polygonsVisible = ref(false)
+const pendingFocusBounds = ref<BoundsLiteral | null>(null)
 
 const zoomToBounds = (bounds: [[number, number], [number, number]]) => {
   const activeMap = map.value
   if (!activeMap) return
   activeMap.fitBounds(bounds, { padding: [24, 24], maxZoom: 16 })
+}
+
+const focusMap = (bounds: BoundsLiteral) => {
+  if (!bounds) return
+  if (!map.value) {
+    pendingFocusBounds.value = bounds
+    return
+  }
+  zoomToBounds(bounds)
 }
 
 const queueMarkerRender = () => {
@@ -247,6 +259,26 @@ watch(
     queueMarkerRender()
   },
   { deep: true, immediate: true },
+)
+
+watch(
+  () => props.focusBounds,
+  (bounds) => {
+    if (!bounds) return
+    focusMap(bounds)
+  },
+  { deep: true },
+)
+
+watch(
+  () => map.value,
+  (activeMap) => {
+    if (!activeMap) return
+    if (pendingFocusBounds.value) {
+      zoomToBounds(pendingFocusBounds.value)
+      pendingFocusBounds.value = null
+    }
+  },
 )
 
 onBeforeUnmount(() => {

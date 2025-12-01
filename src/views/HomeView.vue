@@ -9,6 +9,7 @@ import {
   type GeoPolygon,
   type GroupedOutage,
 } from '@/lib/utils'
+import FloatingSearchBar from '@/components/FloatingSearchBar.vue'
 import MapComp from '@/components/map/MapComp.vue'
 import VerticalTimeScrubber from '@/components/VerticalTimeScrubber.vue'
 import type { PopupData, BoundsLiteral } from '@/components/map/types'
@@ -25,10 +26,18 @@ type MapPolygon = {
   isCluster: boolean
 }
 
+type SearchLocation = {
+  label: string
+  bounds: BoundsLiteral
+  lat: number
+  lon: number
+}
+
 const outageStore = useOutageStore()
 const { selectedBlockOutages, selectedOutageTs, loading, error } = storeToRefs(outageStore)
 
 const zoomLevel = ref(4)
+const focusBounds = ref<BoundsLiteral | null>(null)
 
 const eventsAtZoomLevel = computed<GroupedOutage[]>(() => {
   const zoom = zoomLevel.value
@@ -62,6 +71,12 @@ const mapPolygons = computed<MapPolygon[]>(() =>
 
 const setZoomLevel = (level: number) => (zoomLevel.value = level)
 const retryFetch = () => outageStore.refetch()
+const onLocationSelected = (location: SearchLocation) => {
+  focusBounds.value = [
+    [location.bounds[0][0], location.bounds[0][1]],
+    [location.bounds[1][0], location.bounds[1][1]],
+  ]
+}
 
 const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData | undefined => {
   const outages = group.outages
@@ -140,7 +155,10 @@ const computeBoundsAndArea = (
   let maxLon = Number.NEGATIVE_INFINITY
 
   for (const ring of rings) {
-    for (const [lon, lat] of ring) {
+    for (const coordinate of ring) {
+      const lon = Number(coordinate?.[0])
+      const lat = Number(coordinate?.[1])
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue
       minLat = Math.min(minLat, lat)
       maxLat = Math.max(maxLat, lat)
       minLon = Math.min(minLon, lon)
@@ -198,10 +216,15 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
       :markers="mapMarkers"
       :polygons="mapPolygons"
       :zoom-level="zoomLevel"
+      :focus-bounds="focusBounds"
       class="z-0"
       @setZoom="(level) => setZoomLevel(level)"
     />
     <VerticalTimeScrubber class="fixed left-0 h-full z-10" />
+    <FloatingSearchBar
+      class="fixed left-1/2 top-4 z-30 w-full max-w-2xl -translate-x-1/2 px-4"
+      @location-selected="onLocationSelected"
+    />
 
     <div
       v-if="loading"
