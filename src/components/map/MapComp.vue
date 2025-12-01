@@ -82,6 +82,12 @@ const geoJsonLayer = ref<LeafletGeoJSON | null>(null)
 const debounceTimer = ref<number | null>(null)
 const polygonsVisible = ref(false)
 
+const zoomToBounds = (bounds: [[number, number], [number, number]]) => {
+  const activeMap = map.value
+  if (!activeMap) return
+  activeMap.fitBounds(bounds, { padding: [24, 24], maxZoom: 16 })
+}
+
 const queueMarkerRender = () => {
   if (debounceTimer.value) {
     clearTimeout(debounceTimer.value)
@@ -209,7 +215,7 @@ const polygonStyle = (isCluster: boolean): L.PathOptions => ({
 
 const attachPopupComponent = (marker: L.Marker, data: PopupData) => {
   const container = document.createElement('div')
-  const app = createApp(MapPopupComp, { data })
+  const app = createApp(MapPopupComp, { data, onZoomTo: zoomToBounds })
   app.mount(container)
   marker.bindPopup(container, {
     className: 'outage-popup',
