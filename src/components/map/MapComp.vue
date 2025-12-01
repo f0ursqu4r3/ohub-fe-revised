@@ -81,7 +81,6 @@ const markerLayer = ref<L.LayerGroup | null>(null)
 const geoJsonLayer = ref<LeafletGeoJSON | null>(null)
 const debounceTimer = ref<number | null>(null)
 const polygonsVisible = ref(false)
-const canvasRenderer = L.canvas({ padding: 0.5 })
 
 const queueMarkerRender = () => {
   if (debounceTimer.value) {
