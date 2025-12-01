@@ -10,8 +10,8 @@ import {
   type GroupedOutage,
 } from '@/lib/utils'
 import FloatingSearchBar from '@/components/FloatingSearchBar.vue'
+import HorizontalTimeScrubber from '@/components/HorizontalTimeScrubber.vue'
 import MapComp from '@/components/map/MapComp.vue'
-import VerticalTimeScrubber from '@/components/VerticalTimeScrubber.vue'
 import type { PopupData, BoundsLiteral } from '@/components/map/types'
 import type { MultiPolygon, Polygon } from 'geojson'
 
@@ -233,7 +233,7 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
       class="z-0"
       @setZoom="(level) => setZoomLevel(level)"
     />
-    <VerticalTimeScrubber class="fixed left-0 h-full z-10" />
+    <HorizontalTimeScrubber class="fixed inset-x-0 bottom-0 z-20" />
     <FloatingSearchBar
       class="fixed left-1/2 top-4 z-30 w-full max-w-2xl -translate-x-1/2 px-4"
       @location-selected="onLocationSelected"
