@@ -208,7 +208,7 @@ onBeforeUnmount(() => {
     <transition name="slide">
       <div
         v-show="open"
-        class="scrubber-panel glass pointer-events-auto flex h-full w-32 flex-col gap-6 border border-black/15 bg-white/10 p-4 text-black shadow-2xl shadow-black/40 backdrop-blur-sm transition-all duration-500 ease-out touch-none select-none"
+        class="scrubber-panel glass pointer-events-auto flex h-full w-32 flex-col gap-6 border border-[rgba(24,184,166,0.35)] bg-white/90 p-4 text-slate-900 shadow-[0_18px_35px_rgba(5,15,29,0.35)] backdrop-blur-sm transition-all duration-500 ease-out touch-none select-none"
         :class="[$attrs.class]"
       >
         <div class="space-y-1 text-right">
@@ -246,7 +246,7 @@ onBeforeUnmount(() => {
 
               <div
                 v-if="histogramData[index]"
-                class="absolute left-0 h-1 rounded-r-full bg-linear-to-r from-blue-600/80 to-blue-300/80 shadow-[0_0_12px_rgba(251,191,36,0.4)]"
+                class="absolute left-0 h-1 rounded-r-full bg-linear-to-r from-primary-500/85 to-secondary-400/80 shadow-[0_0_12px_rgba(24,184,166,0.45)]"
                 :style="{
                   top: `${tick.position}%`,
                   width: `${histogramData[index].widthPercentage}%`,
@@ -267,7 +267,7 @@ onBeforeUnmount(() => {
               <span class="h-1/4 w-full rounded-full bg-secondary/70 absolute"></span>
               <!-- handle -->
               <span
-                class="flex -mr-4 z-10 h-5 w-10 items-center justify-center rounded-full border border-secondary/70 bg-secondary font-semibold"
+                class="flex -mr-4 z-10 h-5 w-10 items-center justify-center rounded-full border border-secondary/70 bg-secondary font-semibold text-[#0b172c]"
               >
                 <UIcon name="i-heroicons-bars-3" class="text-black/80" />
               </span>
@@ -278,7 +278,7 @@ onBeforeUnmount(() => {
     </transition>
 
     <UButton
-      class="pointer-events-auto rounded-3xl m-4 border border-white/40 bg-white/90 p-2 text-slate-900 shadow-lg shadow-black/30 cursor-pointer"
+      class="pointer-events-auto rounded-3xl m-4 border border-[rgba(24,184,166,0.3)] bg-white p-2 text-slate-900 shadow-[0_10px_25px_rgba(5,15,29,0.25)] cursor-pointer"
       @click="toggleScrubber"
       type="button"
       aria-label="Toggle timeline"

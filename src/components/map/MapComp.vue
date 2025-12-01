@@ -47,6 +47,10 @@ const emit = defineEmits<{
 }>()
 
 const POLYGON_VISIBLE_ZOOM = 5
+const BRAND_CLUSTER_COLOR = '#18b8a6'
+const BRAND_CLUSTER_FILL = '#6ee9d7'
+const BRAND_OUTAGE_COLOR = '#ff9c1a'
+const BRAND_OUTAGE_FILL = '#ffd48a'
 
 const el = ref<HTMLElement | null>(null)
 const isZooming = ref(false)
@@ -96,7 +100,7 @@ const queueMarkerRender = () => {
   debounceTimer.value = window.setTimeout(() => {
     debounceTimer.value = null
     setMarkers()
-  }, 200)
+  }, 100)
 }
 
 useLeafletEvent(map, 'zoomstart', () => {
@@ -207,11 +211,11 @@ async function setMarkers() {
 }
 
 const polygonStyle = (isCluster: boolean): L.PathOptions => ({
-  color: isCluster ? '#2563eb' : '#ea580c',
+  color: isCluster ? BRAND_CLUSTER_COLOR : BRAND_OUTAGE_COLOR,
   weight: 2,
   opacity: 0.9,
-  fillColor: isCluster ? '#60a5fa' : '#fb923c',
-  fillOpacity: 0.12,
+  fillColor: isCluster ? BRAND_CLUSTER_FILL : BRAND_OUTAGE_FILL,
+  fillOpacity: 0.14,
 })
 
 const attachPopupComponent = (marker: L.Marker, data: PopupData) => {
@@ -275,12 +279,12 @@ onBeforeUnmount(() => {
   place-items: center;
   border-radius: 9999px;
   font-weight: 700;
-  color: #0f172a;
-  background: radial-gradient(circle at 30% 30%, #a2d2ff, #3b82f6);
-  border: 2px solid #e2e8f0;
+  color: #041017;
+  background: radial-gradient(circle at 30% 30%, #e8fffb, #18b8a6);
+  border: 2px solid rgba(255, 255, 255, 0.8);
   box-shadow:
-    0 6px 12px rgba(0, 0, 0, 0.18),
-    0 0 0 2px rgba(255, 255, 255, 0.6) inset;
+    0 8px 16px rgba(5, 15, 29, 0.22),
+    0 0 0 2px rgba(24, 184, 166, 0.35) inset;
   cursor: pointer;
 }
 
@@ -310,11 +314,35 @@ onBeforeUnmount(() => {
   width: 24px;
   height: 24px;
   border-radius: 9999px;
-  background: radial-gradient(circle at 30% 30%, #ffb347, #ff7e5f);
-  border: 2px solid #ffffff;
+  background: radial-gradient(circle at 30% 30%, #ffdfad, #ff9c1a);
+  border: 2px solid rgba(255, 255, 255, 0.75);
   box-shadow:
-    0 4px 8px rgba(0, 0, 0, 0.15),
-    0 0 0 2px rgba(255, 255, 255, 0.6) inset;
+    0 6px 12px rgba(5, 15, 29, 0.2),
+    0 0 0 2px rgba(255, 255, 255, 0.65) inset;
   cursor: pointer;
+}
+
+:global(.outage-popup) {
+  margin: 0;
+}
+
+:global(.outage-popup .leaflet-popup-content-wrapper) {
+  padding: 0;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(228, 239, 255, 0.98));
+  border: 1px solid rgba(24, 184, 166, 0.28);
+  box-shadow:
+    0 16px 30px rgba(5, 15, 29, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.6) inset;
+}
+
+:global(.outage-popup .leaflet-popup-content) {
+  margin: 0;
+  padding: 0;
+}
+
+:global(.outage-popup .leaflet-popup-tip) {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(24, 184, 166, 0.28);
 }
 </style>

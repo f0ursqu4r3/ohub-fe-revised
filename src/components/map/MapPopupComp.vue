@@ -80,10 +80,10 @@ const zoomTo = (item: PopupData['items'][number]) => {
 </script>
 
 <template>
-  <div class="min-w-[200px] max-w-[260px] text-slate-900 font-sans">
+  <div class="min-w-[200px] max-w-[260px] text-slate-900 font-sans p-3">
     <div class="flex items-center justify-between gap-2 font-bold text-sm mb-2">
       <span>{{ data.title }}</span>
-      <span class="text-xs font-semibold text-slate-500 whitespace-nowrap">
+      <span class="text-xs font-semibold text-primary-700 whitespace-nowrap">
         {{ data.timeLabel }}
       </span>
     </div>
@@ -95,7 +95,7 @@ const zoomTo = (item: PopupData['items'][number]) => {
       >
         <button
           type="button"
-          class="group flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+          class="group flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 transition hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-200"
           @click="zoomTo(item)"
         >
           <div class="flex flex-col gap-0.5 text-left">
@@ -106,7 +106,7 @@ const zoomTo = (item: PopupData['items'][number]) => {
           </div>
           <span
             v-if="item.sizeLabel"
-            class="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-700"
+            class="rounded-full border border-primary-100 bg-primary-50 px-2 py-0.5 text-[10px] font-semibold text-primary-700 shadow-[0_0_6px_rgba(24,184,166,0.25)]"
           >
             {{ item.sizeLabel }}
           </span>
@@ -117,7 +117,7 @@ const zoomTo = (item: PopupData['items'][number]) => {
       </li>
     </ul>
 
-    <div v-if="hasCopyTargets" class="mt-3 border-t border-slate-200 pt-3 flex justify-end">
+    <div v-if="hasCopyTargets" class="mt-3 border-t border-primary-100 pt-3 flex justify-end">
       <UDropdownMenu arrow :items="copyMenuItems">
         <UButton variant="text" size="sm" icon="i-heroicons-clipboard" class="cursor-pointer">
           <span v-if="copyFeedback && !copyErrored">{{ 'copied!' }}</span>
