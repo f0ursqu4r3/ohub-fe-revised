@@ -208,45 +208,90 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    class="timeline-shell pointer-events-none fixed inset-x-0 bottom-3 md:bottom-5 flex justify-center items-end gap-3 px-3 md:px-6"
+    class="pointer-events-none fixed inset-x-0 bottom-3 md:bottom-5 flex justify-center px-3 md:px-6 z-50"
   >
-    <transition name="slide-up">
-      <section v-show="open" class="timeline-panel pointer-events-auto">
-        <div class="panel-header">
-          <div class="header-primary">
-            <p class="eyebrow">Timeline scrubber</p>
-            <div class="headline">
-              <span class="time">{{ selectedLabel }}</span>
-              <span class="dot"></span>
-              <span class="date">{{ selectedDateLabel }}</span>
+    <Transition
+      enter-active-class="transition ease-out duration-200"
+      enter-from-class="opacity-0 translate-y-3"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition ease-in duration-150"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 translate-y-3"
+    >
+      <section
+        v-show="open"
+        class="pointer-events-auto relative w-full max-w-[1180px] rounded-[22px] px-[18px] pb-5 pt-[18px] bg-[linear-gradient(135deg,#0b1224_0%,#0f1d35_55%,#101b33_100%)] border border-white/10 shadow-[0_24px_60px_rgba(2,6,23,0.6)] overflow-hidden"
+      >
+        <div
+          class="pointer-events-none absolute inset-[10px_12px] rounded-[18px] border border-white/5"
+        ></div>
+
+        <div class="relative flex flex-wrap justify-between gap-4 text-slate-200">
+          <div class="flex flex-col gap-1.5">
+            <p class="text-[10px] tracking-[0.32em] font-bold uppercase text-slate-200/55">
+              Timeline scrubber
+            </p>
+            <div class="flex items-center gap-2 font-bold text-slate-50">
+              <span class="text-[1.6rem] leading-tight">{{ selectedLabel }}</span>
+              <span
+                class="h-1.5 w-1.5 rounded-full bg-linear-to-tr from-cyan-400 to-sky-500 shadow-[0_0_0_4px_rgba(14,165,233,0.18)]"
+              ></span>
+              <span class="text-sm text-slate-200/80">{{ selectedDateLabel }}</span>
             </div>
-            <p class="hint">Drag the beam or scroll to move through outages.</p>
+            <p class="text-sm text-slate-200/70">
+              Drag the beam or scroll to move through outages.
+            </p>
           </div>
-          <div class="stat-group">
-            <div class="stat-card">
-              <p>total events</p>
-              <span class="stat-value">{{ totalEventCount.toLocaleString() }}</span>
+
+          <div class="flex items-stretch gap-2">
+            <div
+              class="grid min-w-[140px] gap-1.5 rounded-[14px] border border-white/10 bg-white/5 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+            >
+              <p class="text-[11px] uppercase tracking-widest text-slate-200/70">total events</p>
+              <span class="text-lg font-bold text-slate-50">
+                {{ totalEventCount.toLocaleString() }}
+              </span>
             </div>
-            <div class="stat-card ghost">
-              <p>selected window</p>
-              <span class="stat-value">{{ selectedBlock ? selectedCountLabel : '—' }}</span>
+            <div
+              class="grid min-w-[140px] gap-1.5 rounded-[14px] border border-cyan-200/30 bg-cyan-500/10 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]"
+            >
+              <p class="text-[11px] uppercase tracking-widest text-slate-200/70">selected window</p>
+              <span class="text-lg font-bold text-slate-50">
+                {{ selectedBlock ? selectedCountLabel : '—' }}
+              </span>
             </div>
           </div>
         </div>
 
-        <div ref="scrubber" class="scrubber" @pointerdown="onPointerDown" @wheel.passive="onWheel">
-          <div class="scrubber-surface">
-            <div class="glow glow-a"></div>
-            <div class="glow glow-b"></div>
-            <div class="rail">
-              <div class="rail-highlight"></div>
+        <div
+          ref="scrubber"
+          class="relative mt-4"
+          @pointerdown="onPointerDown"
+          @wheel.passive="onWheel"
+        >
+          <div
+            class="group relative h-[190px] cursor-pointer overflow-hidden rounded-[16px] border border-white/10 bg-linear-to-b from-slate-900/80 to-slate-900/90 px-4 shadow-[0_16px_50px_rgba(2,6,23,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]"
+          >
+            <div
+              class="pointer-events-none absolute -left-[60px] -top-[120px] h-80 w-[320px] opacity-80 blur-[60px] bg-[radial-gradient(circle,rgba(14,165,233,0.35),transparent_50%)]"
+            ></div>
+            <div
+              class="pointer-events-none absolute -right-20 -bottom-[140px] h-80 w-[320px] opacity-80 blur-[60px] bg-[radial-gradient(circle,rgba(16,185,129,0.28),transparent_55%)]"
+            ></div>
+
+            <div
+              class="absolute inset-x-0 bottom-[38px] h-1.5 overflow-hidden rounded-full border border-white/10 bg-white/5"
+            >
+              <div
+                class="h-full w-full opacity-75 bg-[linear-gradient(90deg,rgba(34,211,238,0.9),rgba(16,185,129,0.9))] shadow-[0_0_24px_rgba(34,211,238,0.35)] transition-opacity duration-200 group-hover:opacity-100"
+              ></div>
             </div>
 
-            <div class="bars">
+            <div class="absolute inset-x-0 top-[18px] bottom-[52px] pointer-events-none">
               <div
                 v-for="(bar, index) in histogramData"
                 :key="`bar-${index}`"
-                class="bar"
+                class="absolute bottom-0 min-w-1.5 rounded-[10px_10px_6px_6px] bg-[linear-gradient(180deg,rgba(34,211,238,0.9),rgba(14,165,233,0.85),rgba(16,185,129,0.8))] shadow-[0_6px_14px_rgba(2,6,23,0.35),0_0_14px_rgba(34,211,238,0.35)]"
                 :style="{
                   left: `${bar.left}%`,
                   width: `${bar.width}%`,
@@ -256,365 +301,62 @@ onBeforeUnmount(() => {
               ></div>
             </div>
 
-            <div class="ticks">
+            <div class="absolute inset-x-0 top-4 bottom-[18px] pointer-events-none">
               <div
                 v-for="(tick, index) in ticks"
                 :key="`tick-${index}`"
-                class="tick"
+                class="absolute bottom-0 flex flex-col items-center -translate-x-1/2 text-slate-200"
                 :class="tickClass(tick.type)"
                 :style="{ left: tick.position + '%' }"
               >
-                <span v-if="tick.label" class="tick-label">{{ tick.label }}</span>
+                <span
+                  v-if="tick.label"
+                  class="mt-1.5 text-[11px] font-semibold text-slate-200/75 whitespace-nowrap"
+                >
+                  {{ tick.label }}
+                </span>
               </div>
             </div>
 
-            <div class="indicator" :style="{ left: `${selectedRatio * 100}%` }">
-              <span class="indicator-stem"></span>
-              <span class="indicator-head">
-                <span class="orb"></span>
-                <span class="label">Drag</span>
+            <div
+              class="absolute bottom-4 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none"
+              :style="{ left: `${selectedRatio * 100}%` }"
+            >
+              <span
+                class="h-[98px] w-0.5 bg-linear-to-t from-[rgba(34,211,238,0.15)] to-[rgba(34,211,238,0.9)] shadow-[0_0_18px_rgba(34,211,238,0.35),0_-6px_12px_rgba(16,185,129,0.18)]"
+              ></span>
+              <span
+                class="inline-flex items-center gap-2 rounded-[14px] border border-cyan-200/45 bg-linear-to-tr from-white/95 to-slate-200/90 px-3 py-2 text-[12px] font-bold text-slate-900 shadow-[0_10px_20px_rgba(2,6,23,0.35),inset_0_1px_0_rgba(255,255,255,0.9)]"
+              >
+                <span
+                  class="h-3 w-3 rounded-full bg-linear-to-tr from-cyan-400 to-emerald-500 shadow-[0_0_0_6px_rgba(34,211,238,0.22),0_0_0_10px_rgba(34,211,238,0.14)]"
+                ></span>
+                <span class="uppercase tracking-[0.06em]">Drag</span>
               </span>
             </div>
           </div>
         </div>
       </section>
-    </transition>
+    </Transition>
 
     <UButton
-      class="pointer-events-auto size-12 mb-3 rounded-full border border-white/40 bg-white/90 px-3 py-2 text-slate-900 shadow-[0_10px_30px_rgba(5,15,29,0.28)] backdrop-blur"
+      class="pointer-events-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-white/40 bg-white/90 text-slate-900 shadow-[0_10px_30px_rgba(5,15,29,0.28)] backdrop-blur"
       @click="toggleScrubber"
       type="button"
       aria-label="Toggle timeline"
     >
-      <transition name="rise" mode="out-in">
-        <UIcon v-if="!open" name="i-heroicons-clock" class="size-6 text-emerald-700" />
-        <UIcon v-else name="i-heroicons-x-mark" class="size-6 text-emerald-700" />
-      </transition>
+      <Transition
+        enter-active-class="transition ease-out duration-150"
+        enter-from-class="opacity-0 translate-y-1"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition ease-in duration-120"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 translate-y-1"
+        mode="out-in"
+      >
+        <UIcon v-if="!open" name="i-heroicons-clock" class="h-6 w-6 text-emerald-700" />
+        <UIcon v-else name="i-heroicons-x-mark" class="h-6 w-6 text-emerald-700" />
+      </Transition>
     </UButton>
   </div>
 </template>
-
-<style scoped>
-.slide-up-enter-active,
-.slide-up-leave-active {
-  transition:
-    opacity 0.24s ease,
-    transform 0.28s ease;
-}
-.slide-up-enter-from,
-.slide-up-leave-to {
-  opacity: 0;
-  transform: translateY(14px);
-}
-.slide-up-enter-to,
-.slide-up-leave-from {
-  opacity: 1;
-  transform: translateY(0);
-}
-.rise-enter-active,
-.rise-leave-active {
-  transition:
-    opacity 0.16s ease,
-    transform 0.16s ease;
-}
-.rise-enter-from,
-.rise-leave-to {
-  opacity: 0;
-  transform: translateY(6px);
-}
-.rise-enter-to,
-.rise-leave-from {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.timeline-shell {
-  z-index: 50;
-}
-
-.timeline-panel {
-  position: relative;
-  width: 100%;
-  max-width: 1180px;
-  border-radius: 22px;
-  padding: 18px 18px 20px;
-  background:
-    radial-gradient(circle at 18% 12%, rgba(34, 211, 238, 0.18), transparent 32%),
-    radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.18), transparent 32%),
-    linear-gradient(135deg, #0b1224 0%, #0f1d35 55%, #101b33 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 24px 60px rgba(2, 6, 23, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  overflow: hidden;
-}
-.timeline-panel::after {
-  content: '';
-  position: absolute;
-  inset: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 18px;
-  pointer-events: none;
-}
-
-.panel-header {
-  position: relative;
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  z-index: 1;
-  color: #e2e8f0;
-}
-.header-primary {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.headline {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 700;
-  color: #f8fafc;
-}
-.headline .time {
-  font-size: 1.6rem;
-  line-height: 1.2;
-}
-.headline .date {
-  font-size: 0.95rem;
-  color: rgba(226, 232, 240, 0.82);
-}
-.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: linear-gradient(120deg, #22d3ee, #0ea5e9);
-  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.18);
-}
-.eyebrow {
-  font-size: 10px;
-  letter-spacing: 0.32em;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: rgba(226, 232, 240, 0.55);
-}
-.hint {
-  font-size: 0.92rem;
-  color: rgba(226, 232, 240, 0.68);
-}
-
-.stat-group {
-  display: flex;
-  gap: 10px;
-  align-items: stretch;
-}
-.stat-card {
-  min-width: 140px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  display: grid;
-  gap: 6px;
-}
-.stat-card p {
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(226, 232, 240, 0.6);
-}
-.stat-value {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #f8fafc;
-}
-.stat-card.ghost {
-  background: rgba(14, 165, 233, 0.06);
-  border-color: rgba(34, 211, 238, 0.2);
-}
-
-.scrubber {
-  position: relative;
-  margin-top: 16px;
-}
-
-.scrubber-surface {
-  position: relative;
-  height: 190px;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.9));
-  box-shadow:
-    0 16px 50px rgba(2, 6, 23, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  cursor: pointer;
-}
-.glow {
-  position: absolute;
-  width: 320px;
-  height: 320px;
-  filter: blur(60px);
-  opacity: 0.8;
-  pointer-events: none;
-}
-.glow-a {
-  background: radial-gradient(circle, rgba(14, 165, 233, 0.35), transparent 50%);
-  top: -120px;
-  left: -60px;
-}
-.glow-b {
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.28), transparent 55%);
-  bottom: -140px;
-  right: -80px;
-}
-
-.rail {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 38px;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  overflow: hidden;
-}
-.rail-highlight {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, rgba(34, 211, 238, 0.9), rgba(16, 185, 129, 0.9));
-  box-shadow: 0 0 24px rgba(34, 211, 238, 0.35);
-  opacity: 0.75;
-}
-.scrubber-surface:hover .rail-highlight {
-  opacity: 1;
-}
-
-.bars {
-  position: absolute;
-  inset: 18px 0 52px;
-  pointer-events: none;
-}
-.bar {
-  position: absolute;
-  bottom: 0;
-  min-width: 6px;
-  border-radius: 10px 10px 6px 6px;
-  background: linear-gradient(
-    180deg,
-    rgba(34, 211, 238, 0.9),
-    rgba(14, 165, 233, 0.85),
-    rgba(16, 185, 129, 0.8)
-  );
-  box-shadow:
-    0 6px 14px rgba(2, 6, 23, 0.35),
-    0 0 14px rgba(34, 211, 238, 0.35);
-}
-
-.ticks {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 18px;
-  top: 16px;
-  pointer-events: none;
-}
-.tick {
-  position: absolute;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transform: translateX(-50%);
-  color: #cbd5e1;
-}
-.tick-label {
-  margin-top: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(226, 232, 240, 0.76);
-  white-space: nowrap;
-}
-.tick-major {
-  height: 22px;
-  width: 2px;
-  background: linear-gradient(to top, rgba(34, 211, 238, 0.8), rgba(255, 255, 255, 0.1));
-}
-.tick-mid {
-  height: 15px;
-  width: 1px;
-  background: rgba(226, 232, 240, 0.4);
-}
-.tick-minor {
-  height: 10px;
-  width: 1px;
-  background: rgba(226, 232, 240, 0.2);
-}
-
-.indicator {
-  position: absolute;
-  bottom: 16px;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  pointer-events: none;
-}
-.indicator-stem {
-  width: 2px;
-  height: 98px;
-  background: linear-gradient(to top, rgba(34, 211, 238, 0.15), rgba(34, 211, 238, 0.9));
-  box-shadow:
-    0 0 18px rgba(34, 211, 238, 0.35),
-    0 -6px 12px rgba(16, 185, 129, 0.18);
-}
-.indicator-head {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 14px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #0b1224;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(226, 232, 240, 0.94));
-  border: 1px solid rgba(34, 211, 238, 0.45);
-  box-shadow:
-    0 10px 20px rgba(2, 6, 23, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
-}
-.orb {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #22d3ee, #10b981);
-  box-shadow:
-    0 0 0 6px rgba(34, 211, 238, 0.22),
-    0 0 0 10px rgba(34, 211, 238, 0.14);
-}
-
-@media (max-width: 768px) {
-  .timeline-panel {
-    padding: 14px 12px 16px;
-    border-radius: 18px;
-  }
-  .stat-group {
-    width: 100%;
-    justify-content: space-between;
-  }
-  .stat-card {
-    flex: 1;
-  }
-  .scrubber-surface {
-    height: 170px;
-  }
-  .indicator-stem {
-    height: 78px;
-  }
-}
-</style>
