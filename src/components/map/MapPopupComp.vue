@@ -23,12 +23,14 @@ const copyMenuItems = computed<DropdownMenuItem[]>(
         ? {
             label: 'GeoJSON',
             onSelect: () => copyToClipboard(props.data.geoJsonText, 'geojson'),
+            class: 'cursor-pointer',
           }
         : null,
       hasCoords.value
         ? {
             label: 'Coordinates',
             onSelect: () => copyToClipboard(props.data.coordsText, 'coords'),
+            class: 'cursor-pointer',
           }
         : null,
     ].filter(Boolean) as DropdownMenuItem[],

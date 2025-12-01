@@ -2,6 +2,6 @@
 @import '@nuxt/ui';
 
 @theme {
-  --font-sans: 'Inter', sans-serif;
+  --font-sans: Inter, system-ui, sans-serif;
   --font-mono: 'Fira Code', monospace;
 }

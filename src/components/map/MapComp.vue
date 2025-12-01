@@ -2,7 +2,7 @@
 import 'leaflet/dist/leaflet.css'
 import L, { type LeafletEvent } from 'leaflet'
 import type { GeoJSON as LeafletGeoJSON } from 'leaflet'
-import { createApp, ref, watch, onBeforeUnmount } from 'vue'
+import { createVNode, getCurrentInstance, onBeforeUnmount, ref, render, watch } from 'vue'
 import type { Feature, MultiPolygon, Polygon } from 'geojson'
 import {
   useLeafletMap,
@@ -51,6 +51,7 @@ const POLYGON_VISIBLE_ZOOM = 5
 const el = ref<HTMLElement | null>(null)
 const isZooming = ref(false)
 const renderPending = ref(false)
+const hostInstance = getCurrentInstance()
 const map = useLeafletMap(el, {
   preferCanvas: true,
   zoomControl: false,
@@ -215,13 +216,16 @@ const polygonStyle = (isCluster: boolean): L.PathOptions => ({
 
 const attachPopupComponent = (marker: L.Marker, data: PopupData) => {
   const container = document.createElement('div')
-  const app = createApp(MapPopupComp, { data, onZoomTo: zoomToBounds })
-  app.mount(container)
+  const vnode = createVNode(MapPopupComp, { data, onZoomTo: zoomToBounds })
+  if (hostInstance) {
+    vnode.appContext = hostInstance.appContext
+  }
+  render(vnode, container)
   marker.bindPopup(container, {
     className: 'outage-popup',
   })
   const teardown = () => {
-    app.unmount()
+    render(null, container)
   }
   marker.on('remove', teardown)
 }
