@@ -68,6 +68,7 @@ const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData
   if (!outages.length) return undefined
   const title = outages.length === 1 ? outages[0]?.provider ?? 'Outage' : `${outages.length} events`
   const timeLabel = blockTs !== null ? formatDate(blockTs) : formatDate(group.ts)
+  const geometry = group.polygon ? wktToGeoJSON(group.polygon) : null
   const MAX_ROWS = 6
   const items = outages.slice(0, MAX_ROWS).map((outage) => ({
     provider: outage.provider,
@@ -78,6 +79,8 @@ const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData
     timeLabel,
     items,
     extraCount,
+    geoJsonText: geometry ? JSON.stringify(geometry) : null,
+    coordsText: group.polygon ?? null,
   }
 }
 </script>

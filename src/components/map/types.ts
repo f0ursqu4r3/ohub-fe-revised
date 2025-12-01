@@ -7,4 +7,6 @@ export type PopupData = {
   timeLabel: string
   items: PopupItem[]
   extraCount: number
+  geoJsonText?: string | null
+  coordsText?: string | null
 }
