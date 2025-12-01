@@ -208,7 +208,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    class="pointer-events-none fixed inset-x-0 bottom-3 md:bottom-5 flex justify-center px-3 md:px-6 z-50"
+    class="pointer-events-none fixed inset-x-0 bottom-3 md:bottom-5 flex justify-center items-end gap-2 px-3 md:px-6 z-50"
   >
     <Transition
       enter-active-class="transition ease-out duration-200"
@@ -263,14 +263,12 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div
-          ref="scrubber"
-          class="relative mt-4"
-          @pointerdown="onPointerDown"
-          @wheel.passive="onWheel"
-        >
+        <div class="relative mt-4">
           <div
+            ref="scrubber"
             class="group relative h-[190px] cursor-pointer overflow-hidden rounded-[16px] border border-white/10 bg-linear-to-b from-slate-900/80 to-slate-900/90 px-4 shadow-[0_16px_50px_rgba(2,6,23,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]"
+            @pointerdown="onPointerDown"
+            @wheel.passive="onWheel"
           >
             <div
               class="pointer-events-none absolute -left-[60px] -top-[120px] h-80 w-[320px] opacity-80 blur-[60px] bg-[radial-gradient(circle,rgba(14,165,233,0.35),transparent_50%)]"
