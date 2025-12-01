@@ -1,5 +1,5 @@
 import Supercluster, { type ClusterFeature, type PointFeature } from 'supercluster'
-import type { Feature, GeoJsonObject, MultiPolygon, Polygon } from 'geojson'
+import type { MultiPolygon, Polygon } from 'geojson'
 import type { Outage } from '@/types/outage'
 
 const EARTH_RADIUS_KM = 6371
@@ -438,7 +438,11 @@ export const mergePolygons = (polygons: string[]): string | null => {
   }
 
   const wktPolygons = polygons
-    .map((wkt) => stripSrid(wkt).replace(/^POLYGON/i, '').trim())
+    .map((wkt) =>
+      stripSrid(wkt)
+        .replace(/^POLYGON/i, '')
+        .trim(),
+    )
     .filter((wkt) => wkt.length > 0)
 
   if (wktPolygons.length === 0) {
@@ -480,16 +484,17 @@ export const parsePolygonWKT = (wkt: string): Point[][][] => {
   if (!isMulti && !isSingle) return []
 
   const body = trimParens(
-    normalized.replace(/^MULTIPOLYGON/i, '').replace(/^POLYGON/i, '').trim(),
+    normalized
+      .replace(/^MULTIPOLYGON/i, '')
+      .replace(/^POLYGON/i, '')
+      .trim(),
   )
   const polygonStrings = isMulti ? splitTopLevelSegments(body) : [body]
 
   return polygonStrings
     .map((polyStr) => {
-      const ringStrings = splitTopLevelSegments(trimParens(polyStr))
-      const rings = ringStrings
-        .map((ring) => parseRing(ring))
-        .filter((ring) => ring.length > 2)
+      const ringStrings = splitTopLevelSegments(polyStr)
+      const rings = ringStrings.map((ring) => parseRing(ring)).filter((ring) => ring.length > 2)
       return rings.length ? rings : null
     })
     .filter((poly): poly is Point[][] => Boolean(poly))

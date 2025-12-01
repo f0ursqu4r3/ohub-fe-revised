@@ -23,4 +23,7 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    allowedHosts: ['.ngrok-free.dev', '.ohub.io', '.ohub.test'],
+  },
 })

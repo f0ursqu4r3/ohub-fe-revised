@@ -46,7 +46,7 @@ const emit = defineEmits<{
   (e: 'setZoom', level: number): void
 }>()
 
-const POLYGON_VISIBLE_ZOOM = 8
+const POLYGON_VISIBLE_ZOOM = 5
 
 const el = ref<HTMLElement | null>(null)
 const isZooming = ref(false)
