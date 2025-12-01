@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import type { MultiPolygon, Polygon } from 'geojson'
 import type { BoundsLiteral } from './map/types'
 
 type NominatimAddress = {
@@ -20,6 +21,7 @@ type NominatimResult = {
   lon?: number | string
   boundingbox?: Array<number | string>
   address?: NominatimAddress
+  geojson?: Polygon | MultiPolygon | { type?: string }
 }
 
 type GeocodeResult = {
@@ -30,10 +32,12 @@ type GeocodeResult = {
   lat: number
   lon: number
   bounds: BoundsLiteral
+  geometry: Polygon | MultiPolygon | null
 }
 
 const emit = defineEmits<{
   (e: 'locationSelected', result: GeocodeResult): void
+  (e: 'clearSearch'): void
 }>()
 
 const query = ref('')
@@ -98,6 +102,10 @@ const parseResult = (item: NominatimResult): GeocodeResult | null => {
   const postal = address.postcode ? address.postcode.toUpperCase() : ''
   const parts = [city, province, postal].filter(Boolean)
   const description = parts.join(' • ') || 'Canada'
+  const geometry =
+    item.geojson && (item.geojson as { type?: string }).type?.includes('Polygon')
+      ? (item.geojson as Polygon | MultiPolygon)
+      : null
   const bounds = boundsFromBox(item.boundingbox ?? [], lat, lon)
 
   return {
@@ -108,6 +116,7 @@ const parseResult = (item: NominatimResult): GeocodeResult | null => {
     lat,
     lon,
     bounds,
+    geometry,
   }
 }
 
@@ -124,6 +133,7 @@ const fetchResults = async (term: string) => {
       addressdetails: '1',
       limit: '5',
       countrycodes: 'ca',
+      polygon_geojson: '1',
     })
     const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`
     const response = await fetch(url, {
@@ -183,6 +193,14 @@ const closeDropdownSoon = () => {
   blurTimeoutId.value = window.setTimeout(() => {
     isFocused.value = false
   }, 120)
+}
+
+const clearSearch = () => {
+  query.value = ''
+  resetDropdown()
+  error.value = null
+  isFocused.value = true
+  emit('clearSearch')
 }
 
 const onKeydown = (event: KeyboardEvent) => {
@@ -260,9 +278,16 @@ const scrollActiveIntoView = () => {
           @blur="closeDropdownSoon"
           @keydown="onKeydown"
         />
-        <div
-          class="w-12 text-right text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600"
+        <button
+          v-if="query.length"
+          type="button"
+          class="h-8 w-8 shrink-0 rounded-full bg-slate-100 text-slate-700 shadow-inner transition hover:bg-slate-200"
+          aria-label="Clear search"
+          @click="clearSearch"
         >
+          ×
+        </button>
+        <div class="w-12 text-right text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">
           CA
         </div>
       </div>

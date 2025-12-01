@@ -36,11 +36,15 @@ const props = withDefaults(
     polygons?: PolygonData[]
     zoomLevel?: number
     focusBounds?: BoundsLiteral | null
+    searchMarker?: { lat: number; lng: number } | null
+    searchPolygon?: Polygon | MultiPolygon | null
   }>(),
   {
     zoomLevel: 4,
     polygons: () => [],
     focusBounds: null,
+    searchMarker: null,
+    searchPolygon: null,
   },
 )
 
@@ -172,6 +176,18 @@ const createClusterIcon = (count: number): L.DivIcon => {
   })
 }
 
+const createSearchIcon = () => {
+  const size = 26
+  const center = size / 2
+  return L.divIcon({
+    html: `<div class="search-marker-icon"></div>`,
+    className: 'search-marker',
+    iconSize: [size, size],
+    iconAnchor: [center, center],
+    popupAnchor: [0, -center],
+  })
+}
+
 async function setMarkers() {
   const activeMap = map.value
   if (!activeMap) return
@@ -190,7 +206,8 @@ async function setMarkers() {
     geoJsonLayer.value = L.geoJSON([], {
       style: (feature) => {
         const isClusterPoly = Boolean(feature?.properties?.isCluster)
-        return polygonStyle(isClusterPoly)
+        const isSearch = Boolean(feature?.properties?.isSearch)
+        return polygonStyle({ isCluster: isClusterPoly, isSearch })
       },
       interactive: false,
     }) as LeafletGeoJSON
@@ -211,9 +228,17 @@ async function setMarkers() {
     markerLayer.value!.addLayer(marker)
   })
 
+  if (props.searchMarker) {
+    const marker = L.marker([props.searchMarker.lat, props.searchMarker.lng], {
+      icon: createSearchIcon(),
+    })
+    markerLayer.value!.addLayer(marker)
+  }
+
   const currentZoom = activeMap.getZoom()
-  if (currentZoom >= POLYGON_VISIBLE_ZOOM) {
-    polygonsVisible.value = true
+  const showDataPolygons = currentZoom >= POLYGON_VISIBLE_ZOOM
+  polygonsVisible.value = showDataPolygons
+  if (showDataPolygons) {
     props.polygons?.forEach((polygonData) => {
       const { geometry, isCluster } = polygonData
       if (!geometry) return
@@ -224,18 +249,37 @@ async function setMarkers() {
       }
       geoJsonLayer.value!.addData(feature)
     })
-  } else {
-    polygonsVisible.value = false
+  }
+  if (props.searchPolygon) {
+    const feature: Feature = {
+      type: 'Feature',
+      properties: { isSearch: true },
+      geometry: props.searchPolygon,
+    }
+    geoJsonLayer.value!.addData(feature)
   }
 }
 
-const polygonStyle = (isCluster: boolean): L.PathOptions => ({
-  color: isCluster ? BRAND_CLUSTER_COLOR : BRAND_OUTAGE_COLOR,
-  weight: 2,
-  opacity: 0.9,
-  fillColor: isCluster ? BRAND_CLUSTER_FILL : BRAND_OUTAGE_FILL,
-  fillOpacity: 0.14,
-})
+const polygonStyle = (options: { isCluster?: boolean; isSearch?: boolean }): L.PathOptions => {
+  if (options.isSearch) {
+    return {
+      color: '#2563eb',
+      weight: 2,
+      opacity: 0.95,
+      fillColor: '#93c5fd',
+      fillOpacity: 0.16,
+      dashArray: '4 4',
+    }
+  }
+  const isCluster = Boolean(options.isCluster)
+  return {
+    color: isCluster ? BRAND_CLUSTER_COLOR : BRAND_OUTAGE_COLOR,
+    weight: 2,
+    opacity: 0.9,
+    fillColor: isCluster ? BRAND_CLUSTER_FILL : BRAND_OUTAGE_FILL,
+    fillOpacity: 0.14,
+  }
+}
 
 const attachPopupComponent = (marker: L.Marker, data: PopupData) => {
   const container = document.createElement('div')
@@ -254,7 +298,7 @@ const attachPopupComponent = (marker: L.Marker, data: PopupData) => {
 }
 
 watch(
-  [() => props.markers, () => props.polygons],
+  [() => props.markers, () => props.polygons, () => props.searchMarker, () => props.searchPolygon],
   () => {
     queueMarkerRender()
   },
@@ -383,5 +427,26 @@ onBeforeUnmount(() => {
 :global(.outage-popup .leaflet-popup-tip) {
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(24, 184, 166, 0.28);
+}
+
+:global(.search-marker) {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 30% 30%, #e0e7ff, #2563eb);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 8px 16px rgba(5, 15, 29, 0.25),
+    0 0 0 2px rgba(37, 99, 235, 0.4) inset;
+}
+
+:global(.search-marker .search-marker-icon) {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.5) inset;
 }
 </style>

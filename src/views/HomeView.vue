@@ -13,6 +13,7 @@ import FloatingSearchBar from '@/components/FloatingSearchBar.vue'
 import MapComp from '@/components/map/MapComp.vue'
 import VerticalTimeScrubber from '@/components/VerticalTimeScrubber.vue'
 import type { PopupData, BoundsLiteral } from '@/components/map/types'
+import type { MultiPolygon, Polygon } from 'geojson'
 
 type MapMarker = {
   lat: number
@@ -31,6 +32,7 @@ type SearchLocation = {
   bounds: BoundsLiteral
   lat: number
   lon: number
+  geometry: Polygon | MultiPolygon | null
 }
 
 const outageStore = useOutageStore()
@@ -38,6 +40,8 @@ const { selectedBlockOutages, selectedOutageTs, loading, error } = storeToRefs(o
 
 const zoomLevel = ref(4)
 const focusBounds = ref<BoundsLiteral | null>(null)
+const searchMarker = ref<{ lat: number; lng: number } | null>(null)
+const searchPolygon = ref<Polygon | MultiPolygon | null>(null)
 
 const eventsAtZoomLevel = computed<GroupedOutage[]>(() => {
   const zoom = zoomLevel.value
@@ -76,6 +80,13 @@ const onLocationSelected = (location: SearchLocation) => {
     [location.bounds[0][0], location.bounds[0][1]],
     [location.bounds[1][0], location.bounds[1][1]],
   ]
+  searchMarker.value = { lat: location.lat, lng: location.lon }
+  searchPolygon.value = location.geometry
+}
+const clearSearch = () => {
+  focusBounds.value = null
+  searchMarker.value = null
+  searchPolygon.value = null
 }
 
 const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData | undefined => {
@@ -217,6 +228,8 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
       :polygons="mapPolygons"
       :zoom-level="zoomLevel"
       :focus-bounds="focusBounds"
+      :search-marker="searchMarker"
+      :search-polygon="searchPolygon"
       class="z-0"
       @setZoom="(level) => setZoomLevel(level)"
     />
@@ -224,6 +237,7 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
     <FloatingSearchBar
       class="fixed left-1/2 top-4 z-30 w-full max-w-2xl -translate-x-1/2 px-4"
       @location-selected="onLocationSelected"
+      @clear-search="clearSearch"
     />
 
     <div
