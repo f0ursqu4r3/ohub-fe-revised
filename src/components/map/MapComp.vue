@@ -134,10 +134,14 @@ useLeafletEvent(map, 'unload', () => {
 })
 
 const createIcon = () => {
+  const size = 24
+  const center = size / 2
   return L.divIcon({
     html: `<div class="custom-marker-icon"></div>`,
     className: 'custom-marker',
-    iconSize: [24, 24],
+    iconSize: [size, size],
+    iconAnchor: [center, center],
+    popupAnchor: [0, -center],
   })
 }
 
@@ -145,11 +149,14 @@ const createClusterIcon = (count: number): L.DivIcon => {
   const sizeClass =
     count >= 100 ? 'cluster-large' : count >= 10 ? 'cluster-medium' : 'cluster-small'
   const size = sizeClass === 'cluster-large' ? 48 : sizeClass === 'cluster-medium' ? 40 : 32
+  const center = size / 2
 
   return L.divIcon({
     html: `<div class="cluster-count">${count}</div>`,
     className: `cluster-marker ${sizeClass}`,
     iconSize: [size, size],
+    iconAnchor: [center, center],
+    popupAnchor: [0, -center],
   })
 }
 
