@@ -2,6 +2,26 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import type { BoundsLiteral } from './map/types'
 
+type NominatimAddress = {
+  city?: string
+  town?: string
+  village?: string
+  hamlet?: string
+  state?: string
+  region?: string
+  province?: string
+  postcode?: string
+}
+
+type NominatimResult = {
+  place_id?: number | string
+  display_name?: string
+  lat?: number | string
+  lon?: number | string
+  boundingbox?: Array<number | string>
+  address?: NominatimAddress
+}
+
 type GeocodeResult = {
   id: string
   label: string
@@ -39,11 +59,7 @@ const resetDropdown = () => {
   activeIndex.value = -1
 }
 
-const boundsFromBox = (
-  boundingBox: string[] | number[],
-  lat: number,
-  lon: number,
-): BoundsLiteral => {
+const boundsFromBox = (boundingBox: Array<string | number>, lat: number, lon: number): BoundsLiteral => {
   if (boundingBox.length === 4) {
     const [southRaw, northRaw, westRaw, eastRaw] = boundingBox as [
       string | number,
@@ -69,25 +85,23 @@ const boundsFromBox = (
   ]
 }
 
-const parseResult = (item: unknown): GeocodeResult | null => {
-  const source = item as Record<string, unknown>
-  const lat = Number((source as any)?.lat)
-  const lon = Number((source as any)?.lon)
-  const displayName = (source as any)?.display_name
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || !displayName) return null
+const parseResult = (item: NominatimResult): GeocodeResult | null => {
+  const lat = Number(item.lat)
+  const lon = Number(item.lon)
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || !item.display_name) return null
 
-  const fullAddress = String(displayName)
+  const fullAddress = String(item.display_name)
   const title = fullAddress.split(',')[0]?.trim() || fullAddress
-  const address = (source as any)?.address ?? {}
+  const address = item.address ?? {}
   const city = address.city || address.town || address.village || address.hamlet || ''
   const province = address.state || address.region || address.province || ''
   const postal = address.postcode ? address.postcode.toUpperCase() : ''
   const parts = [city, province, postal].filter(Boolean)
   const description = parts.join(' • ') || 'Canada'
-  const bounds = boundsFromBox((source as any)?.boundingbox ?? [], lat, lon)
+  const bounds = boundsFromBox(item.boundingbox ?? [], lat, lon)
 
   return {
-    id: String((source as any)?.place_id ?? `${lat}-${lon}`),
+    id: String(item.place_id ?? `${lat}-${lon}`),
     label: title,
     description,
     fullAddress,
@@ -121,9 +135,11 @@ const fetchResults = async (term: string) => {
     if (!response.ok) {
       throw new Error(`Search failed with ${response.status}`)
     }
-    const data = await response.json()
+    const data: unknown = await response.json()
     const parsed = Array.isArray(data)
-      ? data.map((item) => parseResult(item)).filter((item): item is GeocodeResult => Boolean(item))
+      ? data
+          .map((item) => parseResult(item as NominatimResult))
+          .filter((item): item is GeocodeResult => Boolean(item))
       : []
     results.value = parsed
     activeIndex.value = parsed.length ? 0 : -1
