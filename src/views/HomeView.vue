@@ -10,7 +10,7 @@ import {
   type GroupedOutage,
 } from '@/lib/utils'
 import FloatingSearchBar from '@/components/FloatingSearchBar.vue'
-import HorizontalTimeScrubber from '@/components/HorizontalTimeScrubber.vue'
+import VerticalTimeScrubber from '@/components/VerticalTimeScrubber.vue'
 import MapComp from '@/components/map/MapComp.vue'
 import type { PopupData, BoundsLiteral } from '@/components/map/types'
 import type { MultiPolygon, Polygon } from 'geojson'
@@ -73,7 +73,9 @@ const mapPolygons = computed<MapPolygon[]>(() =>
   }),
 )
 
-const setZoomLevel = (level: number) => (zoomLevel.value = level)
+const setZoomLevel = (level: number) => {
+  zoomLevel.value = level
+}
 const retryFetch = () => outageStore.refetch()
 const onLocationSelected = (location: SearchLocation) => {
   focusBounds.value = [
@@ -92,7 +94,8 @@ const clearSearch = () => {
 const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData | undefined => {
   const outages = group.outages
   if (!outages.length) return undefined
-  const title = outages.length === 1 ? outages[0]?.provider ?? 'Outage' : `${outages.length} events`
+  const title =
+    outages.length === 1 ? (outages[0]?.provider ?? 'Outage') : `${outages.length} events`
   const timeLabel = blockTs !== null ? formatDate(blockTs) : formatDate(group.ts)
   const geometry = group.polygon ? wktToGeoJSON(group.polygon) : null
   const groupAreaInfo = geometry ? computeBoundsAndArea(geometry) : { bounds: null, areaKm2: 0 }
@@ -100,7 +103,9 @@ const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData
   const MAX_ROWS = 6
   const scoredOutages = outages.map((outage) => {
     const outageGeometry = outage.polygon ? wktToGeoJSON(outage.polygon) : null
-    const outageAreaInfo = outageGeometry ? computeBoundsAndArea(outageGeometry) : { bounds: null, areaKm2: 0 }
+    const outageAreaInfo = outageGeometry
+      ? computeBoundsAndArea(outageGeometry)
+      : { bounds: null, areaKm2: 0 }
     const areaKm2 = outageAreaInfo.areaKm2
     const durationSeconds = Math.max(0, (outage.endTs ?? blockTs ?? outage.ts) - outage.startTs)
     const score = areaKm2 * 2 + durationSeconds // weight area a bit higher than duration
@@ -115,7 +120,10 @@ const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData
 
   const sortedOutages = scoredOutages
     .slice()
-    .sort((a, b) => (b.score || 0) - (a.score || 0) || a.outage.provider.localeCompare(b.outage.provider))
+    .sort(
+      (a, b) =>
+        (b.score || 0) - (a.score || 0) || a.outage.provider.localeCompare(b.outage.provider),
+    )
 
   const nicknameForIndex = (idx: number) => {
     const alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -131,7 +139,8 @@ const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData
     const durationMinutes = Math.round(durationSeconds / 60)
     const durationLabel = durationMinutes > 0 ? `${durationMinutes} min` : null
     const sizeLabel = areaLabel ?? durationLabel ?? undefined
-    const bounds = entry.bounds ?? groupBounds ?? fallbackPointBounds(outage.latitude, outage.longitude)
+    const bounds =
+      entry.bounds ?? groupBounds ?? fallbackPointBounds(outage.latitude, outage.longitude)
     return {
       provider: outage.provider,
       nickname,
@@ -231,13 +240,13 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
       :search-marker="searchMarker"
       :search-polygon="searchPolygon"
       class="z-0"
-      @setZoom="(level) => setZoomLevel(level)"
+      @setZoom="setZoomLevel"
     />
-    <HorizontalTimeScrubber class="fixed inset-x-0 bottom-0 z-20" />
+    <VerticalTimeScrubber class="fixed inset-x-0 left-0 z-20" />
     <FloatingSearchBar
       class="fixed left-1/2 top-4 z-30 w-full max-w-2xl -translate-x-1/2 px-4"
-      @location-selected="onLocationSelected"
-      @clear-search="clearSearch"
+      @locationSelected="onLocationSelected"
+      @clearSearch="clearSearch"
     />
 
     <div
@@ -251,7 +260,12 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
       class="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-3 rounded-full border border-amber-500/40 bg-amber-50/95 px-4 py-2 text-sm font-medium text-amber-900 shadow-lg shadow-amber-500/30"
     >
       <span>Unable to load outages.</span>
-      <UButton size="xs" color="amber" variant="solid" @click="retryFetch">Retry</UButton>
+      <button
+        class="rounded-md bg-amber-500 px-2 py-1 text-xs font-medium text-white hover:bg-amber-600"
+        @click="retryFetch"
+      >
+        Retry
+      </button>
     </div>
     <div
       v-else-if="!selectedBlockOutages.length"
