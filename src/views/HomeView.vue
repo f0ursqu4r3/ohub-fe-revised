@@ -46,6 +46,7 @@ const searchPolygon = ref<Polygon | MultiPolygon | null>(null)
 // Time playback state
 const isPlaying = ref(false)
 const playbackSpeed = ref(1) // 1 = normal, 2 = fast, 0.5 = slow
+const showPlaybackControls = ref(true)
 const playbackIntervalId = ref<number | null>(null)
 
 const eventsAtZoomLevel = computed<GroupedOutage[]>(() => {
@@ -331,6 +332,7 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
       :search-polygon="searchPolygon"
       class="z-0"
       @setZoom="setZoomLevel"
+      @update:showPlaybackControls="showPlaybackControls = $event"
     />
     <VerticalTimeScrubber class="fixed inset-x-0 left-0 z-20" />
     <FloatingSearchBar
@@ -373,54 +375,67 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
     </div>
 
     <!-- Time Playback Controls -->
-    <div
-      v-if="blocks.length > 1"
-      class="fixed bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-[var(--ui-border-accented)] bg-[var(--ui-bg-elevated)]/95 px-3 py-2 shadow-lg shadow-primary-900/15 backdrop-blur-sm transition-colors duration-300"
-    >
-      <button
-        class="flex h-8 w-8 items-center justify-center rounded-full text-[var(--ui-text-muted)] transition-all hover:bg-primary-500/10 hover:text-primary-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--ui-text-muted)]"
-        :disabled="!canPlayBackward"
-        title="Step backward"
-        @click="stepBackward"
+    <Transition name="fade">
+      <div
+        v-if="showPlaybackControls && blocks.length > 1"
+        class="fixed bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-[var(--ui-border-accented)] bg-[var(--ui-bg-elevated)]/95 px-3 py-2 shadow-lg shadow-primary-900/15 backdrop-blur-sm transition-colors duration-300"
       >
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6l-8.5 6z" />
-        </svg>
-      </button>
+        <button
+          class="flex h-8 w-8 items-center justify-center rounded-full text-[var(--ui-text-muted)] transition-all hover:bg-primary-500/10 hover:text-primary-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--ui-text-muted)]"
+          :disabled="!canPlayBackward"
+          title="Step backward"
+          @click="stepBackward"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6l-8.5 6z" />
+          </svg>
+        </button>
 
-      <button
-        class="flex h-10 w-10 items-center justify-center rounded-full bg-primary-500 text-white shadow-md transition-all hover:bg-primary-600 hover:scale-105 active:scale-95"
-        :title="isPlaying ? 'Pause' : 'Play'"
-        @click="togglePlayback"
-      >
-        <svg v-if="!isPlaying" class="h-5 w-5 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M8 5v14l11-7L8 5z" />
-        </svg>
-        <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-        </svg>
-      </button>
+        <button
+          class="flex h-10 w-10 items-center justify-center rounded-full bg-primary-500 text-white shadow-md transition-all hover:bg-primary-600 hover:scale-105 active:scale-95"
+          :title="isPlaying ? 'Pause' : 'Play'"
+          @click="togglePlayback"
+        >
+          <svg v-if="!isPlaying" class="h-5 w-5 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7L8 5z" />
+          </svg>
+          <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+          </svg>
+        </button>
 
-      <button
-        class="flex h-8 w-8 items-center justify-center rounded-full text-[var(--ui-text-muted)] transition-all hover:bg-primary-500/10 hover:text-primary-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--ui-text-muted)]"
-        :disabled="!canPlayForward"
-        title="Step forward"
-        @click="stepForward"
-      >
-        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M6 18l8.5-6L6 6v12zm10-12v12h2V6h-2z" />
-        </svg>
-      </button>
+        <button
+          class="flex h-8 w-8 items-center justify-center rounded-full text-[var(--ui-text-muted)] transition-all hover:bg-primary-500/10 hover:text-primary-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--ui-text-muted)]"
+          :disabled="!canPlayForward"
+          title="Step forward"
+          @click="stepForward"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 18l8.5-6L6 6v12zm10-12v12h2V6h-2z" />
+          </svg>
+        </button>
 
-      <div class="mx-1 h-5 w-px bg-[var(--ui-border)]"></div>
+        <div class="mx-1 h-5 w-px bg-[var(--ui-border)]"></div>
 
-      <button
-        class="flex h-7 items-center gap-1 rounded-full px-2 text-xs font-semibold text-[var(--ui-text-muted)] transition-all hover:bg-primary-500/10 hover:text-primary-500"
-        title="Change playback speed"
-        @click="cycleSpeed"
-      >
-        <span>{{ playbackSpeed }}x</span>
-      </button>
-    </div>
+        <button
+          class="flex h-7 items-center gap-1 rounded-full px-2 text-xs font-semibold text-[var(--ui-text-muted)] transition-all hover:bg-primary-500/10 hover:text-primary-500"
+          title="Change playback speed"
+          @click="cycleSpeed"
+        >
+          <span>{{ playbackSpeed }}x</span>
+        </button>
+      </div>
+    </Transition>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

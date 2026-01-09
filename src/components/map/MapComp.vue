@@ -64,6 +64,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'setZoom', level: number): void
+  (e: 'update:showPlaybackControls', value: boolean): void
 }>()
 
 // ─────────────────────────────────────────────────────────────
@@ -120,6 +121,7 @@ const showMarkers = ref(true)
 const showPolygons = ref(true)
 const showHeatmap = ref(false)
 const showLayerControls = ref(false)
+const showPlaybackControls = ref(false)
 
 // Tile style - synced with global dark mode
 const tileStyle = computed<TileStyle>(() => (globalDarkMode.value ? 'dark' : 'light'))
@@ -810,6 +812,7 @@ watch(map, (mapInstance) => {
 watch(showMarkers, () => renderMarkers())
 watch(showPolygons, () => renderPolygons())
 watch(showHeatmap, () => renderHeatmap())
+watch(showPlaybackControls, (val) => emit('update:showPlaybackControls', val))
 
 // ─────────────────────────────────────────────────────────────
 // Lifecycle
@@ -985,6 +988,11 @@ defineExpose({
           <input v-model="showHeatmap" type="checkbox" class="map-layer-toggle__input" />
           <span class="map-layer-toggle__slider"></span>
           <span class="map-layer-toggle__label">Heatmap</span>
+        </label>
+        <label class="map-layer-toggle">
+          <input v-model="showPlaybackControls" type="checkbox" class="map-layer-toggle__input" />
+          <span class="map-layer-toggle__slider"></span>
+          <span class="map-layer-toggle__label">Playback</span>
         </label>
       </div>
     </Transition>
