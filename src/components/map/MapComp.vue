@@ -183,6 +183,20 @@ const pendingTileStyle = ref<TileStyle | null>(null)
 // ─────────────────────────────────────────────────────────────
 // Tile Layer Switching
 // ─────────────────────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const safeRemoveLayer = (layer: any) => {
+  if (!layer) return
+  try {
+    layer.off()
+    // Check if layer is still attached to a map before removing
+    if (layer._map) {
+      layer.remove()
+    }
+  } catch {
+    // Ignore removal errors
+  }
+}
+
 const switchTileLayer = (style: TileStyle) => {
   const activeMap = map.value
   if (!activeMap) return
@@ -196,32 +210,17 @@ const switchTileLayer = (style: TileStyle) => {
   // Clear any pending switch since we're doing it now
   pendingTileStyle.value = null
 
-  // Remove existing managed tile layer safely
-  if (activeTileLayer.value) {
-    const layerToRemove = activeTileLayer.value
-    activeTileLayer.value = null
-    try {
-      // Clear all event listeners before removing
-      layerToRemove.off()
-      layerToRemove.remove()
-    } catch {
-      // Ignore removal errors
-    }
-  }
+  // Queue old layer for removal after new layer is ready
+  const oldLayer = activeTileLayer.value
 
   // Remove initial tile layer on first switch
   if (!initialTileLayerAdded.value && tileLayer.value) {
-    try {
-      const initialLayer = tileLayer.value as L.TileLayer
-      initialLayer.off()
-      initialLayer.remove()
-    } catch {
-      // Ignore removal errors
-    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    safeRemoveLayer(tileLayer.value as any)
     initialTileLayerAdded.value = true
   }
 
-  // Add new tile layer
+  // Add new tile layer first
   const config = TILE_LAYERS[style]
   const newLayer = L.tileLayer(config.url, {
     attribution: config.attribution,
@@ -230,6 +229,12 @@ const switchTileLayer = (style: TileStyle) => {
   })
   newLayer.addTo(activeMap as L.Map)
   activeTileLayer.value = newLayer
+
+  // Remove old layer after new one is added
+  if (oldLayer && oldLayer !== newLayer) {
+    // Defer removal to next frame to avoid race conditions
+    requestAnimationFrame(() => safeRemoveLayer(oldLayer))
+  }
 
   // Update minimap if exists
   updateMinimapTiles(style)
@@ -695,35 +700,38 @@ useLeafletEvent(map as any, 'zoomend', (event: LeafletEvent) => {
   if (target instanceof L.Map) {
     emit('setZoom', target.getZoom())
   }
-  isZooming.value = false
-  updateMinimapRect()
 
-  // Process pending tile style switch after zoom completes
-  if (pendingTileStyle.value) {
-    const style = pendingTileStyle.value
-    pendingTileStyle.value = null
-    // Use nextTick to ensure zoom animation is fully done
-    nextTick(() => switchTileLayer(style))
-  }
+  // Small delay to ensure all zoom animations are complete
+  requestAnimationFrame(() => {
+    isZooming.value = false
+    updateMinimapRect()
 
-  // Process pending heatmap render after zoom completes
-  if (heatmapPending.value) {
-    nextTick(() => renderHeatmap())
-  }
+    // Process pending tile style switch after zoom completes
+    if (pendingTileStyle.value) {
+      const style = pendingTileStyle.value
+      pendingTileStyle.value = null
+      nextTick(() => switchTileLayer(style))
+    }
 
-  if (renderPending.value) {
-    renderPending.value = false
-    renderMarkers()
-    renderPolygons()
-    return
-  }
+    // Process pending heatmap render after zoom completes
+    if (heatmapPending.value) {
+      nextTick(() => renderHeatmap())
+    }
 
-  const currentZoom = (target as L.Map).getZoom()
-  const shouldShowPolygons = currentZoom >= POLYGON_VISIBLE_ZOOM
-  if (shouldShowPolygons !== polygonsVisible.value) {
-    queueMarkerRender()
-    renderPolygons()
-  }
+    if (renderPending.value) {
+      renderPending.value = false
+      renderMarkers()
+      renderPolygons()
+      return
+    }
+
+    const currentZoom = (target as L.Map).getZoom()
+    const shouldShowPolygons = currentZoom >= POLYGON_VISIBLE_ZOOM
+    if (shouldShowPolygons !== polygonsVisible.value) {
+      queueMarkerRender()
+      renderPolygons()
+    }
+  })
 })
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
