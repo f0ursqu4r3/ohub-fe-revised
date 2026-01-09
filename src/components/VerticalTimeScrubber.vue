@@ -2,9 +2,10 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useOutageStore } from '@/stores/outages'
+import { TimeInterval } from '@/types/outage'
 
 const outageStore = useOutageStore()
-const { selectedOutageTs, blocks, maxCount } = storeToRefs(outageStore)
+const { selectedOutageTs, blocks, maxCount, timeInterval } = storeToRefs(outageStore)
 
 const emit = defineEmits<{
   (e: 'timeSelected', ts: number): void
@@ -56,28 +57,130 @@ const selectedCountLabel = computed(() => {
 
 type TickType = 'level-1' | 'level-2' | 'level-3'
 
+/**
+ * Returns tick classification based on the current time interval.
+ * Level-1: Major boundaries (days for hourly intervals, months for daily, years for monthly)
+ * Level-2: Secondary boundaries (noon for hourly, week starts for daily)
+ * Level-3: Regular ticks
+ */
+const getTickInfo = (date: Date, interval: TimeInterval): { type: TickType; label: string } => {
+  const hours = date.getHours()
+  const minutes = date.getMinutes()
+  const dayOfWeek = date.getDay()
+  const dayOfMonth = date.getDate()
+
+  switch (interval) {
+    case TimeInterval.OneMinute:
+    case TimeInterval.FiveMinutes:
+    case TimeInterval.FifteenMinutes:
+    case TimeInterval.ThirtyMinutes:
+      // For minute-based intervals: show hours as level-1, half-hours as level-2
+      if (hours === 0 && minutes === 0) {
+        return {
+          type: 'level-1',
+          label: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        }
+      }
+      if (minutes === 0) {
+        return {
+          type: hours === 12 ? 'level-1' : 'level-2',
+          label: hours === 12 ? '12 PM' : '',
+        }
+      }
+      if (minutes === 30) {
+        return { type: 'level-3', label: '' }
+      }
+      return { type: 'level-3', label: '' }
+
+    case TimeInterval.OneHour:
+      // For hourly: show days as level-1, 6-hour marks as level-2
+      if (hours === 0) {
+        return {
+          type: 'level-1',
+          label: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        }
+      }
+      if (hours === 12) {
+        return { type: 'level-2', label: '12 PM' }
+      }
+      if (hours % 6 === 0) {
+        return { type: 'level-2', label: '' }
+      }
+      return { type: 'level-3', label: '' }
+
+    case TimeInterval.OneDay:
+      // For daily: show week starts as level-1, mid-week as level-2
+      if (dayOfWeek === 0) {
+        return {
+          type: 'level-1',
+          label: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        }
+      }
+      if (dayOfWeek === 3) {
+        return { type: 'level-2', label: '' }
+      }
+      if (dayOfMonth === 1) {
+        return {
+          type: 'level-1',
+          label: date.toLocaleDateString(undefined, { month: 'short' }),
+        }
+      }
+      return { type: 'level-3', label: '' }
+
+    case TimeInterval.SevenDays:
+      // For weekly: show month starts as level-1
+      if (dayOfMonth <= 7) {
+        return {
+          type: 'level-1',
+          label: date.toLocaleDateString(undefined, { month: 'short', year: '2-digit' }),
+        }
+      }
+      if (dayOfMonth >= 14 && dayOfMonth <= 16) {
+        return { type: 'level-2', label: '' }
+      }
+      return { type: 'level-3', label: '' }
+
+    case TimeInterval.ThirtyDays:
+    case TimeInterval.OneYear:
+      // For monthly/yearly: show year starts as level-1, quarters as level-2
+      const month = date.getMonth()
+      if (month === 0 && dayOfMonth <= 30) {
+        return {
+          type: 'level-1',
+          label: date.toLocaleDateString(undefined, { year: 'numeric' }),
+        }
+      }
+      if ([3, 6, 9].includes(month) && dayOfMonth <= 30) {
+        return {
+          type: 'level-2',
+          label: date.toLocaleDateString(undefined, { month: 'short' }),
+        }
+      }
+      if (dayOfMonth <= 30) {
+        return {
+          type: 'level-3',
+          label: '',
+        }
+      }
+      return { type: 'level-3', label: '' }
+
+    default:
+      return { type: 'level-3', label: '' }
+  }
+}
+
 const ticks = computed(() => {
   const tickArray: Array<{ position: number; label: string; type: TickType }> = []
   const blocksArr = blocks.value
   const total = blocksArr.length
+  const interval = timeInterval.value
 
   for (let i = 0; i < total; i++) {
     const block = blocksArr[i]
     if (!block) continue
     const position = total > 1 ? (i / (total - 1)) * 100 : 0
-    let label = ''
-    let type: TickType = 'level-3'
-
     const date = new Date(block.ts * 1000)
-
-    if (date.getHours() === 0 && date.getMinutes() === 0) {
-      label = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-      type = 'level-1'
-    } else if (date.getMinutes() === 0) {
-      if (date.getHours() === 12) {
-        type = 'level-2'
-      }
-    }
+    const { type, label } = getTickInfo(date, interval)
 
     tickArray.push({ position, label, type })
   }
@@ -212,11 +315,11 @@ onBeforeUnmount(() => {
         :class="[$attrs.class]"
       >
         <div class="space-y-1 text-right">
-          <p class="text-[10px] font-semibold uppercase tracking-[0.35em] text-black/60">
+          <p class="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-600">
             Selected
           </p>
-          <p class="text-xl font-semibold leading-tight text-black">{{ selectedLabel }}</p>
-          <p class="text-xs text-black/60">{{ selectedDateLabel }}</p>
+          <p class="text-xl font-semibold leading-tight text-slate-900">{{ selectedLabel }}</p>
+          <p class="text-xs text-slate-600">{{ selectedDateLabel }}</p>
           <p v-if="selectedBlock" class="text-xs font-semibold text-amber-900">
             {{ selectedCountLabel }}
           </p>
@@ -238,7 +341,7 @@ onBeforeUnmount(() => {
               >
                 <span
                   v-if="tick.label"
-                  class="pointer-events-none absolute left-14 w-14 top-1/2 -translate-y-1/2 text-[10px] font-medium text-black/70"
+                  class="pointer-events-none absolute left-14 w-14 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-600"
                 >
                   {{ tick.label }}
                 </span>
@@ -278,7 +381,7 @@ onBeforeUnmount(() => {
     </transition>
 
     <UButton
-      class="pointer-events-auto rounded-3xl m-4 border border-[rgba(24,184,166,0.3)] bg-white p-2 text-slate-900 shadow-[0_10px_25px_rgba(5,15,29,0.25)] cursor-pointer"
+      class="pointer-events-auto rounded-3xl m-4 border border-[rgba(24,184,166,0.3)] bg-white p-2 text-slate-900 shadow-[0_10px_25px_rgba(5,15,29,0.25)] cursor-pointer transition-all duration-150 hover:scale-105 hover:shadow-[0_12px_30px_rgba(5,15,29,0.3)] active:scale-95"
       @click="toggleScrubber"
       type="button"
       aria-label="Toggle timeline"

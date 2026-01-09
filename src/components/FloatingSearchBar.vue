@@ -271,7 +271,7 @@ const scrollActiveIntoView = () => {
           icon="i-heroicons-magnifying-glass"
           placeholder="Find a Canadian address"
           size="lg"
-          class="flex-1"
+          class="flex-1 transition-shadow duration-200 focus-within:ring-2 focus-within:ring-primary-300/50 focus-within:shadow-[0_0_20px_rgba(24,184,166,0.15)] rounded-full"
           :loading="isLoading"
           :ui="{ trailing: 'pe-1', base: 'rounded-full' }"
           @focus="isFocused = true"
@@ -286,7 +286,7 @@ const scrollActiveIntoView = () => {
               size="sm"
               square
               aria-label="Clear search"
-              class="cursor-pointer"
+              class="cursor-pointer hover:scale-105 transition-transform"
               @click="clearSearch"
             />
           </template>

@@ -1,3 +1,5 @@
+import type { Polygon, MultiPolygon } from 'geojson'
+
 export type BoundsLiteral = [[number, number], [number, number]]
 
 export type PopupItem = {
@@ -14,4 +16,16 @@ export type PopupData = {
   extraCount: number
   geoJsonText?: string | null
   coordsText?: string | null
+}
+
+export type MarkerData = {
+  lat: number
+  lng: number
+  popupData?: PopupData
+  count?: number
+}
+
+export type PolygonData = {
+  geometry: Polygon | MultiPolygon
+  isCluster: boolean
 }

@@ -251,17 +251,24 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
 
     <div
       v-if="loading"
-      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full border border-black/10 bg-white/90 px-4 py-2 text-sm font-medium text-slate-800 shadow-lg shadow-black/20"
+      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 flex items-center gap-2.5 rounded-full border border-primary-200/50 bg-white/95 px-4 py-2.5 text-sm font-medium text-slate-700 shadow-lg shadow-primary-900/10 backdrop-blur-sm"
     >
+      <span class="relative flex h-2.5 w-2.5">
+        <span
+          class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75"
+        ></span>
+        <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary-500"></span>
+      </span>
       Loading outages…
     </div>
     <div
       v-else-if="error"
-      class="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-3 rounded-full border border-amber-500/40 bg-amber-50/95 px-4 py-2 text-sm font-medium text-amber-900 shadow-lg shadow-amber-500/30"
+      class="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-3 rounded-full border border-amber-400/50 bg-amber-50/95 px-4 py-2.5 text-sm font-medium text-amber-800 shadow-lg shadow-amber-500/20 backdrop-blur-sm"
     >
+      <UIcon name="i-heroicons-exclamation-triangle" class="h-4 w-4 text-amber-500" />
       <span>Unable to load outages.</span>
       <button
-        class="rounded-md bg-amber-500 px-2 py-1 text-xs font-medium text-white hover:bg-amber-600"
+        class="rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white shadow-sm transition-all hover:bg-amber-600 hover:shadow-md active:scale-95"
         @click="retryFetch"
       >
         Retry
@@ -269,8 +276,9 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
     </div>
     <div
       v-else-if="!selectedBlockOutages.length"
-      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full border border-black/10 bg-white/90 px-4 py-2 text-sm font-medium text-slate-800 shadow-lg shadow-black/20"
+      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-slate-200/60 bg-white/95 px-4 py-2.5 text-sm font-medium text-slate-600 shadow-lg shadow-slate-900/10 backdrop-blur-sm"
     >
+      <UIcon name="i-heroicons-map" class="h-4 w-4 text-slate-400" />
       No outages in the selected window.
     </div>
   </div>
