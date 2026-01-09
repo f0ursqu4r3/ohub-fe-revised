@@ -150,9 +150,9 @@ const togglePlayback = () => {
 }
 
 const cycleSpeed = () => {
-  const speeds = [0.5, 1, 2]
-  const currentIdx = speeds.indexOf(playbackSpeed.value)
-  playbackSpeed.value = speeds[(currentIdx + 1) % speeds.length]
+  const speeds = [0.5, 1, 2] as const
+  const currentIdx = speeds.indexOf(playbackSpeed.value as 0.5 | 1 | 2)
+  playbackSpeed.value = speeds[(currentIdx + 1) % speeds.length] ?? 1
 
   // Restart playback with new speed if playing
   if (isPlaying.value) {
