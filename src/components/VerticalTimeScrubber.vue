@@ -311,16 +311,23 @@ onBeforeUnmount(() => {
     <transition name="slide">
       <div
         v-show="open"
-        class="scrubber-panel glass pointer-events-auto flex h-full w-32 flex-col gap-6 border border-[rgba(24,184,166,0.35)] bg-white/90 p-4 text-slate-900 shadow-[0_18px_35px_rgba(5,15,29,0.35)] backdrop-blur-sm transition-all duration-500 ease-out touch-none select-none"
+        class="scrubber-panel glass pointer-events-auto flex h-full w-32 flex-col gap-6 border border-[var(--ui-border-accented)] bg-[var(--ui-bg-elevated)]/90 p-4 text-[var(--ui-text)] shadow-[0_18px_35px_rgba(5,15,29,0.35)] backdrop-blur-sm transition-all duration-300 ease-out touch-none select-none"
         :class="[$attrs.class]"
       >
         <div class="space-y-1 text-right">
-          <p class="text-[10px] font-semibold uppercase tracking-[0.35em] text-slate-600">
+          <p
+            class="text-[10px] font-semibold uppercase tracking-[0.35em] text-[var(--ui-text-dimmed)]"
+          >
             Selected
           </p>
-          <p class="text-xl font-semibold leading-tight text-slate-900">{{ selectedLabel }}</p>
-          <p class="text-xs text-slate-600">{{ selectedDateLabel }}</p>
-          <p v-if="selectedBlock" class="text-xs font-semibold text-amber-900">
+          <p class="text-xl font-semibold leading-tight text-[var(--ui-text)]">
+            {{ selectedLabel }}
+          </p>
+          <p class="text-xs text-[var(--ui-text-muted)]">{{ selectedDateLabel }}</p>
+          <p
+            v-if="selectedBlock"
+            class="text-xs font-semibold text-secondary-500 dark:text-secondary-400"
+          >
             {{ selectedCountLabel }}
           </p>
         </div>
@@ -341,7 +348,7 @@ onBeforeUnmount(() => {
               >
                 <span
                   v-if="tick.label"
-                  class="pointer-events-none absolute left-14 w-14 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-600"
+                  class="pointer-events-none absolute left-14 w-14 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[var(--ui-text-muted)]"
                 >
                   {{ tick.label }}
                 </span>
@@ -381,7 +388,7 @@ onBeforeUnmount(() => {
     </transition>
 
     <UButton
-      class="pointer-events-auto rounded-3xl m-4 border border-[rgba(24,184,166,0.3)] bg-white p-2 text-slate-900 shadow-[0_10px_25px_rgba(5,15,29,0.25)] cursor-pointer transition-all duration-150 hover:scale-105 hover:shadow-[0_12px_30px_rgba(5,15,29,0.3)] active:scale-95"
+      class="pointer-events-auto rounded-3xl m-4 border border-[var(--ui-border-accented)] bg-[var(--ui-bg-elevated)] p-2 text-[var(--ui-text)] shadow-[0_10px_25px_rgba(5,15,29,0.25)] cursor-pointer transition-all duration-150 hover:scale-105 hover:shadow-[0_12px_30px_rgba(5,15,29,0.3)] active:scale-95"
       @click="toggleScrubber"
       type="button"
       aria-label="Toggle timeline"
@@ -418,21 +425,5 @@ onBeforeUnmount(() => {
 .glass {
   overflow: hidden;
   position: relative;
-}
-
-.glass::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url('/noise.svg');
-  background-size: initial;
-  background-position: center;
-  background-repeat: repeat;
-  opacity: 0.4;
-  mix-blend-mode: screen;
-  filter: brightness(1.5) contrast(1.5) grayscale(1);
 }
 </style>

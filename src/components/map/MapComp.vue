@@ -10,7 +10,13 @@ import {
   useLeafletDisplayLayer,
   useLeafletEvent,
 } from 'vue-use-leaflet'
+import { storeToRefs } from 'pinia'
+import { useDarkModeStore } from '@/stores/darkMode'
 import type { MarkerData, PolygonData, BoundsLiteral } from './types'
+
+// Global dark mode
+const darkModeStore = useDarkModeStore()
+const { isDark: globalDarkMode } = storeToRefs(darkModeStore)
 
 // ─────────────────────────────────────────────────────────────
 // Props & Emits
@@ -90,8 +96,8 @@ const showMarkers = ref(true)
 const showPolygons = ref(true)
 const showLayerControls = ref(false)
 
-// Tile style
-const tileStyle = ref<TileStyle>('light')
+// Tile style - synced with global dark mode
+const tileStyle = computed<TileStyle>(() => (globalDarkMode.value ? 'dark' : 'light'))
 
 // Layers - using L.GeoJSON for proper type compatibility
 const markerLayer = ref<L.LayerGroup | null>(null)
@@ -109,7 +115,7 @@ const minimapRect = ref<L.Rectangle | null>(null)
 const debounceTimer = ref<number | null>(null)
 
 // Computed
-const isDarkMode = computed(() => tileStyle.value === 'dark')
+const isDarkMode = globalDarkMode
 
 // ─────────────────────────────────────────────────────────────
 // Map Setup
@@ -137,6 +143,9 @@ const tileLayer = useLeafletTileLayer(TILE_LAYERS.light.url, {
   maxZoom: 20,
 })
 
+// Store reference to initial tile layer
+const initialTileLayerAdded = ref(false)
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 useLeafletDisplayLayer(map as any, tileLayer as any)
 
@@ -147,9 +156,15 @@ const switchTileLayer = (style: TileStyle) => {
   const activeMap = map.value
   if (!activeMap) return
 
-  // Remove existing tile layer
+  // Remove existing managed tile layer
   if (activeTileLayer.value) {
     ;(activeMap as L.Map).removeLayer(activeTileLayer.value as unknown as L.Layer)
+  }
+
+  // Remove initial tile layer on first switch
+  if (!initialTileLayerAdded.value && tileLayer.value) {
+    ;(activeMap as L.Map).removeLayer(tileLayer.value as unknown as L.Layer)
+    initialTileLayerAdded.value = true
   }
 
   // Add new tile layer
@@ -161,15 +176,19 @@ const switchTileLayer = (style: TileStyle) => {
   })
   newLayer.addTo(activeMap as L.Map)
   activeTileLayer.value = newLayer
-  tileStyle.value = style
 
   // Update minimap if exists
   updateMinimapTiles(style)
 }
 
 const toggleDarkMode = () => {
-  switchTileLayer(tileStyle.value === 'dark' ? 'light' : 'dark')
+  darkModeStore.toggle()
 }
+
+// Watch for global dark mode changes to update map tiles
+watch(globalDarkMode, (isDark) => {
+  switchTileLayer(isDark ? 'dark' : 'light')
+})
 
 // ─────────────────────────────────────────────────────────────
 // Minimap
@@ -649,6 +668,11 @@ watch(showPolygons, () => renderPolygons())
 onMounted(() => {
   // Initial render after a tick
   setTimeout(() => {
+    // Switch to dark tiles if dark mode is active on mount
+    if (globalDarkMode.value) {
+      switchTileLayer('dark')
+    }
+
     renderMarkers()
     renderPolygons()
     renderSearchMarker()

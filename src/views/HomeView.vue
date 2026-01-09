@@ -251,7 +251,7 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
 
     <div
       v-if="loading"
-      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 flex items-center gap-2.5 rounded-full border border-primary-200/50 bg-white/95 px-4 py-2.5 text-sm font-medium text-slate-700 shadow-lg shadow-primary-900/10 backdrop-blur-sm"
+      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 flex items-center gap-2.5 rounded-full border border-primary-200/50 bg-[var(--ui-bg-elevated)]/95 px-4 py-2.5 text-sm font-medium text-[var(--ui-text)] shadow-lg shadow-primary-900/10 backdrop-blur-sm transition-colors duration-300"
     >
       <span class="relative flex h-2.5 w-2.5">
         <span
@@ -263,7 +263,7 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
     </div>
     <div
       v-else-if="error"
-      class="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-3 rounded-full border border-amber-400/50 bg-amber-50/95 px-4 py-2.5 text-sm font-medium text-amber-800 shadow-lg shadow-amber-500/20 backdrop-blur-sm"
+      class="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-3 rounded-full border border-amber-400/50 bg-amber-50/95 dark:bg-amber-950/95 px-4 py-2.5 text-sm font-medium text-amber-800 dark:text-amber-200 shadow-lg shadow-amber-500/20 backdrop-blur-sm transition-colors duration-300"
     >
       <UIcon name="i-heroicons-exclamation-triangle" class="h-4 w-4 text-amber-500" />
       <span>Unable to load outages.</span>
@@ -276,9 +276,9 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
     </div>
     <div
       v-else-if="!selectedBlockOutages.length"
-      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-slate-200/60 bg-white/95 px-4 py-2.5 text-sm font-medium text-slate-600 shadow-lg shadow-slate-900/10 backdrop-blur-sm"
+      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)]/95 px-4 py-2.5 text-sm font-medium text-[var(--ui-text-muted)] shadow-lg shadow-slate-900/10 backdrop-blur-sm transition-colors duration-300"
     >
-      <UIcon name="i-heroicons-map" class="h-4 w-4 text-slate-400" />
+      <UIcon name="i-heroicons-map" class="h-4 w-4 text-[var(--ui-text-dimmed)]" />
       No outages in the selected window.
     </div>
   </div>

@@ -262,7 +262,7 @@ const scrollActiveIntoView = () => {
 <template>
   <div class="pointer-events-none w-full max-w-xl" v-bind="$attrs">
     <div
-      class="pointer-events-auto relative rounded-2xl border border-black/10 bg-white/90 shadow-[0_16px_35px_rgba(5,15,29,0.32)] backdrop-blur-md"
+      class="pointer-events-auto relative rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)]/90 shadow-[0_16px_35px_rgba(5,15,29,0.32)] backdrop-blur-md transition-colors duration-300"
     >
       <div class="flex items-center gap-3 px-4 py-3">
         <UInput
@@ -291,7 +291,7 @@ const scrollActiveIntoView = () => {
             />
           </template>
         </UInput>
-        <div class="text-right text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">
+        <div class="text-right text-xs font-semibold uppercase tracking-[0.18em] text-primary-500">
           CA
         </div>
       </div>
@@ -299,26 +299,35 @@ const scrollActiveIntoView = () => {
       <transition name="fade">
         <div
           v-if="showDropdown"
-          class="absolute left-0 right-0 top-[calc(100%+6px)] overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_12px_24px_rgba(5,15,29,0.28)]"
+          class="absolute left-0 right-0 top-[calc(100%+6px)] overflow-hidden rounded-xl border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)] shadow-[0_12px_24px_rgba(5,15,29,0.28)] transition-colors duration-300"
         >
-          <div v-if="isLoading" class="px-4 py-3 text-sm text-slate-600">Searching…</div>
-          <div v-else-if="error" class="px-4 py-3 text-sm font-medium text-amber-700">
+          <div v-if="isLoading" class="px-4 py-3 text-sm text-[var(--ui-text-muted)]">
+            Searching…
+          </div>
+          <div
+            v-else-if="error"
+            class="px-4 py-3 text-sm font-medium text-amber-600 dark:text-amber-400"
+          >
             {{ error }}
           </div>
-          <div v-else-if="!results.length" class="px-4 py-3 text-sm text-slate-600">
+          <div v-else-if="!results.length" class="px-4 py-3 text-sm text-[var(--ui-text-muted)]">
             No matches yet — keep typing.
           </div>
-          <ul v-else ref="listRef" class="max-h-64 divide-y divide-slate-100 overflow-y-auto">
+          <ul
+            v-else
+            ref="listRef"
+            class="max-h-64 divide-y divide-[var(--ui-border-muted)] overflow-y-auto"
+          >
             <li
               v-for="(item, index) in results"
               :key="item.id"
-              class="cursor-pointer bg-white px-4 py-3 transition hover:bg-emerald-50"
-              :class="{ 'bg-emerald-50': index === activeIndex }"
+              class="cursor-pointer bg-[var(--ui-bg-elevated)] px-4 py-3 transition hover:bg-primary-50 dark:hover:bg-primary-950/50"
+              :class="{ 'bg-primary-50 dark:bg-primary-950/50': index === activeIndex }"
               :data-index="index"
               @mousedown.prevent="selectResult(item)"
             >
-              <p class="text-sm font-semibold text-slate-900">{{ item.label }}</p>
-              <p class="text-xs text-slate-600">{{ item.description }}</p>
+              <p class="text-sm font-semibold text-[var(--ui-text)]">{{ item.label }}</p>
+              <p class="text-xs text-[var(--ui-text-muted)]">{{ item.description }}</p>
             </li>
           </ul>
         </div>
