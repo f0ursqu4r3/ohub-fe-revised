@@ -21,7 +21,7 @@ Tracking enhancements for the map component.
 - [x] Hover previews (tooltip before full popup)
 - [x] Minimap for orientation
 - [x] Dark mode tile option
-- [ ] Heatmap layer toggle
-- [ ] Time playback animation for outages
+- [x] Heatmap layer toggle
+- [x] Time playback animation for outages
 - [x] Layer controls for toggling data visibility
 - [ ] Tile caching with service worker

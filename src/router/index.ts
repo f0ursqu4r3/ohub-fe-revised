@@ -8,6 +8,11 @@ const router = createRouter({
       name: 'home',
       component: () => import('../views/HomeView.vue'),
     },
+    // catch-all route to main page for undefined routes
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: { name: 'home' },
+    },
   ],
 })
 

@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+
+// Make L available globally for plugins that expect it
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+;(window as any).L = L
+
+// Now import the heat plugin after L is globally available
+import 'leaflet.heat'
+
 import type { LeafletEvent } from 'leaflet'
-import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
 import {
   useLeafletMap,
@@ -13,6 +21,21 @@ import {
 import { storeToRefs } from 'pinia'
 import { useDarkModeStore } from '@/stores/darkMode'
 import type { MarkerData, PolygonData, BoundsLiteral } from './types'
+
+// Extend L namespace for heatmap
+declare module 'leaflet' {
+  function heatLayer(
+    latlngs: Array<[number, number, number?]>,
+    options?: {
+      minOpacity?: number
+      maxZoom?: number
+      max?: number
+      radius?: number
+      blur?: number
+      gradient?: Record<number, string>
+    },
+  ): L.Layer
+}
 
 // Global dark mode
 const darkModeStore = useDarkModeStore()
@@ -88,12 +111,14 @@ const isLoading = ref(true)
 const isFullscreen = ref(false)
 const isZooming = ref(false)
 const renderPending = ref(false)
+const heatmapPending = ref(false)
 const polygonsVisible = ref(false)
 const pendingFocusBounds = ref<BoundsLiteral | null>(null)
 
 // Layer visibility toggles
 const showMarkers = ref(true)
 const showPolygons = ref(true)
+const showHeatmap = ref(false)
 const showLayerControls = ref(false)
 
 // Tile style - synced with global dark mode
@@ -102,6 +127,7 @@ const tileStyle = computed<TileStyle>(() => (globalDarkMode.value ? 'dark' : 'li
 // Layers - using L.GeoJSON for proper type compatibility
 const markerLayer = ref<L.LayerGroup | null>(null)
 const geoJsonLayer = ref<L.GeoJSON | null>(null)
+const heatmapLayer = ref<L.Layer | null>(null)
 const searchMarkerLayer = ref<L.Marker | null>(null)
 const searchPolygonLayer = ref<L.GeoJSON | null>(null)
 const activeTileLayer = ref<L.TileLayer | null>(null)
@@ -149,6 +175,9 @@ const initialTileLayerAdded = ref(false)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 useLeafletDisplayLayer(map as any, tileLayer as any)
 
+// Track pending tile switch
+const pendingTileStyle = ref<TileStyle | null>(null)
+
 // ─────────────────────────────────────────────────────────────
 // Tile Layer Switching
 // ─────────────────────────────────────────────────────────────
@@ -156,14 +185,37 @@ const switchTileLayer = (style: TileStyle) => {
   const activeMap = map.value
   if (!activeMap) return
 
-  // Remove existing managed tile layer
+  // Don't switch tiles during zoom to avoid errors - queue it instead
+  if (isZooming.value) {
+    pendingTileStyle.value = style
+    return
+  }
+
+  // Clear any pending switch since we're doing it now
+  pendingTileStyle.value = null
+
+  // Remove existing managed tile layer safely
   if (activeTileLayer.value) {
-    ;(activeMap as L.Map).removeLayer(activeTileLayer.value as unknown as L.Layer)
+    const layerToRemove = activeTileLayer.value
+    activeTileLayer.value = null
+    try {
+      // Clear all event listeners before removing
+      layerToRemove.off()
+      layerToRemove.remove()
+    } catch {
+      // Ignore removal errors
+    }
   }
 
   // Remove initial tile layer on first switch
   if (!initialTileLayerAdded.value && tileLayer.value) {
-    ;(activeMap as L.Map).removeLayer(tileLayer.value as unknown as L.Layer)
+    try {
+      const initialLayer = tileLayer.value as L.TileLayer
+      initialLayer.off()
+      initialLayer.remove()
+    } catch {
+      // Ignore removal errors
+    }
     initialTileLayerAdded.value = true
   }
 
@@ -260,10 +312,14 @@ const updateMinimapRect = () => {
 const updateMinimapTiles = (style: TileStyle) => {
   if (!minimapInstance.value) return
 
-  // Remove all layers and add new tile layer
+  // Remove all tile layers safely
   minimapInstance.value.eachLayer((layer) => {
     if (layer instanceof L.TileLayer) {
-      minimapInstance.value!.removeLayer(layer)
+      try {
+        layer.remove()
+      } catch {
+        // Ignore
+      }
     }
   })
 
@@ -514,6 +570,62 @@ const renderPolygons = () => {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Render Heatmap
+// ─────────────────────────────────────────────────────────────
+const renderHeatmap = () => {
+  const activeMap = map.value
+  if (!activeMap) return
+
+  // Don't re-render during zoom animations to avoid errors - queue it
+  if (isZooming.value) {
+    heatmapPending.value = true
+    return
+  }
+
+  heatmapPending.value = false
+
+  // Remove existing heatmap layer safely
+  if (heatmapLayer.value) {
+    const layerToRemove = heatmapLayer.value
+    heatmapLayer.value = null
+    try {
+      // Clear all event listeners before removing
+      layerToRemove.off()
+      layerToRemove.remove()
+    } catch {
+      // Layer may already be removed, ignore
+    }
+  }
+
+  // Skip if heatmap is hidden or no markers
+  if (!showHeatmap.value || !props.markers.length) return
+
+  // Build heatmap data: [lat, lng, intensity]
+  const heatData: Array<[number, number, number]> = props.markers.map((marker) => {
+    const intensity = Math.min(1, (marker.count ?? 1) / 10) // Normalize intensity
+    return [marker.lat, marker.lng, intensity]
+  })
+
+  // Create heatmap with brand colors
+  const heat = L.heatLayer(heatData, {
+    radius: 25,
+    blur: 15,
+    maxZoom: 12,
+    max: 1.0,
+    gradient: {
+      0.0: 'rgba(24, 184, 166, 0)',
+      0.2: 'rgba(24, 184, 166, 0.3)',
+      0.4: 'rgba(110, 233, 215, 0.5)',
+      0.6: 'rgba(255, 202, 122, 0.7)',
+      0.8: 'rgba(255, 156, 26, 0.85)',
+      1.0: 'rgba(219, 123, 13, 1)',
+    },
+  })
+  heat.addTo(activeMap as L.Map)
+  heatmapLayer.value = heat
+}
+
+// ─────────────────────────────────────────────────────────────
 // Search Marker & Polygon
 // ─────────────────────────────────────────────────────────────
 const renderSearchMarker = () => {
@@ -584,6 +696,19 @@ useLeafletEvent(map as any, 'zoomend', (event: LeafletEvent) => {
   isZooming.value = false
   updateMinimapRect()
 
+  // Process pending tile style switch after zoom completes
+  if (pendingTileStyle.value) {
+    const style = pendingTileStyle.value
+    pendingTileStyle.value = null
+    // Use nextTick to ensure zoom animation is fully done
+    nextTick(() => switchTileLayer(style))
+  }
+
+  // Process pending heatmap render after zoom completes
+  if (heatmapPending.value) {
+    nextTick(() => renderHeatmap())
+  }
+
   if (renderPending.value) {
     renderPending.value = false
     renderMarkers()
@@ -604,7 +729,7 @@ useLeafletEvent(map as any, 'moveend', () => {
   updateMinimapRect()
 })
 
-// Clear loading when tiles are ready
+// Clear loading when tiles are ready or after timeout
 watch(
   tileLayer,
   (layer) => {
@@ -618,12 +743,35 @@ watch(
   { immediate: true },
 )
 
+// Also watch activeTileLayer for when we switch tiles
+watch(activeTileLayer, (layer) => {
+  if (layer) {
+    layer.once('load', () => {
+      isLoading.value = false
+    })
+  }
+})
+
+// Fallback: clear loading after a short delay if tiles haven't loaded
+// This handles cases where tile events don't fire correctly
+setTimeout(() => {
+  if (isLoading.value) {
+    isLoading.value = false
+  }
+}, 2000)
+
 // ─────────────────────────────────────────────────────────────
 // Watchers
 // ─────────────────────────────────────────────────────────────
 watch(
   () => props.markers,
-  () => queueMarkerRender(),
+  () => {
+    queueMarkerRender()
+    // Queue heatmap render after zoom animations complete
+    if (!isZooming.value) {
+      renderHeatmap()
+    }
+  },
   { deep: true },
 )
 
@@ -661,6 +809,7 @@ watch(map, (mapInstance) => {
 // Re-render when visibility toggles change
 watch(showMarkers, () => renderMarkers())
 watch(showPolygons, () => renderPolygons())
+watch(showHeatmap, () => renderHeatmap())
 
 // ─────────────────────────────────────────────────────────────
 // Lifecycle
@@ -683,6 +832,17 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (debounceTimer.value) clearTimeout(debounceTimer.value)
+
+  // Clean up heatmap layer to prevent zombie event listeners
+  if (heatmapLayer.value) {
+    try {
+      heatmapLayer.value.remove()
+    } catch {
+      // Ignore
+    }
+    heatmapLayer.value = null
+  }
+
   if (minimapInstance.value) {
     minimapInstance.value.remove()
     minimapInstance.value = null
@@ -820,6 +980,11 @@ defineExpose({
           <input v-model="showPolygons" type="checkbox" class="map-layer-toggle__input" />
           <span class="map-layer-toggle__slider"></span>
           <span class="map-layer-toggle__label">Boundaries</span>
+        </label>
+        <label class="map-layer-toggle">
+          <input v-model="showHeatmap" type="checkbox" class="map-layer-toggle__input" />
+          <span class="map-layer-toggle__slider"></span>
+          <span class="map-layer-toggle__label">Heatmap</span>
         </label>
       </div>
     </Transition>

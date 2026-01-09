@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useOutageStore } from '@/stores/outages'
 import {
@@ -36,12 +36,17 @@ type SearchLocation = {
 }
 
 const outageStore = useOutageStore()
-const { selectedBlockOutages, selectedOutageTs, loading, error } = storeToRefs(outageStore)
+const { selectedBlockOutages, selectedOutageTs, blocks, loading, error } = storeToRefs(outageStore)
 
 const zoomLevel = ref(4)
 const focusBounds = ref<BoundsLiteral | null>(null)
 const searchMarker = ref<{ lat: number; lng: number } | null>(null)
 const searchPolygon = ref<Polygon | MultiPolygon | null>(null)
+
+// Time playback state
+const isPlaying = ref(false)
+const playbackSpeed = ref(1) // 1 = normal, 2 = fast, 0.5 = slow
+const playbackIntervalId = ref<number | null>(null)
 
 const eventsAtZoomLevel = computed<GroupedOutage[]>(() => {
   const zoom = zoomLevel.value
@@ -72,6 +77,91 @@ const mapPolygons = computed<MapPolygon[]>(() =>
     ]
   }),
 )
+
+// Time playback functions
+const currentBlockIndex = computed(() => {
+  if (selectedOutageTs.value === null) return -1
+  return blocks.value.findIndex((b) => b.ts === selectedOutageTs.value)
+})
+
+const canPlayForward = computed(() => currentBlockIndex.value < blocks.value.length - 1)
+const canPlayBackward = computed(() => currentBlockIndex.value > 0)
+
+const stepForward = () => {
+  const idx = currentBlockIndex.value
+  const nextBlock = blocks.value[idx + 1]
+  if (idx < blocks.value.length - 1 && nextBlock) {
+    outageStore.selectedOutageTs = nextBlock.ts
+  } else {
+    stopPlayback()
+  }
+}
+
+const stepBackward = () => {
+  const idx = currentBlockIndex.value
+  const prevBlock = blocks.value[idx - 1]
+  if (idx > 0 && prevBlock) {
+    outageStore.selectedOutageTs = prevBlock.ts
+  } else {
+    stopPlayback()
+  }
+}
+
+const startPlayback = (direction: 'forward' | 'backward' = 'forward') => {
+  if (playbackIntervalId.value) {
+    stopPlayback()
+  }
+
+  isPlaying.value = true
+  const intervalMs = 500 / playbackSpeed.value
+
+  playbackIntervalId.value = window.setInterval(() => {
+    if (direction === 'forward') {
+      if (canPlayForward.value) {
+        stepForward()
+      } else {
+        stopPlayback()
+      }
+    } else {
+      if (canPlayBackward.value) {
+        stepBackward()
+      } else {
+        stopPlayback()
+      }
+    }
+  }, intervalMs)
+}
+
+const stopPlayback = () => {
+  if (playbackIntervalId.value) {
+    clearInterval(playbackIntervalId.value)
+    playbackIntervalId.value = null
+  }
+  isPlaying.value = false
+}
+
+const togglePlayback = () => {
+  if (isPlaying.value) {
+    stopPlayback()
+  } else {
+    startPlayback('forward')
+  }
+}
+
+const cycleSpeed = () => {
+  const speeds = [0.5, 1, 2]
+  const currentIdx = speeds.indexOf(playbackSpeed.value)
+  playbackSpeed.value = speeds[(currentIdx + 1) % speeds.length]
+
+  // Restart playback with new speed if playing
+  if (isPlaying.value) {
+    startPlayback('forward')
+  }
+}
+
+onBeforeUnmount(() => {
+  stopPlayback()
+})
 
 const setZoomLevel = (level: number) => {
   zoomLevel.value = level
@@ -280,6 +370,57 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
     >
       <UIcon name="i-heroicons-map" class="h-4 w-4 text-[var(--ui-text-dimmed)]" />
       No outages in the selected window.
+    </div>
+
+    <!-- Time Playback Controls -->
+    <div
+      v-if="blocks.length > 1"
+      class="fixed bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-[var(--ui-border-accented)] bg-[var(--ui-bg-elevated)]/95 px-3 py-2 shadow-lg shadow-primary-900/15 backdrop-blur-sm transition-colors duration-300"
+    >
+      <button
+        class="flex h-8 w-8 items-center justify-center rounded-full text-[var(--ui-text-muted)] transition-all hover:bg-primary-500/10 hover:text-primary-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--ui-text-muted)]"
+        :disabled="!canPlayBackward"
+        title="Step backward"
+        @click="stepBackward"
+      >
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6l-8.5 6z" />
+        </svg>
+      </button>
+
+      <button
+        class="flex h-10 w-10 items-center justify-center rounded-full bg-primary-500 text-white shadow-md transition-all hover:bg-primary-600 hover:scale-105 active:scale-95"
+        :title="isPlaying ? 'Pause' : 'Play'"
+        @click="togglePlayback"
+      >
+        <svg v-if="!isPlaying" class="h-5 w-5 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5v14l11-7L8 5z" />
+        </svg>
+        <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+        </svg>
+      </button>
+
+      <button
+        class="flex h-8 w-8 items-center justify-center rounded-full text-[var(--ui-text-muted)] transition-all hover:bg-primary-500/10 hover:text-primary-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--ui-text-muted)]"
+        :disabled="!canPlayForward"
+        title="Step forward"
+        @click="stepForward"
+      >
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 18l8.5-6L6 6v12zm10-12v12h2V6h-2z" />
+        </svg>
+      </button>
+
+      <div class="mx-1 h-5 w-px bg-[var(--ui-border)]"></div>
+
+      <button
+        class="flex h-7 items-center gap-1 rounded-full px-2 text-xs font-semibold text-[var(--ui-text-muted)] transition-all hover:bg-primary-500/10 hover:text-primary-500"
+        title="Change playback speed"
+        @click="cycleSpeed"
+      >
+        <span>{{ playbackSpeed }}x</span>
+      </button>
     </div>
   </div>
 </template>
