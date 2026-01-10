@@ -311,19 +311,17 @@ onBeforeUnmount(() => {
     <transition name="slide">
       <div
         v-show="open"
-        class="scrubber-panel glass pointer-events-auto flex h-full w-32 flex-col gap-6 border border-[var(--ui-border-accented)] bg-[var(--ui-bg-elevated)]/90 p-4 text-[var(--ui-text)] shadow-[0_18px_35px_rgba(5,15,29,0.35)] backdrop-blur-sm transition-all duration-300 ease-out touch-none select-none"
+        class="scrubber-panel glass pointer-events-auto flex h-full w-28 flex-col gap-6 border border-(--ui-border-accented) bg-(--ui-bg-elevated)/90 p-4 pl-0 text-(--ui-text) shadow-[0_18px_35px_rgba(5,15,29,0.35)] backdrop-blur-sm transition-all duration-300 ease-out touch-none select-none"
         :class="[$attrs.class]"
       >
         <div class="space-y-1 text-right">
-          <p
-            class="text-[10px] font-semibold uppercase tracking-[0.35em] text-[var(--ui-text-dimmed)]"
-          >
+          <p class="text-[10px] font-semibold uppercase tracking-[0.35em] text-(--ui-text-dimmed)">
             Selected
           </p>
-          <p class="text-xl font-semibold leading-tight text-[var(--ui-text)]">
+          <p class="text-xl font-semibold leading-tight text-(--ui-text)">
             {{ selectedLabel }}
           </p>
-          <p class="text-xs text-[var(--ui-text-muted)]">{{ selectedDateLabel }}</p>
+          <p class="text-xs text-(--ui-text-muted)">{{ selectedDateLabel }}</p>
           <p
             v-if="selectedBlock"
             class="text-xs font-semibold text-secondary-500 dark:text-secondary-400"
@@ -348,7 +346,7 @@ onBeforeUnmount(() => {
               >
                 <span
                   v-if="tick.label"
-                  class="pointer-events-none absolute left-14 w-14 top-1/2 -translate-y-1/2 text-[10px] font-medium text-[var(--ui-text-muted)]"
+                  class="pointer-events-none absolute left-14 w-14 top-1/2 -translate-y-1/2 text-[10px] font-medium text-(--ui-text-muted)"
                 >
                   {{ tick.label }}
                 </span>
@@ -388,7 +386,7 @@ onBeforeUnmount(() => {
     </transition>
 
     <UButton
-      class="pointer-events-auto rounded-3xl m-4 border border-[var(--ui-border-accented)] bg-[var(--ui-bg-elevated)] p-2 text-[var(--ui-text)] shadow-[0_10px_25px_rgba(5,15,29,0.25)] cursor-pointer transition-all duration-150 hover:scale-105 hover:shadow-[0_12px_30px_rgba(5,15,29,0.3)] active:scale-95"
+      class="pointer-events-auto rounded-3xl m-4 border border-(--ui-border-accented) bg-(--ui-bg-elevated) p-2 text-(--ui-text) shadow-[0_10px_25px_rgba(5,15,29,0.25)] cursor-pointer transition-all duration-150 hover:scale-105 hover:shadow-[0_12px_30px_rgba(5,15,29,0.3)] active:scale-95"
       @click="toggleScrubber"
       type="button"
       aria-label="Toggle timeline"

@@ -1,0 +1,399 @@
+import L from 'leaflet'
+import type { Ref, ShallowRef } from 'vue'
+import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
+import type { MarkerData, PolygonData, BoundsLiteral } from '../../components/map/types'
+
+// ─────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────
+export const POLYGON_VISIBLE_ZOOM = 5
+export const BRAND_CLUSTER_COLOR = '#18b8a6'
+export const BRAND_CLUSTER_FILL = 'rgba(110, 233, 215, 0.25)'
+export const BRAND_OUTAGE_COLOR = '#ff9c1a'
+export const BRAND_OUTAGE_FILL = 'rgba(255, 212, 138, 0.3)'
+export const SEARCH_COLOR = '#6366f1'
+export const SEARCH_FILL = 'rgba(99, 102, 241, 0.15)'
+
+// ─────────────────────────────────────────────────────────────
+// Icon Factories
+// ─────────────────────────────────────────────────────────────
+export const createMarkerIcon = (): L.DivIcon => {
+  return L.divIcon({
+    html: `
+      <div class="marker-pulse"></div>
+      <div class="marker-dot"></div>
+    `,
+    className: 'map-marker',
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -12],
+  })
+}
+
+export const createClusterIcon = (count: number): L.DivIcon => {
+  const size = count >= 100 ? 52 : count >= 20 ? 44 : count >= 5 ? 36 : 28
+  const sizeClass = count >= 100 ? 'xl' : count >= 20 ? 'lg' : count >= 5 ? 'md' : 'sm'
+
+  return L.divIcon({
+    html: `
+      <div class="cluster-ring"></div>
+      <div class="cluster-core">
+        <span class="cluster-count">${count}</span>
+      </div>
+    `,
+    className: `map-cluster map-cluster--${sizeClass}`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
+  })
+}
+
+export const createSearchIcon = (): L.DivIcon => {
+  return L.divIcon({
+    html: `
+      <div class="search-marker-ring"></div>
+      <div class="search-marker-dot"></div>
+    `,
+    className: 'map-search-marker',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  })
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tooltip & Popup Builders
+// ─────────────────────────────────────────────────────────────
+export const buildTooltipContent = (data: MarkerData): string => {
+  if (!data.popupData) return 'Outage'
+
+  const { title, timeLabel } = data.popupData
+  return `
+    <div class="map-tooltip">
+      <strong>${title}</strong>
+      <span>${timeLabel}</span>
+    </div>
+  `
+}
+
+export const buildPopupContent = (data: MarkerData): string => {
+  if (!data.popupData) {
+    return `<div class="map-popup"><p class="map-popup__empty">No details available</p></div>`
+  }
+
+  const { title, timeLabel, items, extraCount } = data.popupData
+  const itemsHtml = items
+    .map((item) => {
+      const zoomBtn = item.bounds
+        ? `<button class="map-popup__zoom-btn" data-bounds="${encodeURIComponent(JSON.stringify(item.bounds))}" title="Zoom to extent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+              </svg>
+            </button>`
+        : ''
+      return `
+          <div class="map-popup__item">
+            <div class="map-popup__item-info">
+              <span class="map-popup__provider">${item.provider}</span>
+              ${item.sizeLabel ? `<span class="map-popup__size">${item.sizeLabel}</span>` : ''}
+            </div>
+            ${zoomBtn}
+          </div>
+        `
+    })
+    .join('')
+
+  const extraHtml = extraCount > 0 ? `<p class="map-popup__extra">+${extraCount} more</p>` : ''
+
+  return `
+    <div class="map-popup">
+      <h3 class="map-popup__title">${title}</h3>
+      <time class="map-popup__time">${timeLabel}</time>
+      <div class="map-popup__items">${itemsHtml}</div>
+      ${extraHtml}
+    </div>
+  `
+}
+
+// ─────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────
+export interface UseMapLayersOptions {
+  map: ShallowRef<L.Map | null>
+  showMarkers: Ref<boolean>
+  showPolygons: Ref<boolean>
+  showHeatmap: Ref<boolean>
+  isZooming: Ref<boolean>
+  onZoomToBounds: (bounds: BoundsLiteral) => void
+}
+
+export interface MapLayerRefs {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  markerLayer: Ref<any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  geoJsonLayer: Ref<any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  heatmapLayer: Ref<any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  searchMarkerLayer: Ref<any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  searchPolygonLayer: Ref<any>
+  polygonsVisible: Ref<boolean>
+  renderPending: Ref<boolean>
+  heatmapPending: Ref<boolean>
+}
+
+// ─────────────────────────────────────────────────────────────
+// Composable
+// ─────────────────────────────────────────────────────────────
+export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
+  const { map, showMarkers, showPolygons, showHeatmap, isZooming, onZoomToBounds } = options
+  const {
+    markerLayer,
+    geoJsonLayer,
+    heatmapLayer,
+    searchMarkerLayer,
+    searchPolygonLayer,
+    polygonsVisible,
+    renderPending,
+    heatmapPending,
+  } = refs
+
+  let debounceTimer: number | null = null
+
+  const queueMarkerRender = (markers: MarkerData[]) => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = window.setTimeout(() => {
+      debounceTimer = null
+      renderMarkers(markers)
+    }, 80)
+  }
+
+  const renderMarkers = (markers: MarkerData[]) => {
+    const activeMap = map.value
+    if (!activeMap || !activeMap.getContainer()) return
+
+    if (isZooming.value) {
+      renderPending.value = true
+      return
+    }
+
+    // Initialize marker layer
+    if (!markerLayer.value) {
+      const layer = L.layerGroup()
+      layer.addTo(activeMap)
+      markerLayer.value = layer
+    }
+    markerLayer.value.clearLayers()
+
+    // Skip if markers are hidden
+    if (!showMarkers.value) return
+
+    // Add markers with tooltips
+    for (const marker of markers) {
+      const count = marker.count ?? 1
+      const icon = count > 1 ? createClusterIcon(count) : createMarkerIcon()
+
+      const m = L.marker([marker.lat, marker.lng], { icon })
+        .bindTooltip(buildTooltipContent(marker), {
+          className: 'map-tooltip-container',
+          direction: 'top',
+          offset: [0, -10],
+          opacity: 1,
+        })
+        .bindPopup(buildPopupContent(marker), {
+          className: 'map-popup-container',
+          maxWidth: 280,
+          minWidth: 200,
+        })
+        .on('popupopen', (e) => {
+          const popup = e.popup.getElement()
+          if (!popup) return
+          popup.querySelectorAll('.map-popup__zoom-btn').forEach((btn) => {
+            btn.addEventListener('click', (evt) => {
+              evt.stopPropagation()
+              const boundsStr = (evt.currentTarget as HTMLElement).dataset.bounds
+              if (boundsStr) {
+                try {
+                  const bounds = JSON.parse(decodeURIComponent(boundsStr)) as BoundsLiteral
+                  onZoomToBounds(bounds)
+                } catch {
+                  // Ignore parse errors
+                }
+              }
+            })
+          })
+        })
+      markerLayer.value!.addLayer(m)
+    }
+  }
+
+  const renderPolygons = (polygons: PolygonData[]) => {
+    const activeMap = map.value
+    if (!activeMap) return
+
+    // Remove existing layer
+    if (geoJsonLayer.value) {
+      activeMap.removeLayer(geoJsonLayer.value as unknown as L.Layer)
+      geoJsonLayer.value = null
+    }
+
+    const currentZoom = activeMap.getZoom()
+    polygonsVisible.value = currentZoom >= POLYGON_VISIBLE_ZOOM
+
+    // Skip if polygons are hidden or zoom level is too low
+    if (!showPolygons.value || !polygonsVisible.value || !polygons.length) return
+
+    const features: Feature[] = polygons.map((p) => ({
+      type: 'Feature',
+      geometry: p.geometry,
+      properties: { isCluster: p.isCluster },
+    }))
+
+    const featureCollection: FeatureCollection = {
+      type: 'FeatureCollection',
+      features,
+    }
+
+    const layer = L.geoJSON(featureCollection, {
+      style: (feature) => {
+        const isCluster = feature?.properties?.isCluster
+        return {
+          color: isCluster ? BRAND_CLUSTER_COLOR : BRAND_OUTAGE_COLOR,
+          fillColor: isCluster ? BRAND_CLUSTER_FILL : BRAND_OUTAGE_FILL,
+          weight: 2,
+          opacity: 0.9,
+          fillOpacity: 0.4,
+        }
+      },
+    })
+    layer.addTo(activeMap)
+    geoJsonLayer.value = layer
+  }
+
+  const renderHeatmap = (markers: MarkerData[]) => {
+    const activeMap = map.value
+    if (!activeMap) return
+
+    // Don't re-render during zoom animations to avoid errors - queue it
+    if (isZooming.value) {
+      heatmapPending.value = true
+      return
+    }
+
+    heatmapPending.value = false
+
+    // Remove existing heatmap layer safely
+    if (heatmapLayer.value) {
+      const layerToRemove = heatmapLayer.value
+      heatmapLayer.value = null
+      try {
+        layerToRemove.off()
+        layerToRemove.remove()
+      } catch {
+        // Layer may already be removed, ignore
+      }
+    }
+
+    // Skip if heatmap is hidden or no markers
+    if (!showHeatmap.value || !markers.length) return
+
+    // Build heatmap data: [lat, lng, intensity]
+    const heatData: Array<[number, number, number]> = markers.map((marker) => {
+      const intensity = Math.min(1, 0.5 + (marker.count ?? 1) / 20)
+      return [marker.lat, marker.lng, intensity]
+    })
+
+    // Create heatmap with high visibility colors
+    const heat = L.heatLayer(heatData, {
+      radius: 35,
+      blur: 10,
+      maxZoom: 14,
+      max: 1.0,
+      minOpacity: 0.4,
+      gradient: {
+        0.0: 'rgba(0, 150, 136, 0.2)',
+        0.3: 'rgba(24, 184, 166, 0.7)',
+        0.5: 'rgba(255, 193, 7, 0.85)',
+        0.7: 'rgba(255, 120, 0, 0.95)',
+        0.85: 'rgba(244, 67, 54, 1)',
+        1.0: 'rgba(183, 28, 28, 1)',
+      },
+    })
+    heat.addTo(activeMap)
+    heatmapLayer.value = heat
+  }
+
+  const renderSearchMarker = (searchMarker: { lat: number; lng: number } | null) => {
+    const activeMap = map.value
+    if (!activeMap) return
+
+    // Clear existing
+    if (searchMarkerLayer.value) {
+      activeMap.removeLayer(searchMarkerLayer.value as unknown as L.Layer)
+      searchMarkerLayer.value = null
+    }
+
+    if (!searchMarker) return
+
+    const marker = L.marker([searchMarker.lat, searchMarker.lng], {
+      icon: createSearchIcon(),
+      zIndexOffset: 1000,
+    })
+    marker.addTo(activeMap)
+    searchMarkerLayer.value = marker
+  }
+
+  const renderSearchPolygon = (searchPolygon: Polygon | MultiPolygon | null) => {
+    const activeMap = map.value
+    if (!activeMap) return
+
+    if (searchPolygonLayer.value) {
+      activeMap.removeLayer(searchPolygonLayer.value as unknown as L.Layer)
+      searchPolygonLayer.value = null
+    }
+
+    if (!searchPolygon) return
+
+    const feature: Feature<Polygon | MultiPolygon> = {
+      type: 'Feature',
+      geometry: searchPolygon,
+      properties: {},
+    }
+
+    const layer = L.geoJSON(feature, {
+      style: {
+        color: SEARCH_COLOR,
+        fillColor: SEARCH_FILL,
+        weight: 3,
+        opacity: 1,
+        fillOpacity: 0.25,
+        dashArray: '6, 4',
+      },
+    })
+    layer.addTo(activeMap)
+    searchPolygonLayer.value = layer
+  }
+
+  const cleanup = () => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+
+    if (heatmapLayer.value) {
+      try {
+        heatmapLayer.value.remove()
+      } catch {
+        // Ignore
+      }
+      heatmapLayer.value = null
+    }
+  }
+
+  return {
+    queueMarkerRender,
+    renderMarkers,
+    renderPolygons,
+    renderHeatmap,
+    renderSearchMarker,
+    renderSearchPolygon,
+    cleanup,
+  }
+}

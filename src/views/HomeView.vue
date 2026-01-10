@@ -6,13 +6,16 @@ import {
   clusterOutages,
   formatDate,
   wktToGeoJSON,
+  computeBoundsAndArea,
+  fallbackPointBounds,
   type GeoPolygon,
   type GroupedOutage,
+  type BoundsLiteral,
 } from '@/lib/utils'
 import FloatingSearchBar from '@/components/FloatingSearchBar.vue'
 import VerticalTimeScrubber from '@/components/VerticalTimeScrubber.vue'
 import MapComp from '@/components/map/MapComp.vue'
-import type { PopupData, BoundsLiteral } from '@/components/map/types'
+import type { PopupData } from '@/components/map/types'
 import type { MultiPolygon, Polygon } from 'geojson'
 
 type MapMarker = {
@@ -249,76 +252,6 @@ const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData
     coordsText: group.polygon ?? null,
   }
 }
-
-const computeBoundsAndArea = (
-  geometry: GeoPolygon,
-): { bounds: BoundsLiteral | null; areaKm2: number } => {
-  // Fast approximation using a bounding box and lat-adjusted longitude span.
-  const kmPerDegree = 111.32
-  const rings =
-    geometry.type === 'Polygon'
-      ? geometry.coordinates
-      : geometry.coordinates.flatMap((poly) => poly)
-
-  let minLat = Number.POSITIVE_INFINITY
-  let maxLat = Number.NEGATIVE_INFINITY
-  let minLon = Number.POSITIVE_INFINITY
-  let maxLon = Number.NEGATIVE_INFINITY
-
-  for (const ring of rings) {
-    for (const coordinate of ring) {
-      const lon = Number(coordinate?.[0])
-      const lat = Number(coordinate?.[1])
-      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue
-      minLat = Math.min(minLat, lat)
-      maxLat = Math.max(maxLat, lat)
-      minLon = Math.min(minLon, lon)
-      maxLon = Math.max(maxLon, lon)
-    }
-  }
-
-  if (
-    !Number.isFinite(minLat) ||
-    !Number.isFinite(maxLat) ||
-    !Number.isFinite(minLon) ||
-    !Number.isFinite(maxLon)
-  ) {
-    return { bounds: null, areaKm2: 0 }
-  }
-
-  const latSpan = Math.max(0, maxLat - minLat)
-  const lonSpan = Math.max(0, maxLon - minLon)
-  if (latSpan === 0 || lonSpan === 0) {
-    return {
-      bounds: [
-        [minLat, minLon],
-        [maxLat, maxLon],
-      ],
-      areaKm2: 0,
-    }
-  }
-
-  const meanLat = (minLat + maxLat) / 2
-  const widthKm = Math.abs(lonSpan * Math.cos((meanLat * Math.PI) / 180) * kmPerDegree)
-  const heightKm = Math.abs(latSpan * kmPerDegree)
-  const areaKm2 = Math.max(0, widthKm * heightKm)
-
-  return {
-    bounds: [
-      [minLat, minLon],
-      [maxLat, maxLon],
-    ],
-    areaKm2,
-  }
-}
-
-const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
-  const delta = 0.01
-  return [
-    [lat - delta, lon - delta],
-    [lat + delta, lon + delta],
-  ]
-}
 </script>
 
 <template>
@@ -347,7 +280,7 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
 
     <div
       v-if="loading"
-      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 flex items-center gap-2.5 rounded-full border border-primary-200/50 bg-[var(--ui-bg-elevated)]/95 px-4 py-2.5 text-sm font-medium text-[var(--ui-text)] shadow-lg shadow-primary-900/10 backdrop-blur-sm transition-colors duration-300"
+      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 flex items-center gap-2.5 rounded-full border border-primary-200/50 bg-(--ui-bg-elevated)/95 px-4 py-2.5 text-sm font-medium text-(--ui-text) shadow-lg shadow-primary-900/10 backdrop-blur-sm transition-colors duration-300"
     >
       <span class="relative flex h-2.5 w-2.5">
         <span
@@ -372,9 +305,9 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
     </div>
     <div
       v-else-if="!selectedBlockOutages.length"
-      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)]/95 px-4 py-2.5 text-sm font-medium text-[var(--ui-text-muted)] shadow-lg shadow-slate-900/10 backdrop-blur-sm transition-colors duration-300"
+      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-(--ui-border) bg-(--ui-bg-elevated)/95 px-4 py-2.5 text-sm font-medium text-(--ui-text-muted) shadow-lg shadow-slate-900/10 backdrop-blur-sm transition-colors duration-300"
     >
-      <UIcon name="i-heroicons-map" class="h-4 w-4 text-[var(--ui-text-dimmed)]" />
+      <UIcon name="i-heroicons-map" class="h-4 w-4 text-(--ui-text-dimmed)" />
       No outages in the selected window.
     </div>
 
@@ -382,10 +315,10 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
     <Transition name="fade">
       <div
         v-if="showPlaybackControls && blocks.length > 1"
-        class="fixed bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-[var(--ui-border-accented)] bg-[var(--ui-bg-elevated)]/95 px-3 py-2 shadow-lg shadow-primary-900/15 backdrop-blur-sm transition-colors duration-300"
+        class="fixed bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-(--ui-border-accented) bg-(--ui-bg-elevated)/95 px-3 py-2 shadow-lg shadow-primary-900/15 backdrop-blur-sm transition-colors duration-300"
       >
         <button
-          class="flex h-8 w-8 items-center justify-center rounded-full text-[var(--ui-text-muted)] transition-all hover:bg-primary-500/10 hover:text-primary-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--ui-text-muted)]"
+          class="flex h-8 w-8 items-center justify-center rounded-full text-(--ui-text-muted) transition-all hover:bg-primary-500/10 hover:text-primary-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-(--ui-text-muted)"
           :disabled="!canPlayBackward"
           title="Step backward"
           @click="stepBackward"
@@ -409,7 +342,7 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
         </button>
 
         <button
-          class="flex h-8 w-8 items-center justify-center rounded-full text-[var(--ui-text-muted)] transition-all hover:bg-primary-500/10 hover:text-primary-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--ui-text-muted)]"
+          class="flex h-8 w-8 items-center justify-center rounded-full text-(--ui-text-muted) transition-all hover:bg-primary-500/10 hover:text-primary-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-(--ui-text-muted)"
           :disabled="!canPlayForward"
           title="Step forward"
           @click="stepForward"
@@ -419,10 +352,10 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
           </svg>
         </button>
 
-        <div class="mx-1 h-5 w-px bg-[var(--ui-border)]"></div>
+        <div class="mx-1 h-5 w-px bg-(--ui-border)"></div>
 
         <button
-          class="flex h-7 items-center gap-1 rounded-full px-2 text-xs font-semibold text-[var(--ui-text-muted)] transition-all hover:bg-primary-500/10 hover:text-primary-500"
+          class="flex h-7 items-center gap-1 rounded-full px-2 text-xs font-semibold text-(--ui-text-muted) transition-all hover:bg-primary-500/10 hover:text-primary-500"
           title="Change playback speed"
           @click="cycleSpeed"
         >

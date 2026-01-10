@@ -2,7 +2,10 @@ import Supercluster, { type ClusterFeature, type PointFeature } from 'superclust
 import type { MultiPolygon, Polygon } from 'geojson'
 import type { Outage } from '@/types/outage'
 
+export type BoundsLiteral = [[number, number], [number, number]]
+
 const EARTH_RADIUS_KM = 6371
+const KM_PER_DEGREE = 111.32
 const CANADA_BOUNDS_BBOX: [number, number, number, number] = [-170, 10, -40, 90]
 const CLUSTER_ZOOM_RANGE: [number, number] = [4, 16] // start easing clustering at 4, end right before singletons
 const CLUSTER_RADIUS_PX_RANGE: [number, number] = [64, 18] // heavy grouping at low zoom, light at high zoom
@@ -98,13 +101,15 @@ const clamp = (value: number, min: number, max: number): number =>
 
 const clusterIndexCache = new Map<string, Supercluster<OutageFeatureProps, ClusterProperties>>()
 
-const makeClusterCacheKey = (outages: Outage[], radiusPx: number): string =>
-  `${radiusPx}:${outages
-    .map(
-      (o) =>
-        `${o.id}:${o.latitude.toFixed(4)},${o.longitude.toFixed(4)}:${o.ts}:${o.startTs ?? ''}:${o.endTs ?? ''}`,
-    )
-    .join('|')}`
+/**
+ * Creates a cache key for the cluster index.
+ * Uses a simpler, faster key based on outage IDs and count rather than all data.
+ */
+const makeClusterCacheKey = (outages: Outage[], radiusPx: number): string => {
+  // Sort IDs for consistent keys regardless of input order
+  const ids = outages.map((o) => o.id).sort((a, b) => a - b)
+  return `${radiusPx}:${ids.length}:${ids.join(',')}`
+}
 
 const buildClusterIndex = (
   outages: Outage[],
@@ -572,4 +577,90 @@ const parseRing = (ringStr: string): Point[] => {
       return [lat, lon] as Point
     })
     .filter((point): point is Point => Boolean(point))
+}
+
+// ─────────────────────────────────────────────────────────────
+// Geometry Bounds & Area Utilities
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Computes the bounding box and approximate area of a GeoJSON polygon.
+ * Uses a fast approximation based on bounding box with latitude-adjusted longitude span.
+ *
+ * @param geometry - A GeoJSON Polygon or MultiPolygon
+ * @returns An object containing the bounds as [[minLat, minLon], [maxLat, maxLon]] and area in km²
+ */
+export const computeBoundsAndArea = (
+  geometry: GeoPolygon,
+): { bounds: BoundsLiteral | null; areaKm2: number } => {
+  const rings =
+    geometry.type === 'Polygon'
+      ? geometry.coordinates
+      : geometry.coordinates.flatMap((poly) => poly)
+
+  let minLat = Number.POSITIVE_INFINITY
+  let maxLat = Number.NEGATIVE_INFINITY
+  let minLon = Number.POSITIVE_INFINITY
+  let maxLon = Number.NEGATIVE_INFINITY
+
+  for (const ring of rings) {
+    for (const coordinate of ring) {
+      const lon = Number(coordinate?.[0])
+      const lat = Number(coordinate?.[1])
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue
+      minLat = Math.min(minLat, lat)
+      maxLat = Math.max(maxLat, lat)
+      minLon = Math.min(minLon, lon)
+      maxLon = Math.max(maxLon, lon)
+    }
+  }
+
+  if (
+    !Number.isFinite(minLat) ||
+    !Number.isFinite(maxLat) ||
+    !Number.isFinite(minLon) ||
+    !Number.isFinite(maxLon)
+  ) {
+    return { bounds: null, areaKm2: 0 }
+  }
+
+  const latSpan = Math.max(0, maxLat - minLat)
+  const lonSpan = Math.max(0, maxLon - minLon)
+  if (latSpan === 0 || lonSpan === 0) {
+    return {
+      bounds: [
+        [minLat, minLon],
+        [maxLat, maxLon],
+      ],
+      areaKm2: 0,
+    }
+  }
+
+  const meanLat = (minLat + maxLat) / 2
+  const widthKm = Math.abs(lonSpan * Math.cos((meanLat * Math.PI) / 180) * KM_PER_DEGREE)
+  const heightKm = Math.abs(latSpan * KM_PER_DEGREE)
+  const areaKm2 = Math.max(0, widthKm * heightKm)
+
+  return {
+    bounds: [
+      [minLat, minLon],
+      [maxLat, maxLon],
+    ],
+    areaKm2,
+  }
+}
+
+/**
+ * Creates a small bounding box around a single point for fallback cases.
+ *
+ * @param lat - Latitude of the point
+ * @param lon - Longitude of the point
+ * @returns A small bounding box centered on the point
+ */
+export const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
+  const delta = 0.01
+  return [
+    [lat - delta, lon - delta],
+    [lat + delta, lon + delta],
+  ]
 }

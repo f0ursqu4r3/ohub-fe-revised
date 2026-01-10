@@ -1,0 +1,331 @@
+/* Map Component Styles */
+
+/* Wrapper */
+.map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  border-radius: var(--ui-radius, 16px);
+  overflow: hidden;
+  background: linear-gradient(145deg, #e8eef7 0%, #d8e4f3 100%);
+  box-shadow:
+    0 4px 24px rgba(5, 15, 29, 0.08),
+    0 1px 3px rgba(5, 15, 29, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.map-container {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Loading State */
+.map-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: linear-gradient(145deg, rgba(232, 238, 247, 0.95), rgba(216, 228, 243, 0.95));
+  backdrop-filter: blur(8px);
+}
+
+.map-loading__spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(24, 184, 166, 0.2);
+  border-top-color: #18b8a6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.map-loading__text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #4b5567;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Controls */
+.map-controls {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+  box-shadow:
+    0 4px 16px rgba(5, 15, 29, 0.1),
+    0 1px 2px rgba(5, 15, 29, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.map-controls__divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: linear-gradient(90deg, transparent, rgba(5, 15, 29, 0.1), transparent);
+}
+
+.map-control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #2f3d58;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.map-control-btn:hover {
+  background: rgba(24, 184, 166, 0.1);
+  color: #18b8a6;
+}
+
+.map-control-btn:active {
+  transform: scale(0.95);
+}
+
+.map-control-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.map-control-btn--active {
+  background: rgba(24, 184, 166, 0.15);
+  color: #18b8a6;
+}
+
+/* Badge */
+.map-badge {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #0d4f4a;
+  background: rgba(110, 233, 215, 0.25);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(24, 184, 166, 0.3);
+  border-radius: 20px;
+}
+
+.map-badge__dot {
+  width: 6px;
+  height: 6px;
+  background: #18b8a6;
+  border-radius: 50%;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.2);
+  }
+}
+
+/* Transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.2s ease;
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateX(10px);
+}
+
+/* Layer Controls Panel */
+.map-layer-controls {
+  position: absolute;
+  top: 16px;
+  right: 70px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+  box-shadow:
+    0 4px 16px rgba(5, 15, 29, 0.1),
+    0 1px 2px rgba(5, 15, 29, 0.05);
+  min-width: 140px;
+}
+
+.map-layer-controls__title {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #4b5567;
+}
+
+.map-layer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.map-layer-toggle__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.map-layer-toggle__slider {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: #d1d5db;
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.map-layer-toggle__slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease;
+}
+
+.map-layer-toggle__input:checked + .map-layer-toggle__slider {
+  background: #18b8a6;
+}
+
+.map-layer-toggle__input:checked + .map-layer-toggle__slider::after {
+  transform: translateX(16px);
+}
+
+.map-layer-toggle__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e2b44;
+}
+
+/* Minimap */
+.map-minimap {
+  position: absolute;
+  bottom: 50px;
+  right: 16px;
+  z-index: 999;
+  width: 150px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 10px;
+  border: 2px solid rgba(24, 184, 166, 0.3);
+  box-shadow:
+    0 4px 12px rgba(5, 15, 29, 0.12),
+    0 1px 2px rgba(5, 15, 29, 0.06);
+  overflow: hidden;
+}
+
+.map-minimap :deep(.leaflet-container) {
+  background: transparent;
+}
+
+.map-minimap :deep(.leaflet-tile-pane) {
+  opacity: 0.7;
+}
+
+/* Dark mode styles */
+.map-wrapper--dark .map-controls {
+  background: rgba(30, 41, 59, 0.92);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.25),
+    0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.map-wrapper--dark .map-control-btn {
+  color: #94a3b8;
+}
+
+.map-wrapper--dark .map-control-btn:hover {
+  background: rgba(24, 184, 166, 0.2);
+  color: #6ee9d7;
+}
+
+.map-wrapper--dark .map-control-btn--active {
+  background: rgba(24, 184, 166, 0.25);
+  color: #6ee9d7;
+}
+
+.map-wrapper--dark .map-controls__divider {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+}
+
+.map-wrapper--dark .map-layer-controls {
+  background: rgba(30, 41, 59, 0.95);
+}
+
+.map-wrapper--dark .map-layer-controls__title {
+  color: #94a3b8;
+}
+
+.map-wrapper--dark .map-layer-toggle__label {
+  color: #e2e8f0;
+}
+
+.map-wrapper--dark .map-badge {
+  background: rgba(24, 184, 166, 0.2);
+  border-color: rgba(24, 184, 166, 0.4);
+  color: #6ee9d7;
+}
+
+.map-wrapper--dark .map-minimap {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(255, 255, 255, 0.1);
+}

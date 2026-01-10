@@ -1,6 +1,8 @@
 import type { Polygon, MultiPolygon } from 'geojson'
+import type { BoundsLiteral } from '@/lib/utils'
 
-export type BoundsLiteral = [[number, number], [number, number]]
+// Re-export for convenience
+export type { BoundsLiteral }
 
 export type PopupItem = {
   provider: string
