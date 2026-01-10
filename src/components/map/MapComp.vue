@@ -179,24 +179,11 @@ useLeafletDisplayLayer(map as any, tileLayer as any)
 
 // Track pending tile switch
 const pendingTileStyle = ref<TileStyle | null>(null)
+const currentTileStyle = ref<TileStyle>('light')
 
 // ─────────────────────────────────────────────────────────────
 // Tile Layer Switching
 // ─────────────────────────────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const safeRemoveLayer = (layer: any) => {
-  if (!layer) return
-  try {
-    layer.off()
-    // Check if layer is still attached to a map before removing
-    if (layer._map) {
-      layer.remove()
-    }
-  } catch {
-    // Ignore removal errors
-  }
-}
-
 const switchTileLayer = (style: TileStyle) => {
   const activeMap = map.value
   if (!activeMap) return
@@ -207,21 +194,39 @@ const switchTileLayer = (style: TileStyle) => {
     return
   }
 
-  // Clear any pending switch since we're doing it now
-  pendingTileStyle.value = null
-
-  // Queue old layer for removal after new layer is ready
-  const oldLayer = activeTileLayer.value
-
-  // Remove initial tile layer on first switch
-  if (!initialTileLayerAdded.value && tileLayer.value) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    safeRemoveLayer(tileLayer.value as any)
-    initialTileLayerAdded.value = true
+  // Skip if already using this style
+  if (currentTileStyle.value === style && (activeTileLayer.value || tileLayer.value)) {
+    return
   }
 
-  // Add new tile layer first
+  // Clear any pending switch since we're doing it now
+  pendingTileStyle.value = null
+  currentTileStyle.value = style
+
   const config = TILE_LAYERS[style]
+
+  // If we have an active managed tile layer, just update its URL
+  if (activeTileLayer.value) {
+    activeTileLayer.value.setUrl(config.url)
+    updateMinimapTiles(style)
+    return
+  }
+
+  // First time switching - need to replace the initial vue-use-leaflet tile layer
+  // Remove the initial tile layer
+  if (tileLayer.value) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const initialLayer = tileLayer.value as any
+      if (initialLayer._map) {
+        initialLayer.remove()
+      }
+    } catch {
+      // Ignore removal errors
+    }
+  }
+
+  // Create our managed tile layer
   const newLayer = L.tileLayer(config.url, {
     attribution: config.attribution,
     subdomains: 'abcd',
@@ -229,12 +234,7 @@ const switchTileLayer = (style: TileStyle) => {
   })
   newLayer.addTo(activeMap as L.Map)
   activeTileLayer.value = newLayer
-
-  // Remove old layer after new one is added
-  if (oldLayer && oldLayer !== newLayer) {
-    // Defer removal to next frame to avoid race conditions
-    requestAnimationFrame(() => safeRemoveLayer(oldLayer))
-  }
+  initialTileLayerAdded.value = true
 
   // Update minimap if exists
   updateMinimapTiles(style)
@@ -706,6 +706,7 @@ useLeafletEvent(map as any, 'zoomend', (event: LeafletEvent) => {
     isZooming.value = false
     updateMinimapRect()
 
+    // Process any pending layer removals now that zoom is done
     // Process pending tile style switch after zoom completes
     if (pendingTileStyle.value) {
       const style = pendingTileStyle.value

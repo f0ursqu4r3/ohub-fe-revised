@@ -46,7 +46,7 @@ const searchPolygon = ref<Polygon | MultiPolygon | null>(null)
 // Time playback state
 const isPlaying = ref(false)
 const playbackSpeed = ref(1) // 1 = normal, 2 = fast, 0.5 = slow
-const showPlaybackControls = ref(true)
+const showPlaybackControls = ref(false)
 const playbackIntervalId = ref<number | null>(null)
 
 const eventsAtZoomLevel = computed<GroupedOutage[]>(() => {
