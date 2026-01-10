@@ -8,8 +8,7 @@ import L from 'leaflet'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ;(window as any).L = L
 
-// Now import the heat plugin after L is globally available
-import 'leaflet.heat'
+// Note: leaflet.heat is lazy-loaded in useMapLayers when heatmap is first enabled
 
 import type { LeafletEvent } from 'leaflet'
 import { ref, watch, onMounted, onBeforeUnmount, computed, nextTick, type Ref } from 'vue'

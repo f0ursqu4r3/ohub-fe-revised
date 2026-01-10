@@ -58,13 +58,11 @@ Tracking enhancements for the map component.
 
 ### 🟢 Bundle Size
 
-- [ ] **Lazy-load leaflet.heat** - Heatmap is off by default; dynamic import when enabled
+- [x] **Lazy-load leaflet.heat** - Heatmap is off by default; dynamic import when enabled
+  - Plugin now loads on first heatmap toggle, not at startup
 
-  ```typescript
-  const loadHeatmap = () => import('leaflet.heat')
-  ```
-
-- [ ] **Tree-shake Leaflet** - Import specific modules instead of entire library if needed
+- [x] **Tree-shake Leaflet** - Import specific modules instead of entire library if needed
+  - Not possible: Leaflet doesn't support ES module tree-shaking (single bundle architecture)
 
 ---
 

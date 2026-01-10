@@ -398,7 +398,28 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     geoJsonLayer.value = layer
   }
 
-  const renderHeatmap = (markers: MarkerData[]) => {
+  // Track if heatmap plugin is loaded (lazy-loaded on first use)
+  let heatmapPluginLoaded = false
+  let heatmapPluginLoading = false
+
+  const loadHeatmapPlugin = async (): Promise<boolean> => {
+    if (heatmapPluginLoaded) return true
+    if (heatmapPluginLoading) return false // Already loading, skip this render
+
+    heatmapPluginLoading = true
+    try {
+      await import('leaflet.heat')
+      heatmapPluginLoaded = true
+      heatmapPluginLoading = false
+      return true
+    } catch (e) {
+      logDevError('Failed to load leaflet.heat plugin', e)
+      heatmapPluginLoading = false
+      return false
+    }
+  }
+
+  const renderHeatmap = async (markers: MarkerData[]) => {
     const activeMap = map.value
     if (!activeMap) return
 
@@ -424,6 +445,10 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
 
     // Skip if heatmap is hidden or no markers
     if (!showHeatmap.value || !markers.length) return
+
+    // Lazy-load the heatmap plugin on first use
+    const pluginReady = await loadHeatmapPlugin()
+    if (!pluginReady) return
 
     // Build heatmap data: [lat, lng, intensity]
     const heatData: Array<[number, number, number]> = markers.map((marker) => {
