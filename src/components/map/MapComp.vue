@@ -607,25 +607,26 @@ const renderHeatmap = () => {
   // Skip if heatmap is hidden or no markers
   if (!showHeatmap.value || !props.markers.length) return
 
-  // Build heatmap data: [lat, lng, intensity]
+  // Build heatmap data: [lat, lng, intensity] - use higher base intensity
   const heatData: Array<[number, number, number]> = props.markers.map((marker) => {
-    const intensity = Math.min(1, (marker.count ?? 1) / 10) // Normalize intensity
+    const intensity = Math.min(1, 0.5 + (marker.count ?? 1) / 20) // Higher base intensity
     return [marker.lat, marker.lng, intensity]
   })
 
-  // Create heatmap with brand colors
+  // Create heatmap with high visibility colors
   const heat = L.heatLayer(heatData, {
-    radius: 25,
-    blur: 15,
-    maxZoom: 12,
+    radius: 35,
+    blur: 10,
+    maxZoom: 14,
     max: 1.0,
+    minOpacity: 0.4,
     gradient: {
-      0.0: 'rgba(24, 184, 166, 0)',
-      0.2: 'rgba(24, 184, 166, 0.3)',
-      0.4: 'rgba(110, 233, 215, 0.5)',
-      0.6: 'rgba(255, 202, 122, 0.7)',
-      0.8: 'rgba(255, 156, 26, 0.85)',
-      1.0: 'rgba(219, 123, 13, 1)',
+      0.0: 'rgba(0, 150, 136, 0.2)',
+      0.3: 'rgba(24, 184, 166, 0.7)',
+      0.5: 'rgba(255, 193, 7, 0.85)',
+      0.7: 'rgba(255, 120, 0, 0.95)',
+      0.85: 'rgba(244, 67, 54, 1)',
+      1.0: 'rgba(183, 28, 28, 1)',
     },
   })
   heat.addTo(activeMap as L.Map)
@@ -778,8 +779,8 @@ watch(
   () => props.markers,
   () => {
     queueMarkerRender()
-    // Queue heatmap render after zoom animations complete
-    if (!isZooming.value) {
+    // Always re-render heatmap when markers change (if visible)
+    if (showHeatmap.value && !isZooming.value) {
       renderHeatmap()
     }
   },
@@ -836,6 +837,7 @@ onMounted(() => {
 
     renderMarkers()
     renderPolygons()
+    renderHeatmap()
     renderSearchMarker()
     renderSearchPolygon()
     initMinimap()
