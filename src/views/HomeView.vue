@@ -333,7 +333,11 @@ const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => {
       class="z-0"
       @setZoom="setZoomLevel"
       @update:showPlaybackControls="showPlaybackControls = $event"
-    />
+    >
+      <template #fullscreen-content="{ isFullscreen }">
+        <VerticalTimeScrubber v-if="isFullscreen" class="fixed inset-x-0 left-0 z-20" />
+      </template>
+    </MapComp>
     <VerticalTimeScrubber class="fixed inset-x-0 left-0 z-20" />
     <FloatingSearchBar
       class="fixed left-1/2 top-4 z-30 w-full max-w-2xl -translate-x-1/2 px-4"

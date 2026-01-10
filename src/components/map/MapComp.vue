@@ -1009,6 +1009,9 @@ defineExpose({
     <!-- Minimap -->
     <div ref="minimapEl" class="map-minimap"></div>
 
+    <!-- Slot for content that should be visible in fullscreen -->
+    <slot name="fullscreen-content" :is-fullscreen="isFullscreen"></slot>
+
     <!-- Attribution badge -->
     <div class="map-badge">
       <span class="map-badge__dot"></span>
