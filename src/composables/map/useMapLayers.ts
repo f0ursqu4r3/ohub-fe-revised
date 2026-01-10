@@ -7,20 +7,29 @@ import type {
   BoundsLiteral,
   PopupDataBuilder,
 } from '../../components/map/types'
+import {
+  POLYGON_VISIBLE_ZOOM,
+  CIRCLE_MARKER_THRESHOLD,
+  MARKER_RENDER_DEBOUNCE_MS,
+  BRAND_CLUSTER_COLOR,
+  BRAND_CLUSTER_FILL,
+  BRAND_OUTAGE_COLOR,
+  BRAND_OUTAGE_FILL,
+  SEARCH_COLOR,
+  SEARCH_FILL,
+  logDevError,
+} from '../../config/map'
 
-// ─────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────
-export const POLYGON_VISIBLE_ZOOM = 5
-export const BRAND_CLUSTER_COLOR = '#18b8a6'
-export const BRAND_CLUSTER_FILL = 'rgba(110, 233, 215, 0.25)'
-export const BRAND_OUTAGE_COLOR = '#ff9c1a'
-export const BRAND_OUTAGE_FILL = 'rgba(255, 212, 138, 0.3)'
-export const SEARCH_COLOR = '#6366f1'
-export const SEARCH_FILL = 'rgba(99, 102, 241, 0.15)'
-
-/** Switch to CircleMarkers when marker count exceeds this threshold */
-export const CIRCLE_MARKER_THRESHOLD = 150
+// Re-export constants for consumers
+export {
+  POLYGON_VISIBLE_ZOOM,
+  BRAND_CLUSTER_COLOR,
+  BRAND_CLUSTER_FILL,
+  BRAND_OUTAGE_COLOR,
+  BRAND_OUTAGE_FILL,
+  SEARCH_COLOR,
+  SEARCH_FILL,
+}
 
 // ─────────────────────────────────────────────────────────────
 // Icon Factories
@@ -187,14 +196,19 @@ export interface UseMapLayersOptions {
 }
 
 export interface MapLayerRefs {
+  /** L.LayerGroup for markers (vue-use-leaflet returns compatible type) */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   markerLayer: Ref<any>
+  /** L.GeoJSON for polygons */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   geoJsonLayer: Ref<any>
+  /** L.Layer for heatmap (leaflet.heat) */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   heatmapLayer: Ref<any>
+  /** L.Marker for search result marker */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   searchMarkerLayer: Ref<any>
+  /** L.GeoJSON for search result polygon */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   searchPolygonLayer: Ref<any>
   polygonsVisible: Ref<boolean>
@@ -226,7 +240,7 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     debounceTimer = window.setTimeout(() => {
       debounceTimer = null
       renderMarkers(markers)
-    }, 80)
+    }, MARKER_RENDER_DEBOUNCE_MS)
   }
 
   const renderMarkers = (markers: MarkerData[]) => {
@@ -295,8 +309,8 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
                 try {
                   const bounds = JSON.parse(decodeURIComponent(boundsStr)) as BoundsLiteral
                   onZoomToBounds(bounds)
-                } catch {
-                  // Ignore parse errors
+                } catch (e) {
+                  logDevError('Failed to parse popup bounds', e)
                 }
               }
             })
@@ -319,8 +333,8 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
                 try {
                   const bounds = JSON.parse(decodeURIComponent(boundsStr)) as BoundsLiteral
                   onZoomToBounds(bounds)
-                } catch {
-                  // Ignore parse errors
+                } catch (e) {
+                  logDevError('Failed to parse popup bounds', e)
                 }
               }
             })
@@ -403,8 +417,8 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
       try {
         layerToRemove.off()
         layerToRemove.remove()
-      } catch {
-        // Layer may already be removed, ignore
+      } catch (e) {
+        logDevError('Failed to remove heatmap layer', e)
       }
     }
 
@@ -494,8 +508,8 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     if (heatmapLayer.value) {
       try {
         heatmapLayer.value.remove()
-      } catch {
-        // Ignore
+      } catch (e) {
+        logDevError('Failed to cleanup heatmap layer', e)
       }
       heatmapLayer.value = null
     }

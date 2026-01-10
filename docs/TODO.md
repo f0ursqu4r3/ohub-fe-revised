@@ -41,15 +41,18 @@ Tracking enhancements for the map component.
 
 ### 🟡 Code Quality
 
-- [ ] **Remove `any` type assertions** - Add proper type augmentation for Leaflet instead of `eslint-disable` comments
+- [x] **Remove `any` type assertions** - Add proper type augmentation for Leaflet instead of `eslint-disable` comments
+  - Note: `any` retained for vue-use-leaflet interop (types don't match @types/leaflet), added JSDoc comments
 
-- [ ] **Extract magic numbers to config** - Constants like `MAX_ROWS = 6`, `POLYGON_VISIBLE_ZOOM = 5`, playback interval `500ms`
+- [x] **Extract magic numbers to config** - Constants like `MAX_ROWS = 6`, `POLYGON_VISIBLE_ZOOM = 5`, playback interval `500ms`
+  - Created `/src/config/map.ts` with all map-related constants
 
-- [ ] **Audit unused code**:
-  - [ ] Check if `minimumEnclosingCircle` (~150 lines in utils.ts) is used
-  - [ ] Check if `HorizontalTimeScrubber.vue` is used (only Vertical is imported)
+- [x] **Audit unused code**:
+  - [x] Removed `minimumEnclosingCircle` (~150 lines) and `Circle` type from utils.ts
+  - [x] Removed `HorizontalTimeScrubber.vue` (was unused)
 
-- [ ] **Improve error handling** - Many catch blocks silently swallow errors; log in dev mode at minimum
+- [x] **Improve error handling** - Many catch blocks silently swallow errors; log in dev mode at minimum
+  - Added `logDevError()` helper that logs in dev mode only
 
 ---
 
@@ -67,7 +70,7 @@ Tracking enhancements for the map component.
 
 ### Quick Wins
 
-- [ ] Remove `HorizontalTimeScrubber.vue` if unused
+- [x] Remove `HorizontalTimeScrubber.vue` if unused
 - [x] Extract ~600 lines of CSS from MapComp.vue to separate file
 - [x] Consolidate geometry utils in one place
 - [x] Simplify cluster cache key string generation
@@ -83,5 +86,5 @@ Tracking enhancements for the map component.
 | 🟡 Medium | Lazy popup data computation        | CPU             | ✅      |
 | 🟡 Medium | Remove deep watchers               | CPU             | ✅      |
 | 🟡 Medium | Cache WKT polygons                 | CPU             | ✅      |
-| 🟢 Low    | Extract magic numbers              | Maintainability |        |
-| 🟢 Low    | Remove unused code                 | Bundle size     |        |
+| 🟢 Low    | Extract magic numbers              | Maintainability | ✅      |
+| 🟢 Low    | Remove unused code                 | Bundle size     | ✅      |

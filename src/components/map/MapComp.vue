@@ -32,6 +32,7 @@ import {
   TILE_LAYERS,
   type TileStyle,
 } from '@/composables/map'
+import { logDevError } from '@/config/map'
 
 // Extend L namespace for heatmap
 declare module 'leaflet' {
@@ -261,8 +262,8 @@ const switchTileLayer = (style: TileStyle) => {
       if (initialLayer._map) {
         initialLayer.remove()
       }
-    } catch {
-      // Ignore removal errors
+    } catch (e) {
+      logDevError('Failed to remove initial tile layer', e)
     }
   }
 

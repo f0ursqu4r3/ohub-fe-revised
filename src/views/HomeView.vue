@@ -16,6 +16,7 @@ import FloatingSearchBar from '@/components/FloatingSearchBar.vue'
 import VerticalTimeScrubber from '@/components/VerticalTimeScrubber.vue'
 import MapComp from '@/components/map/MapComp.vue'
 import type { PopupData, PopupDataBuilder } from '@/components/map/types'
+import { POPUP_MAX_ITEMS, PLAYBACK_BASE_INTERVAL_MS } from '@/config/map'
 import type { MultiPolygon, Polygon } from 'geojson'
 
 type MapMarker = {
@@ -121,7 +122,7 @@ const startPlayback = (direction: 'forward' | 'backward' = 'forward') => {
   }
 
   isPlaying.value = true
-  const intervalMs = 500 / playbackSpeed.value
+  const intervalMs = PLAYBACK_BASE_INTERVAL_MS / playbackSpeed.value
 
   playbackIntervalId.value = window.setInterval(() => {
     if (direction === 'forward') {
@@ -198,7 +199,6 @@ const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData
   const geometry = group.polygon ? wktToGeoJSON(group.polygon) : null
   const groupAreaInfo = geometry ? computeBoundsAndArea(geometry) : { bounds: null, areaKm2: 0 }
   const groupBounds = groupAreaInfo.bounds
-  const MAX_ROWS = 6
   const scoredOutages = outages.map((outage) => {
     const outageGeometry = outage.polygon ? wktToGeoJSON(outage.polygon) : null
     const outageAreaInfo = outageGeometry
@@ -230,7 +230,7 @@ const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData
     return `Outage ${letter}${suffix}`
   }
 
-  const items = sortedOutages.slice(0, MAX_ROWS).map((entry, idx) => {
+  const items = sortedOutages.slice(0, POPUP_MAX_ITEMS).map((entry, idx) => {
     const { outage, areaKm2, durationSeconds } = entry
     const nickname = nicknameForIndex(idx)
     const areaLabel = areaKm2 > 0.1 ? `${Math.round(areaKm2)} km²` : null
@@ -246,7 +246,7 @@ const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData
       sizeLabel,
     }
   })
-  const extraCount = Math.max(0, outages.length - MAX_ROWS)
+  const extraCount = Math.max(0, outages.length - POPUP_MAX_ITEMS)
   return {
     title,
     timeLabel,

@@ -1,5 +1,6 @@
 import L from 'leaflet'
 import type { Ref, ShallowRef } from 'vue'
+import { logDevError } from '../../config/map'
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -31,8 +32,10 @@ export interface UseMinimapOptions {
 }
 
 export interface MinimapRefs {
+  /** L.Map instance for minimap (vue-use-leaflet returns compatible type) */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   minimapInstance: Ref<any>
+  /** L.Rectangle for viewport indicator */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   minimapRect: Ref<any>
 }
@@ -103,8 +106,8 @@ export function useMinimap(options: UseMinimapOptions, refs: MinimapRefs) {
           animate: false,
         })
       }
-    } catch {
-      // Bounds not ready yet, ignore
+    } catch (e) {
+      logDevError('Failed to update minimap rect', e)
     }
   }
 
@@ -116,8 +119,8 @@ export function useMinimap(options: UseMinimapOptions, refs: MinimapRefs) {
       if (layer instanceof L.TileLayer) {
         try {
           layer.remove()
-        } catch {
-          // Ignore
+        } catch (e) {
+          logDevError('Failed to remove minimap tile layer', e)
         }
       }
     })
