@@ -22,7 +22,7 @@ import {
 } from 'vue-use-leaflet'
 import { storeToRefs } from 'pinia'
 import { useDarkModeStore } from '@/stores/darkMode'
-import type { MarkerData, PolygonData, BoundsLiteral } from './types'
+import type { MarkerData, PolygonData, BoundsLiteral, PopupDataBuilder } from './types'
 import MapControls from './MapControls.vue'
 import {
   useMapLayers,
@@ -63,6 +63,8 @@ const props = withDefaults(
     focusBounds?: BoundsLiteral | null
     searchMarker?: { lat: number; lng: number } | null
     searchPolygon?: Polygon | MultiPolygon | null
+    /** Optional lazy popup builder - if provided, popups compute on open instead of up-front */
+    popupBuilder?: PopupDataBuilder
   }>(),
   {
     zoomLevel: 4,
@@ -70,6 +72,7 @@ const props = withDefaults(
     focusBounds: null,
     searchMarker: null,
     searchPolygon: null,
+    popupBuilder: undefined,
   },
 )
 
@@ -188,6 +191,7 @@ const {
     showHeatmap,
     isZooming,
     onZoomToBounds: zoomToBounds,
+    popupBuilder: props.popupBuilder,
   },
   {
     markerLayer,
@@ -375,6 +379,8 @@ setTimeout(() => {
 // ─────────────────────────────────────────────────────────────
 // Watchers
 // ─────────────────────────────────────────────────────────────
+// Use shallow comparison for markers/polygons arrays
+// The arrays are replaced (not mutated) when data changes, so deep watching is unnecessary
 watch(
   () => props.markers,
   () => {
@@ -383,13 +389,11 @@ watch(
       renderHeatmap(props.markers)
     }
   },
-  { deep: true },
 )
 
 watch(
   () => props.polygons,
   () => renderPolygons(props.polygons),
-  { deep: true },
 )
 
 watch(

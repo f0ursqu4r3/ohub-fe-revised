@@ -15,13 +15,15 @@ import {
 import FloatingSearchBar from '@/components/FloatingSearchBar.vue'
 import VerticalTimeScrubber from '@/components/VerticalTimeScrubber.vue'
 import MapComp from '@/components/map/MapComp.vue'
-import type { PopupData } from '@/components/map/types'
+import type { PopupData, PopupDataBuilder } from '@/components/map/types'
 import type { MultiPolygon, Polygon } from 'geojson'
 
 type MapMarker = {
   lat: number
   lng: number
   popupData?: PopupData
+  outageGroup?: GroupedOutage
+  blockTs?: number | null
   count: number
 }
 
@@ -64,7 +66,9 @@ const mapMarkers = computed<MapMarker[]>(() =>
     lat: group.center[0],
     lng: group.center[1],
     count: group.outages.length,
-    popupData: buildPopupData(group, selectedOutageTs.value),
+    // Store group for lazy popup computation instead of pre-computing popupData
+    outageGroup: group,
+    blockTs: selectedOutageTs.value,
   })),
 )
 
@@ -263,6 +267,7 @@ const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData
       :focus-bounds="focusBounds"
       :search-marker="searchMarker"
       :search-polygon="searchPolygon"
+      :popup-builder="buildPopupData"
       class="z-0"
       @setZoom="setZoomLevel"
       @update:showPlaybackControls="showPlaybackControls = $event"

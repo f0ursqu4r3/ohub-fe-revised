@@ -1,7 +1,12 @@
 import L from 'leaflet'
 import type { Ref, ShallowRef } from 'vue'
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
-import type { MarkerData, PolygonData, BoundsLiteral } from '../../components/map/types'
+import type {
+  MarkerData,
+  PolygonData,
+  BoundsLiteral,
+  PopupDataBuilder,
+} from '../../components/map/types'
 
 // ─────────────────────────────────────────────────────────────
 // Constants
@@ -13,6 +18,9 @@ export const BRAND_OUTAGE_COLOR = '#ff9c1a'
 export const BRAND_OUTAGE_FILL = 'rgba(255, 212, 138, 0.3)'
 export const SEARCH_COLOR = '#6366f1'
 export const SEARCH_FILL = 'rgba(99, 102, 241, 0.15)'
+
+/** Switch to CircleMarkers when marker count exceeds this threshold */
+export const CIRCLE_MARKER_THRESHOLD = 150
 
 // ─────────────────────────────────────────────────────────────
 // Icon Factories
@@ -61,18 +69,68 @@ export const createSearchIcon = (): L.DivIcon => {
 }
 
 // ─────────────────────────────────────────────────────────────
+// CircleMarker Factories (lightweight, for large datasets)
+// ─────────────────────────────────────────────────────────────
+export const getCircleMarkerRadius = (count: number): number => {
+  if (count >= 100) return 14
+  if (count >= 20) return 11
+  if (count >= 5) return 9
+  return count > 1 ? 7 : 6
+}
+
+export const createCircleMarkerOptions = (count: number): L.CircleMarkerOptions => {
+  const isCluster = count > 1
+  return {
+    radius: getCircleMarkerRadius(count),
+    color: isCluster ? BRAND_CLUSTER_COLOR : BRAND_OUTAGE_COLOR,
+    fillColor: isCluster ? BRAND_CLUSTER_COLOR : BRAND_OUTAGE_COLOR,
+    fillOpacity: 0.8,
+    weight: 2,
+    opacity: 1,
+    className: 'map-circle-marker',
+  }
+}
+
+/** Lightweight text label for cluster counts (used with CircleMarkers) */
+export const createClusterLabelIcon = (count: number): L.DivIcon => {
+  const size = getCircleMarkerRadius(count) * 2
+  return L.divIcon({
+    html: `<span class="circle-marker-label">${count}</span>`,
+    className: 'circle-marker-label-container',
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  })
+}
+
+// ─────────────────────────────────────────────────────────────
 // Tooltip & Popup Builders
 // ─────────────────────────────────────────────────────────────
 export const buildTooltipContent = (data: MarkerData): string => {
-  if (!data.popupData) return 'Outage'
+  // Use pre-computed popupData if available (legacy path)
+  if (data.popupData) {
+    const { title, timeLabel } = data.popupData
+    return `
+      <div class="map-tooltip">
+        <strong>${title}</strong>
+        <span>${timeLabel}</span>
+      </div>
+    `
+  }
 
-  const { title, timeLabel } = data.popupData
-  return `
-    <div class="map-tooltip">
-      <strong>${title}</strong>
-      <span>${timeLabel}</span>
-    </div>
-  `
+  // Build tooltip from outageGroup for lazy popup mode
+  if (data.outageGroup) {
+    const { outages, providers } = data.outageGroup
+    const count = outages.length
+    const title = count === 1 ? (providers[0] ?? 'Outage') : `${count} events`
+    return `
+      <div class="map-tooltip">
+        <strong>${title}</strong>
+        <span>${count === 1 ? 'Click for details' : `${providers.length} provider${providers.length > 1 ? 's' : ''}`}</span>
+      </div>
+    `
+  }
+
+  return 'Outage'
 }
 
 export const buildPopupContent = (data: MarkerData): string => {
@@ -124,6 +182,8 @@ export interface UseMapLayersOptions {
   showHeatmap: Ref<boolean>
   isZooming: Ref<boolean>
   onZoomToBounds: (bounds: BoundsLiteral) => void
+  /** Optional lazy popup data builder - if provided, popups compute on open */
+  popupBuilder?: PopupDataBuilder
 }
 
 export interface MapLayerRefs {
@@ -146,7 +206,8 @@ export interface MapLayerRefs {
 // Composable
 // ─────────────────────────────────────────────────────────────
 export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
-  const { map, showMarkers, showPolygons, showHeatmap, isZooming, onZoomToBounds } = options
+  const { map, showMarkers, showPolygons, showHeatmap, isZooming, onZoomToBounds, popupBuilder } =
+    options
   const {
     markerLayer,
     geoJsonLayer,
@@ -188,24 +249,42 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     // Skip if markers are hidden
     if (!showMarkers.value) return
 
+    // Use CircleMarkers for large datasets (better performance)
+    const useCircleMarkers = markers.length > CIRCLE_MARKER_THRESHOLD
+
     // Add markers with tooltips
     for (const marker of markers) {
       const count = marker.count ?? 1
-      const icon = count > 1 ? createClusterIcon(count) : createMarkerIcon()
 
-      const m = L.marker([marker.lat, marker.lng], { icon })
-        .bindTooltip(buildTooltipContent(marker), {
-          className: 'map-tooltip-container',
-          direction: 'top',
-          offset: [0, -10],
-          opacity: 1,
-        })
-        .bindPopup(buildPopupContent(marker), {
+      // Create either CircleMarker (fast) or Marker with DivIcon (pretty)
+      const m = useCircleMarkers
+        ? L.circleMarker([marker.lat, marker.lng], createCircleMarkerOptions(count))
+        : L.marker([marker.lat, marker.lng], {
+            icon: count > 1 ? createClusterIcon(count) : createMarkerIcon(),
+          })
+
+      // Bind tooltip
+      m.bindTooltip(buildTooltipContent(marker), {
+        className: 'map-tooltip-container',
+        direction: 'top',
+        offset: useCircleMarkers ? [0, -8] : [0, -10],
+        opacity: 1,
+      })
+
+      // Use lazy popup building if builder is provided and marker has outageGroup
+      if (popupBuilder && marker.outageGroup) {
+        // Bind empty popup initially - content will be set on open
+        m.bindPopup('', {
           className: 'map-popup-container',
           maxWidth: 280,
           minWidth: 200,
-        })
-        .on('popupopen', (e) => {
+        }).on('popupopen', (e) => {
+          // Build popup content lazily on open
+          const popupData = popupBuilder(marker.outageGroup!, marker.blockTs ?? null)
+          const content = buildPopupContent({ ...marker, popupData })
+          e.popup.setContent(content)
+
+          // Attach zoom button handlers
           const popup = e.popup.getElement()
           if (!popup) return
           popup.querySelectorAll('.map-popup__zoom-btn').forEach((btn) => {
@@ -223,7 +302,42 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
             })
           })
         })
+      } else {
+        // Use pre-computed popup data (legacy path)
+        m.bindPopup(buildPopupContent(marker), {
+          className: 'map-popup-container',
+          maxWidth: 280,
+          minWidth: 200,
+        }).on('popupopen', (e) => {
+          const popup = e.popup.getElement()
+          if (!popup) return
+          popup.querySelectorAll('.map-popup__zoom-btn').forEach((btn) => {
+            btn.addEventListener('click', (evt) => {
+              evt.stopPropagation()
+              const boundsStr = (evt.currentTarget as HTMLElement).dataset.bounds
+              if (boundsStr) {
+                try {
+                  const bounds = JSON.parse(decodeURIComponent(boundsStr)) as BoundsLiteral
+                  onZoomToBounds(bounds)
+                } catch {
+                  // Ignore parse errors
+                }
+              }
+            })
+          })
+        })
+      }
+
       markerLayer.value!.addLayer(m)
+
+      // Add count label for CircleMarker clusters
+      if (useCircleMarkers && count > 1) {
+        const label = L.marker([marker.lat, marker.lng], {
+          icon: createClusterLabelIcon(count),
+          interactive: false, // Don't intercept clicks - let them pass to circle
+        })
+        markerLayer.value!.addLayer(label)
+      }
     }
   }
 

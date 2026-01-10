@@ -29,13 +29,13 @@ Tracking enhancements for the map component.
 
 ### 🟡 Performance Improvements
 
-- [ ] **Lazy popup data computation** - Don't pre-compute `buildPopupData` for all markers in computed property; compute on popup open instead
+- [x] **Lazy popup data computation** - Don't pre-compute `buildPopupData` for all markers in computed property; compute on popup open instead
 
-- [ ] **Remove deep watchers on large arrays** - Replace `{ deep: true }` watchers on markers/polygons with shallow comparison or manual triggers
+- [x] **Remove deep watchers on large arrays** - Replace `{ deep: true }` watchers on markers/polygons with shallow comparison or manual triggers
 
-- [ ] **Cache parsed WKT polygons** - `wktToGeoJSON` is called repeatedly; add memoization with WeakMap
+- [x] **Cache parsed WKT polygons** - `wktToGeoJSON` is called repeatedly; add memoization with Map
 
-- [ ] **Consider CircleMarkers for large datasets** - DivIcon HTML is heavy for hundreds of markers
+- [x] **Consider CircleMarkers for large datasets** - DivIcon HTML is heavy for hundreds of markers (auto-switches when >150 markers)
 
 ---
 
@@ -76,13 +76,12 @@ Tracking enhancements for the map component.
 
 ### Priority Order
 
-| Priority | Task                               | Impact          |
-| -------- | ---------------------------------- | --------------- |
-| 🔴 High   | Split MapComp.vue into composables | Maintainability |
-| 🔴 High   | Fix cluster cache key performance  | Memory/CPU      |
-| 🟡 Medium | Lazy popup data computation        | CPU             |
-| 🟡 Medium | Remove deep watchers               | CPU             |
-| 🟢 Low    | Extract magic numbers              | Maintainability |
-| 🟢 Low    | Remove unused code                 | Bundle size     |
-| 🟢 Low    | Extract magic numbers              | Maintainability |
-| 🟢 Low    | Remove unused code                 | Bundle size     |
+| Priority | Task                               | Impact          | Status |
+| -------- | ---------------------------------- | --------------- | ------ |
+| 🔴 High   | Split MapComp.vue into composables | Maintainability | ✅      |
+| 🔴 High   | Fix cluster cache key performance  | Memory/CPU      | ✅      |
+| 🟡 Medium | Lazy popup data computation        | CPU             | ✅      |
+| 🟡 Medium | Remove deep watchers               | CPU             | ✅      |
+| 🟡 Medium | Cache WKT polygons                 | CPU             | ✅      |
+| 🟢 Low    | Extract magic numbers              | Maintainability |        |
+| 🟢 Low    | Remove unused code                 | Bundle size     |        |

@@ -506,20 +506,39 @@ export const parsePolygonWKT = (wkt: string): Point[][][] => {
 }
 
 export const wktToGeoJSON = (wkt: string): GeoPolygon | null => {
-  const polygons = parsePolygonWKT(wkt)
-  if (!polygons.length) return null
+  // Check cache first
+  const cached = wktCache.get(wkt)
+  if (cached !== undefined) return cached
 
+  const polygons = parsePolygonWKT(wkt)
+  if (!polygons.length) {
+    wktCache.set(wkt, null)
+    return null
+  }
+
+  let result: GeoPolygon
   if (polygons.length === 1) {
-    return {
+    result = {
       type: 'Polygon',
       coordinates: polygons[0]!.map((ring) => ring.map(([lat, lon]) => [lon, lat])),
     }
+  } else {
+    result = {
+      type: 'MultiPolygon',
+      coordinates: polygons.map((poly) => poly.map((ring) => ring.map(([lat, lon]) => [lon, lat]))),
+    }
   }
 
-  return {
-    type: 'MultiPolygon',
-    coordinates: polygons.map((poly) => poly.map((ring) => ring.map(([lat, lon]) => [lon, lat]))),
-  }
+  wktCache.set(wkt, result)
+  return result
+}
+
+// WKT parse cache - stores parsed GeoJSON by WKT string
+const wktCache = new Map<string, GeoPolygon | null>()
+
+/** Clear the WKT parse cache (useful when switching datasets) */
+export const clearWktCache = (): void => {
+  wktCache.clear()
 }
 
 const stripSrid = (wkt: string): string => {
