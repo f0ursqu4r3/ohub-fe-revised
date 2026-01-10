@@ -457,12 +457,24 @@ const buildPopupContent = (data: MarkerData): string => {
   const { title, timeLabel, items, extraCount } = data.popupData
   const itemsHtml = items
     .map(
-      (item) => `
-      <div class="map-popup__item">
-        <span class="map-popup__provider">${item.provider}</span>
-        ${item.sizeLabel ? `<span class="map-popup__size">${item.sizeLabel}</span>` : ''}
-      </div>
-    `,
+      (item) => {
+        const zoomBtn = item.bounds
+          ? `<button class="map-popup__zoom-btn" data-bounds="${encodeURIComponent(JSON.stringify(item.bounds))}" title="Zoom to extent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+              </svg>
+            </button>`
+          : ''
+        return `
+          <div class="map-popup__item">
+            <div class="map-popup__item-info">
+              <span class="map-popup__provider">${item.provider}</span>
+              ${item.sizeLabel ? `<span class="map-popup__size">${item.sizeLabel}</span>` : ''}
+            </div>
+            ${zoomBtn}
+          </div>
+        `
+      },
     )
     .join('')
 
@@ -525,6 +537,24 @@ const renderMarkers = () => {
         className: 'map-popup-container',
         maxWidth: 280,
         minWidth: 200,
+      })
+      .on('popupopen', (e) => {
+        const popup = e.popup.getElement()
+        if (!popup) return
+        popup.querySelectorAll('.map-popup__zoom-btn').forEach((btn) => {
+          btn.addEventListener('click', (evt) => {
+            evt.stopPropagation()
+            const boundsStr = (evt.currentTarget as HTMLElement).dataset.bounds
+            if (boundsStr) {
+              try {
+                const bounds = JSON.parse(decodeURIComponent(boundsStr)) as BoundsLiteral
+                zoomToBounds(bounds)
+              } catch {
+                // Ignore parse errors
+              }
+            }
+          })
+        })
       })
     markerLayer.value!.addLayer(m)
   }
@@ -1574,6 +1604,41 @@ defineExpose({
   padding: 8px 10px;
   background: rgba(5, 15, 29, 0.03);
   border-radius: 8px;
+}
+
+.map-popup__item-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.map-popup__zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: rgba(24, 184, 166, 0.1);
+  color: #18b8a6;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.map-popup__zoom-btn:hover {
+  background: rgba(24, 184, 166, 0.2);
+  color: #14a897;
+  transform: scale(1.05);
+}
+
+.map-popup__zoom-btn:active {
+  transform: scale(0.95);
 }
 
 .map-popup__provider {
