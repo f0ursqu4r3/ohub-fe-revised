@@ -24,4 +24,4 @@ Tracking enhancements for the map component.
 - [x] Heatmap layer toggle
 - [x] Time playback animation for outages
 - [x] Layer controls for toggling data visibility
-- [ ] Tile caching with service worker
+- [x] Tile caching with service worker

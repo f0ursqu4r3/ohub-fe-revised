@@ -14,3 +14,17 @@ app.use(router)
 app.use(ui)
 
 app.mount('#app')
+
+// Register service worker for tile caching
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((registration) => {
+        console.log('SW registered:', registration.scope)
+      })
+      .catch((error) => {
+        console.warn('SW registration failed:', error)
+      })
+  })
+}
