@@ -456,16 +456,15 @@ const buildPopupContent = (data: MarkerData): string => {
 
   const { title, timeLabel, items, extraCount } = data.popupData
   const itemsHtml = items
-    .map(
-      (item) => {
-        const zoomBtn = item.bounds
-          ? `<button class="map-popup__zoom-btn" data-bounds="${encodeURIComponent(JSON.stringify(item.bounds))}" title="Zoom to extent">
+    .map((item) => {
+      const zoomBtn = item.bounds
+        ? `<button class="map-popup__zoom-btn" data-bounds="${encodeURIComponent(JSON.stringify(item.bounds))}" title="Zoom to extent">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
                 <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
               </svg>
             </button>`
-          : ''
-        return `
+        : ''
+      return `
           <div class="map-popup__item">
             <div class="map-popup__item-info">
               <span class="map-popup__provider">${item.provider}</span>
@@ -474,8 +473,7 @@ const buildPopupContent = (data: MarkerData): string => {
             ${zoomBtn}
           </div>
         `
-      },
-    )
+    })
     .join('')
 
   const extraHtml = extraCount > 0 ? `<p class="map-popup__extra">+${extraCount} more</p>` : ''
