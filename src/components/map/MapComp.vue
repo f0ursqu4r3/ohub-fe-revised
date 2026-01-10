@@ -266,7 +266,7 @@ const initMinimap = () => {
     boxZoom: false,
     keyboard: false,
     center: [56.0, -96.0],
-    zoom: 1,
+    zoom: 2,
     minZoom: 1,
     maxZoom: 4,
   })
