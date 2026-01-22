@@ -243,6 +243,7 @@ const graphPath = computed(() => {
     const p0 = points[i - 1] ?? points[i]
     const p1 = points[i]
     const p2 = points[i + 1]
+    if (!p2) break
     const p3 = points[i + 2] ?? p2
 
     const cp1x = p1.x + (p2.x - p0.x) / 6
@@ -276,6 +277,7 @@ const graphAreaPath = computed(() => {
     const p0 = points[i - 1] ?? points[i]
     const p1 = points[i]
     const p2 = points[i + 1]
+    if (!p2) break
     const p3 = points[i + 2] ?? p2
 
     const cp1x = p1.x + (p2.x - p0.x) / 6
