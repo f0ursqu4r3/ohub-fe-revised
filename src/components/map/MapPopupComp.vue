@@ -1,8 +1,9 @@
 <script lang="ts" setup>
+import { computed } from 'vue'
 import { ScanSearch } from 'lucide-vue-next'
 import type { PopupData, BoundsLiteral } from './types'
 
-defineProps<{
+const props = defineProps<{
   popupData: PopupData
 }>()
 
@@ -17,6 +18,10 @@ function encodeBounds(bounds: BoundsLiteral) {
 function onZoom(bounds: BoundsLiteral) {
   emit('zoom', bounds)
 }
+
+const isSingle = computed(
+  () => props.popupData.items.length === 1 && props.popupData.extraCount === 0,
+)
 </script>
 
 <template>
@@ -38,19 +43,34 @@ function onZoom(bounds: BoundsLiteral) {
         class="flex items-start justify-between gap-2.5 rounded-lg bg-[#f1f5f9] px-2.5 pb-[7px] pt-2 shadow-[0_1px_2px_rgba(24,184,166,0.04)] transition-shadow duration-150 hover:shadow-[0_2px_8px_rgba(24,184,166,0.1)]"
       >
         <div class="flex min-w-0 flex-1 flex-col gap-0.5 wrap-break-word">
-          <span class="text-[14px] font-semibold text-[#18b8a6]">{{ item.provider }}</span>
-          <span v-if="item.sizeLabel" class="text-[13px] text-[#64748b]">{{ item.sizeLabel }}</span>
-          <span v-if="item.outageType" class="text-[13px] text-[#ff7c00]">
-            {{ item.outageType }}
-          </span>
-          <span v-if="item.cause" class="text-[13px] text-[#b91c1c]">{{ item.cause }}</span>
-          <span v-if="item.customerCount != null" class="text-[13px] text-primary-900">
-            {{ item.customerCount }} customers
-          </span>
-          <span v-if="item.isPlanned != null" class="text-[13px] text-[#64748b]">
-            {{ item.isPlanned ? 'Planned' : 'Unplanned' }}
-          </span>
-          <span v-if="item.etr" class="text-[13px] text-[#2563eb]">ETR: {{ item.etr }}</span>
+          <template v-if="isSingle">
+            <span v-if="item.sizeLabel" class="text-[13px] text-[#64748b]">{{
+              item.sizeLabel
+            }}</span>
+            <span v-if="item.outageType" class="text-[13px] text-[#ff7c00]">
+              {{ item.outageType }}
+            </span>
+            <span v-if="item.cause" class="text-[13px] text-[#b91c1c]">{{ item.cause }}</span>
+            <span v-if="item.customerCount != null" class="text-[13px] text-primary-900">
+              {{ item.customerCount }} customers
+            </span>
+            <span v-if="item.isPlanned != null" class="text-[13px] text-[#64748b]">
+              {{ item.isPlanned ? 'Planned' : 'Unplanned' }}
+            </span>
+            <span v-if="item.etr" class="text-[13px] text-[#2563eb]">ETR: {{ item.etr }}</span>
+          </template>
+          <template v-else>
+            <span class="text-[14px] font-semibold text-[#18b8a6]">{{ item.provider }}</span>
+            <span v-if="item.sizeLabel" class="text-[13px] text-[#64748b]">{{
+              item.sizeLabel
+            }}</span>
+            <span v-if="item.outageType" class="text-[13px] text-[#ff7c00]">
+              {{ item.outageType }}
+            </span>
+            <span v-if="item.customerCount != null" class="text-[13px] text-primary-900">
+              {{ item.customerCount }} customers
+            </span>
+          </template>
         </div>
         <button
           v-if="item.bounds"
