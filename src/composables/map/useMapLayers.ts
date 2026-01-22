@@ -1,3 +1,6 @@
+import { createApp } from 'vue'
+// Static import for popup Vue component
+import MapPopupComp from '../../components/map/MapPopupComp.vue'
 import L from 'leaflet'
 import type { Ref, ShallowRef } from 'vue'
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
@@ -300,26 +303,22 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
         }).on('popupopen', (e) => {
           // Build popup content lazily on open
           const popupData = popupBuilder(marker.outageGroup!, marker.blockTs ?? null)
-          const content = buildPopupContent({ ...marker, popupData })
-          e.popup.setContent(content)
-
-          // Attach zoom button handlers
-          const popup = e.popup.getElement()
-          if (!popup) return
-          popup.querySelectorAll('.map-popup__zoom-btn').forEach((btn) => {
-            btn.addEventListener('click', (evt) => {
-              evt.stopPropagation()
-              const boundsStr = (evt.currentTarget as HTMLElement).dataset.bounds
-              if (boundsStr) {
-                try {
-                  const bounds = JSON.parse(decodeURIComponent(boundsStr)) as BoundsLiteral
-                  onZoomToBounds(bounds)
-                } catch (e) {
-                  logDevError('Failed to parse popup bounds', e)
-                }
-              }
-            })
+          if (!popupData) {
+            e.popup.setContent('<div class="map-popup__empty">No details available</div>')
+            return
+          }
+          // Mount Vue component directly
+          const container = document.createElement('div')
+          const app = createApp(MapPopupComp, {
+            popupData,
+            onZoom: (bounds: import('../../components/map/types').BoundsLiteral) =>
+              onZoomToBounds(bounds),
           })
+          app.mount(container)
+          e.popup.setContent(container)
+          if (e.popup && typeof e.popup.update === 'function') {
+            setTimeout(() => e.popup.update(), 0)
+          }
         })
       } else {
         // Use pre-computed popup data (legacy path)
