@@ -25,13 +25,15 @@ const isSingle = computed(
 </script>
 
 <template>
-  <div class="max-w-[320px] min-w-[220px] overflow-hidden p-0 pb-2.5 text-[15px]">
+  <div
+    class="max-w-[320px] min-w-[220px] overflow-hidden p-0 pb-2.5 text-[15px] text-(--ui-text)"
+  >
     <div class="flex items-center gap-3 pb-2.5 pl-3.5 pr-4 pt-3">
       <div class="min-w-0 flex-1">
-        <h3 class="mb-px truncate text-[17px] font-bold leading-[1.2] text-primary-900">
+        <h3 class="mb-px truncate text-[17px] font-bold leading-[1.2] text-(--ui-text)">
           {{ popupData.title }}
         </h3>
-        <time class="block text-[12.5px] text-[#2563eb] opacity-[0.85]">
+        <time class="block text-[12.5px] text-primary-600 opacity-[0.85] dark:text-primary-400">
           {{ popupData.timeLabel }}
         </time>
       </div>
@@ -40,41 +42,47 @@ const isSingle = computed(
       <div
         v-for="(item, idx) in popupData.items"
         :key="idx"
-        class="flex items-start justify-between gap-2.5 rounded-lg bg-[#f1f5f9] px-2.5 pb-[7px] pt-2 shadow-[0_1px_2px_rgba(24,184,166,0.04)] transition-shadow duration-150 hover:shadow-[0_2px_8px_rgba(24,184,166,0.1)]"
+        class="flex items-start justify-between gap-2.5 rounded-lg border border-(--ui-border-muted) bg-(--ui-bg-elevated)/70 px-2.5 pb-[7px] pt-2 shadow-[0_1px_2px_rgba(24,184,166,0.04)] transition-shadow duration-150 hover:shadow-[0_2px_8px_rgba(24,184,166,0.1)]"
       >
         <div class="flex min-w-0 flex-1 flex-col gap-0.5 wrap-break-word">
           <template v-if="isSingle">
-            <span v-if="item.sizeLabel" class="text-[13px] text-[#64748b]">{{
+            <span v-if="item.sizeLabel" class="text-[13px] text-(--ui-text-muted)">{{
               item.sizeLabel
             }}</span>
-            <span v-if="item.outageType" class="text-[13px] text-[#ff7c00]">
+            <span v-if="item.outageType" class="text-[13px] text-amber-600 dark:text-amber-400">
               {{ item.outageType }}
             </span>
-            <span v-if="item.cause" class="text-[13px] text-[#b91c1c]">{{ item.cause }}</span>
-            <span v-if="item.customerCount != null" class="text-[13px] text-primary-900">
+            <span v-if="item.cause" class="text-[13px] text-rose-600 dark:text-rose-400">
+              {{ item.cause }}
+            </span>
+            <span v-if="item.customerCount != null" class="text-[13px] text-(--ui-text)">
               {{ item.customerCount }} customers
             </span>
-            <span v-if="item.isPlanned != null" class="text-[13px] text-[#64748b]">
+            <span v-if="item.isPlanned != null" class="text-[13px] text-(--ui-text-muted)">
               {{ item.isPlanned ? 'Planned' : 'Unplanned' }}
             </span>
-            <span v-if="item.etr" class="text-[13px] text-[#2563eb]">ETR: {{ item.etr }}</span>
+            <span v-if="item.etr" class="text-[13px] text-primary-600 dark:text-primary-400">
+              ETR: {{ item.etr }}
+            </span>
           </template>
           <template v-else>
-            <span class="text-[14px] font-semibold text-[#18b8a6]">{{ item.provider }}</span>
-            <span v-if="item.sizeLabel" class="text-[13px] text-[#64748b]">{{
+            <span class="text-[14px] font-semibold text-primary-600 dark:text-primary-400">{{
+              item.provider
+            }}</span>
+            <span v-if="item.sizeLabel" class="text-[13px] text-(--ui-text-muted)">{{
               item.sizeLabel
             }}</span>
-            <span v-if="item.outageType" class="text-[13px] text-[#ff7c00]">
+            <span v-if="item.outageType" class="text-[13px] text-amber-600 dark:text-amber-400">
               {{ item.outageType }}
             </span>
-            <span v-if="item.customerCount != null" class="text-[13px] text-primary-900">
+            <span v-if="item.customerCount != null" class="text-[13px] text-(--ui-text)">
               {{ item.customerCount }} customers
             </span>
           </template>
         </div>
         <button
           v-if="item.bounds"
-          class="ml-1.5 inline-flex cursor-pointer items-center gap-0.5 self-start rounded-[7px] border-0 bg-[linear-gradient(90deg,#e8eef7_60%,#d8e4f3_100%)] p-1 text-[#18b8a6] shadow-[0_1px_2px_rgba(24,184,166,0.07)] transition duration-150 hover:bg-[#c7e6e2] hover:text-primary-900 hover:shadow-[0_2px_8px_rgba(24,184,166,0.13)] active:scale-95"
+          class="ml-1.5 inline-flex cursor-pointer items-center gap-0.5 self-start rounded-[7px] border border-(--ui-border) bg-(--ui-bg-elevated) p-1 text-primary-600 shadow-[0_1px_2px_rgba(24,184,166,0.07)] transition duration-150 hover:bg-primary-500/10 hover:text-primary-700 hover:shadow-[0_2px_8px_rgba(24,184,166,0.13)] active:scale-95 dark:text-primary-400 dark:hover:text-primary-300"
           :data-bounds="encodeBounds(item.bounds)"
           title="Zoom to extent"
           @click.stop="onZoom(item.bounds)"
@@ -83,7 +91,10 @@ const isSingle = computed(
         </button>
       </div>
     </div>
-    <p v-if="popupData.extraCount > 0" class="mt-2.5 pl-[18px] text-[13px] text-[#64748b]">
+    <p
+      v-if="popupData.extraCount > 0"
+      class="mt-2.5 pl-[18px] text-[13px] text-(--ui-text-muted)"
+    >
       +{{ popupData.extraCount }} more
     </p>
   </div>
