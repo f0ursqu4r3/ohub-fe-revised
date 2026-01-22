@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   Layers,
-  LocateFixed,
+  Locate,
   Maximize2,
   Minimize2,
   Minus,
@@ -51,7 +51,7 @@ const emit = defineEmits<{
       aria-label="My location"
       @click="emit('locateMe')"
     >
-      <LocateFixed />
+      <Locate />
     </button>
     <button
       class="map-control-btn"
