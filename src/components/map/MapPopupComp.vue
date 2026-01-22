@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { ScanSearch } from 'lucide-vue-next'
 import type { PopupData, BoundsLiteral } from './types'
 
 defineProps<{
@@ -30,7 +31,7 @@ function onZoom(bounds: BoundsLiteral) {
         </time>
       </div>
     </div>
-    <div class="flex flex-col gap-3 px-4 pt-3">
+    <div class="flex flex-col gap-3 p-2">
       <div
         v-for="(item, idx) in popupData.items"
         :key="idx"
@@ -53,21 +54,12 @@ function onZoom(bounds: BoundsLiteral) {
         </div>
         <button
           v-if="item.bounds"
-          class="ml-1.5 inline-flex cursor-pointer items-center gap-0.5 self-start rounded-[7px] border-0 bg-[linear-gradient(90deg,#e8eef7_60%,#d8e4f3_100%)] px-2 py-1 text-[#18b8a6] shadow-[0_1px_2px_rgba(24,184,166,0.07)] transition duration-150 hover:bg-[#c7e6e2] hover:text-primary-900 hover:shadow-[0_2px_8px_rgba(24,184,166,0.13)] active:scale-95"
+          class="ml-1.5 inline-flex cursor-pointer items-center gap-0.5 self-start rounded-[7px] border-0 bg-[linear-gradient(90deg,#e8eef7_60%,#d8e4f3_100%)] p-1 text-[#18b8a6] shadow-[0_1px_2px_rgba(24,184,166,0.07)] transition duration-150 hover:bg-[#c7e6e2] hover:text-primary-900 hover:shadow-[0_2px_8px_rgba(24,184,166,0.13)] active:scale-95"
           :data-bounds="encodeBounds(item.bounds)"
           title="Zoom to extent"
           @click.stop="onZoom(item.bounds)"
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            width="16"
-            height="16"
-          >
-            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-          </svg>
+          <ScanSearch class="h-4 w-4" />
         </button>
       </div>
     </div>

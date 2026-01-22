@@ -1,4 +1,16 @@
 <script setup lang="ts">
+import {
+  Layers,
+  LocateFixed,
+  Maximize2,
+  Minimize2,
+  Minus,
+  Moon,
+  Plus,
+  RotateCcw,
+  Sun,
+} from 'lucide-vue-next'
+
 defineProps<{
   isDarkMode: boolean
   isFullscreen: boolean
@@ -19,14 +31,10 @@ const emit = defineEmits<{
 <template>
   <div class="map-controls">
     <button class="map-control-btn" title="Zoom in" aria-label="Zoom in" @click="emit('zoomIn')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 5v14M5 12h14" />
-      </svg>
+      <Plus />
     </button>
     <button class="map-control-btn" title="Zoom out" aria-label="Zoom out" @click="emit('zoomOut')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M5 12h14" />
-      </svg>
+      <Minus />
     </button>
     <div class="map-controls__divider"></div>
     <button
@@ -35,10 +43,7 @@ const emit = defineEmits<{
       aria-label="Reset view"
       @click="emit('resetView')"
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-        <path d="M3 3v5h5" />
-      </svg>
+      <RotateCcw />
     </button>
     <button
       class="map-control-btn"
@@ -46,10 +51,7 @@ const emit = defineEmits<{
       aria-label="My location"
       @click="emit('locateMe')"
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M12 2v2M12 20v2M2 12h2M20 12h2" />
-      </svg>
+      <LocateFixed />
     </button>
     <button
       class="map-control-btn"
@@ -57,22 +59,8 @@ const emit = defineEmits<{
       :aria-label="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
       @click="emit('toggleFullscreen')"
     >
-      <svg
-        v-if="!isFullscreen"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <path
-          d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"
-        />
-      </svg>
-      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path
-          d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"
-        />
-      </svg>
+      <Maximize2 v-if="!isFullscreen" />
+      <Minimize2 v-else />
     </button>
     <div class="map-controls__divider"></div>
     <!-- Dark Mode Toggle -->
@@ -83,21 +71,8 @@ const emit = defineEmits<{
       :aria-label="isDarkMode ? 'Light mode' : 'Dark mode'"
       @click="emit('toggleDarkMode')"
     >
-      <svg
-        v-if="!isDarkMode"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-      </svg>
-      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="5" />
-        <path
-          d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
-        />
-      </svg>
+      <Moon v-if="!isDarkMode" />
+      <Sun v-else />
     </button>
     <!-- Layer Controls Toggle -->
     <button
@@ -107,11 +82,7 @@ const emit = defineEmits<{
       aria-label="Layer controls"
       @click="emit('toggleLayerControls')"
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 2L2 7l10 5 10-5-10-5z" />
-        <path d="M2 17l10 5 10-5" />
-        <path d="M2 12l10 5 10-5" />
-      </svg>
+      <Layers />
     </button>
   </div>
 </template>

@@ -8,6 +8,7 @@ import type {
   MarkerData,
   PolygonData,
   BoundsLiteral,
+  PopupData,
   PopupDataBuilder,
 } from '../../components/map/types'
 import {
@@ -145,50 +146,6 @@ export const buildTooltipContent = (data: MarkerData): string => {
   return 'Outage'
 }
 
-export const buildPopupContent = (data: MarkerData): string => {
-  if (!data.popupData) {
-    return `<div class="map-popup"><p class="map-popup__empty">No details available</p></div>`
-  }
-
-  const { title, timeLabel, items, extraCount } = data.popupData
-  const itemsHtml = items
-    .map((item) => {
-      const zoomBtn = item.bounds
-        ? `<button class="map-popup__zoom-btn" data-bounds="${encodeURIComponent(JSON.stringify(item.bounds))}" title="Zoom to extent">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
-              </svg>
-            </button>`
-        : ''
-      return `
-        <div class="map-popup__item">
-          <div class="map-popup__item-info">
-            <span class="map-popup__provider">${item.provider}</span>
-            ${item.sizeLabel ? `<span class="map-popup__size">${item.sizeLabel}</span>` : ''}
-            ${item.outageType ? `<span class=\"map-popup__type\">${item.outageType}</span>` : ''}
-            ${item.cause ? `<span class=\"map-popup__cause\">${item.cause}</span>` : ''}
-            ${item.customerCount !== undefined && item.customerCount !== null ? `<span class=\"map-popup__customers\">${item.customerCount} customers</span>` : ''}
-            ${item.isPlanned !== undefined && item.isPlanned !== null ? `<span class=\"map-popup__planned\">${item.isPlanned ? 'Planned' : 'Unplanned'}</span>` : ''}
-            ${item.etr ? `<span class=\"map-popup__etr\">ETR: ${item.etr}</span>` : ''}
-          </div>
-          ${zoomBtn}
-        </div>
-      `
-    })
-    .join('')
-
-  const extraHtml = extraCount > 0 ? `<p class="map-popup__extra">+${extraCount} more</p>` : ''
-
-  return `
-    <div class="map-popup">
-      <h3 class="map-popup__title">${title}</h3>
-      <time class="map-popup__time">${timeLabel}</time>
-      <div class="map-popup__items">${itemsHtml}</div>
-      ${extraHtml}
-    </div>
-  `
-}
-
 // ─────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────
@@ -251,6 +208,24 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     }, MARKER_RENDER_DEBOUNCE_MS)
   }
 
+  const mountPopupContent = (popup: L.Popup, popupData: PopupData | null | undefined) => {
+    if (!popupData) {
+      popup.setContent('<div class="map-popup__empty">No details available</div>')
+      return
+    }
+
+    const container = document.createElement('div')
+    const app = createApp(MapPopupComp, {
+      popupData,
+      onZoom: (bounds: BoundsLiteral) => onZoomToBounds(bounds),
+    })
+    app.mount(container)
+    popup.setContent(container)
+    if (typeof popup.update === 'function') {
+      setTimeout(() => popup.update(), 0)
+    }
+  }
+
   const renderMarkers = (markers: MarkerData[]) => {
     const activeMap = map.value
     if (!activeMap || !activeMap.getContainer()) return
@@ -293,56 +268,24 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
         opacity: 1,
       })
 
+      const popupOptions = {
+        className: 'map-popup-container',
+        maxWidth: 280,
+        minWidth: 200,
+      }
+
       // Use lazy popup building if builder is provided and marker has outageGroup
       if (popupBuilder && marker.outageGroup) {
         // Bind empty popup initially - content will be set on open
-        m.bindPopup('', {
-          className: 'map-popup-container',
-          maxWidth: 280,
-          minWidth: 200,
-        }).on('popupopen', (e) => {
+        m.bindPopup('', popupOptions).on('popupopen', (e) => {
           // Build popup content lazily on open
           const popupData = popupBuilder(marker.outageGroup!, marker.blockTs ?? null)
-          if (!popupData) {
-            e.popup.setContent('<div class="map-popup__empty">No details available</div>')
-            return
-          }
-          // Mount Vue component directly
-          const container = document.createElement('div')
-          const app = createApp(MapPopupComp, {
-            popupData,
-            onZoom: (bounds: import('../../components/map/types').BoundsLiteral) =>
-              onZoomToBounds(bounds),
-          })
-          app.mount(container)
-          e.popup.setContent(container)
-          if (e.popup && typeof e.popup.update === 'function') {
-            setTimeout(() => e.popup.update(), 0)
-          }
+          mountPopupContent(e.popup, popupData)
         })
       } else {
         // Use pre-computed popup data (legacy path)
-        m.bindPopup(buildPopupContent(marker), {
-          className: 'map-popup-container',
-          maxWidth: 280,
-          minWidth: 200,
-        }).on('popupopen', (e) => {
-          const popup = e.popup.getElement()
-          if (!popup) return
-          popup.querySelectorAll('.map-popup__zoom-btn').forEach((btn) => {
-            btn.addEventListener('click', (evt) => {
-              evt.stopPropagation()
-              const boundsStr = (evt.currentTarget as HTMLElement).dataset.bounds
-              if (boundsStr) {
-                try {
-                  const bounds = JSON.parse(decodeURIComponent(boundsStr)) as BoundsLiteral
-                  onZoomToBounds(bounds)
-                } catch (e) {
-                  logDevError('Failed to parse popup bounds', e)
-                }
-              }
-            })
-          })
+        m.bindPopup('', popupOptions).on('popupopen', (e) => {
+          mountPopupContent(e.popup, marker.popupData ?? null)
         })
       }
 

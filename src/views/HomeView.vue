@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from 'vue'
+import { Pause, Play, StepBack, StepForward } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { useOutageStore } from '@/stores/outages'
 import {
@@ -15,7 +16,7 @@ import {
 import FloatingSearchBar from '@/components/FloatingSearchBar.vue'
 import VerticalTimeScrubber from '@/components/VerticalTimeScrubber.vue'
 import MapComp from '@/components/map/MapComp.vue'
-import type { PopupData, PopupDataBuilder } from '@/components/map/types'
+import type { PopupData } from '@/components/map/types'
 import { POPUP_MAX_ITEMS, PLAYBACK_BASE_INTERVAL_MS } from '@/config/map'
 import type { MultiPolygon, Polygon } from 'geojson'
 
@@ -333,9 +334,7 @@ const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData
           title="Step backward"
           @click="stepBackward"
         >
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6l-8.5 6z" />
-          </svg>
+          <StepBack class="h-4 w-4" />
         </button>
 
         <button
@@ -343,12 +342,8 @@ const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData
           :title="isPlaying ? 'Pause' : 'Play'"
           @click="togglePlayback"
         >
-          <svg v-if="!isPlaying" class="h-5 w-5 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8 5v14l11-7L8 5z" />
-          </svg>
-          <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-          </svg>
+          <Play v-if="!isPlaying" class="ml-0.5 h-5 w-5" />
+          <Pause v-else class="h-5 w-5" />
         </button>
 
         <button
@@ -357,9 +352,7 @@ const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData
           title="Step forward"
           @click="stepForward"
         >
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M6 18l8.5-6L6 6v12zm10-12v12h2V6h-2z" />
-          </svg>
+          <StepForward class="h-4 w-4" />
         </button>
 
         <div class="mx-1 h-5 w-px bg-(--ui-border)"></div>
