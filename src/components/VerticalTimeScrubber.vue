@@ -4,6 +4,13 @@ import { storeToRefs } from 'pinia'
 import { useOutageStore } from '@/stores/outages'
 import { TimeInterval } from '@/types/outage'
 
+let openScrubberCount = 0
+
+const syncTimelineBodyClass = () => {
+  if (typeof document === 'undefined') return
+  document.body.classList.toggle('timeline-open', openScrubberCount > 0)
+}
+
 const outageStore = useOutageStore()
 const { selectedOutageTs, blocks, maxCount, timeInterval } = storeToRefs(outageStore)
 
@@ -279,6 +286,16 @@ const toggleScrubber = () => {
   open.value = !open.value
 }
 
+watch(open, (next, prev) => {
+  if (next === prev) return
+  if (next) {
+    openScrubberCount += 1
+  } else {
+    openScrubberCount = Math.max(0, openScrubberCount - 1)
+  }
+  syncTimelineBodyClass()
+})
+
 watch(
   () => selectedOutageTs.value,
   (ts) => {
@@ -301,13 +318,17 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (open.value) {
+    openScrubberCount = Math.max(0, openScrubberCount - 1)
+    syncTimelineBodyClass()
+  }
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('pointerup', onPointerUp)
 })
 </script>
 
 <template>
-  <div class="h-full flex items-end pointer-events-none">
+  <div class="h-full flex items-start pointer-events-none">
     <transition name="slide">
       <div
         v-show="open"

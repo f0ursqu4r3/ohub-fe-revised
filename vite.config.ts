@@ -14,7 +14,7 @@ export default defineConfig({
     tailwindcss(),
     ui({
       ui: {
-        themes: ['light'],
+        themes: ['light', 'dark'],
       },
     }),
   ],
@@ -25,5 +25,8 @@ export default defineConfig({
   },
   server: {
     allowedHosts: ['.ngrok-free.dev', '.ohub.io', '.ohub.test'],
+    watch: {
+      ignored: ['**/ref/**'],
+    },
   },
 })
