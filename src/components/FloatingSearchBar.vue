@@ -261,9 +261,7 @@ const scrollActiveIntoView = () => {
 
 <template>
   <div class="pointer-events-none w-full max-w-xl" v-bind="$attrs">
-    <div
-      class="pointer-events-auto relative rounded-2xl border border-(--ui-border) bg-(--ui-bg-elevated)/90 shadow-[0_16px_35px_rgba(5,15,29,0.32)] backdrop-blur-md transition-colors duration-300"
-    >
+    <div class="map-control-surface pointer-events-auto relative transition-colors duration-300">
       <div class="flex items-center gap-3 px-4 py-3">
         <UInput
           v-model="query"
@@ -299,7 +297,7 @@ const scrollActiveIntoView = () => {
       <transition name="fade">
         <div
           v-if="showDropdown"
-          class="absolute left-0 right-0 top-[calc(100%+6px)] overflow-hidden rounded-xl border border-(--ui-border) bg-(--ui-bg-elevated) shadow-[0_12px_24px_rgba(5,15,29,0.28)] transition-colors duration-300"
+          class="map-control-surface absolute left-0 right-0 top-[calc(100%+6px)] overflow-hidden transition-colors duration-300"
         >
           <div v-if="isLoading" class="px-4 py-3 text-sm text-(--ui-text-muted)">Searching…</div>
           <div

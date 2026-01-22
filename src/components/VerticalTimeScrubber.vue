@@ -328,11 +328,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="h-full flex items-start pointer-events-none">
+  <div class="h-full py-4 pl-4 flex items-start pointer-events-none">
     <transition name="slide">
       <div
         v-show="open"
-        class="scrubber-panel glass pointer-events-auto flex h-full w-28 flex-col gap-6 border border-(--ui-border-accented) bg-(--ui-bg-elevated)/90 p-4 pl-0 text-(--ui-text) shadow-[0_18px_35px_rgba(5,15,29,0.35)] backdrop-blur-sm transition-all duration-300 ease-out touch-none select-none"
+        class="scrubber-panel glass mr-4 map-control-surface pointer-events-auto flex h-full w-28 flex-col gap-6 p-4 pl-0 text-(--ui-text) transition-all duration-300 ease-out touch-none select-none"
         :class="[$attrs.class]"
       >
         <div class="space-y-1 text-right">
@@ -407,7 +407,7 @@ onBeforeUnmount(() => {
     </transition>
 
     <UButton
-      class="pointer-events-auto rounded-3xl m-4 border border-(--ui-border-accented) bg-(--ui-bg-elevated) p-2 text-(--ui-text) shadow-[0_10px_25px_rgba(5,15,29,0.25)] cursor-pointer transition-all duration-150 hover:scale-105 hover:shadow-[0_12px_30px_rgba(5,15,29,0.3)] active:scale-95"
+      class="map-control-btn map-control-fab pointer-events-auto cursor-pointer transition-all duration-150 hover:scale-105 active:scale-95"
       @click="toggleScrubber"
       type="button"
       aria-label="Toggle timeline"
