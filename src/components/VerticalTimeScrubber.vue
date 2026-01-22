@@ -5,6 +5,8 @@ import { useOutageStore } from '@/stores/outages'
 import { TimeInterval } from '@/types/outage'
 
 let openScrubberCount = 0
+const gradientId = `scrubber-gradient-${Math.random().toString(36).slice(2, 9)}`
+const areaGradientId = `scrubber-area-${Math.random().toString(36).slice(2, 9)}`
 
 const syncTimelineBodyClass = () => {
   if (typeof document === 'undefined') return
@@ -221,6 +223,73 @@ const histogramData = computed(() => {
   })
 })
 
+const graphPath = computed(() => {
+  const points = histogramData.value.map((entry) => {
+    const minX = 8
+    const maxX = 92
+    const x = minX + (entry.widthPercentage / 100) * (maxX - minX)
+    const y = entry.position
+    return { x, y }
+  })
+
+  if (!points.length) return ''
+  if (points.length === 1) {
+    const x = points[0].x.toFixed(2)
+    return `M ${x} 0 L ${x} 100`
+  }
+
+  let d = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const p0 = points[i - 1] ?? points[i]
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = points[i + 2] ?? p2
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6
+    const cp1y = p1.y + (p2.y - p0.y) / 6
+    const cp2x = p2.x - (p3.x - p1.x) / 6
+    const cp2y = p2.y - (p3.y - p1.y) / 6
+
+    d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`
+  }
+
+  return d
+})
+
+const graphAreaPath = computed(() => {
+  const points = histogramData.value.map((entry) => {
+    const minX = 8
+    const maxX = 92
+    const x = minX + (entry.widthPercentage / 100) * (maxX - minX)
+    const y = entry.position
+    return { x, y }
+  })
+
+  if (!points.length) return ''
+  if (points.length === 1) {
+    const x = points[0].x.toFixed(2)
+    return `M 0 0 L ${x} 0 L ${x} 100 L 0 100 Z`
+  }
+
+  let d = `M 0 0 L ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const p0 = points[i - 1] ?? points[i]
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = points[i + 2] ?? p2
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6
+    const cp1y = p1.y + (p2.y - p0.y) / 6
+    const cp2x = p2.x - (p3.x - p1.x) / 6
+    const cp2y = p2.y - (p3.y - p1.y) / 6
+
+    d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`
+  }
+
+  d += ' L 0 100 Z'
+  return d
+})
+
 const snapRatio = (ratio: number) => {
   const total = totalTicks.value
   if (total > 1) {
@@ -359,9 +428,47 @@ onBeforeUnmount(() => {
           @wheel.passive="onWheel"
         >
           <div class="relative mx-0 h-full w-12">
+            <svg
+              class="pointer-events-none absolute inset-0 z-0 h-full w-full"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              width="100%"
+              height="100%"
+              aria-hidden="true"
+            >
+              <defs>
+                <linearGradient :id="gradientId" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="var(--ui-primary, #18b8a6)" stop-opacity="0.9" />
+                  <stop
+                    offset="100%"
+                    stop-color="var(--ui-secondary, #6ee9d7)"
+                    stop-opacity="0.8"
+                  />
+                </linearGradient>
+                <linearGradient :id="areaGradientId" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="var(--ui-primary, #18b8a6)" stop-opacity="0.15" />
+                  <stop
+                    offset="100%"
+                    stop-color="var(--ui-secondary, #6ee9d7)"
+                    stop-opacity="0.35"
+                  />
+                </linearGradient>
+              </defs>
+              <path v-if="graphAreaPath" :d="graphAreaPath" :fill="`url(#${areaGradientId})`" />
+              <path
+                v-if="graphPath"
+                :d="graphPath"
+                :stroke="`url(#${gradientId})`"
+                stroke-width="0"
+                vector-effect="non-scaling-stroke"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
             <template v-for="(tick, index) in ticks" :key="`tick-${index}`">
               <div
-                class="absolute left-0"
+                class="absolute left-0 z-10"
                 :class="tickClass(tick.type)"
                 :style="{ top: tick.position + '%' }"
               >
@@ -372,16 +479,6 @@ onBeforeUnmount(() => {
                   {{ tick.label }}
                 </span>
               </div>
-
-              <div
-                v-if="histogramData[index]"
-                class="absolute left-0 h-1 rounded-r-full bg-linear-to-r from-primary-500/85 to-secondary-400/80 shadow-[0_0_12px_rgba(24,184,166,0.45)]"
-                :style="{
-                  top: `${tick.position}%`,
-                  width: `${histogramData[index].widthPercentage}%`,
-                  height: `${histogramHeight}%`,
-                }"
-              ></div>
             </template>
           </div>
 
