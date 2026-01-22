@@ -4,6 +4,16 @@ export interface Outage {
   latitude: number
   longitude: number
   polygon: string | null // WKT POLYGON or MULTIPOLYGON
+  customer_count?: number | null
+  cause?: string | null
+  outage_type?: string | null
+  is_planned?: boolean | null
+  outage_start_local?: string | null
+  outage_start_tz?: string | null
+  outage_start_utc?: string | null // ISO string for UTC datetime
+  etr_local?: string | null
+  etr_tz?: string | null
+  etr_utc?: string | null // ISO string for UTC datetime
   startTs: number
   endTs: number | null
   ts: number

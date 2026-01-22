@@ -158,14 +158,19 @@ export const buildPopupContent = (data: MarkerData): string => {
             </button>`
         : ''
       return `
-          <div class="map-popup__item">
-            <div class="map-popup__item-info">
-              <span class="map-popup__provider">${item.provider}</span>
-              ${item.sizeLabel ? `<span class="map-popup__size">${item.sizeLabel}</span>` : ''}
-            </div>
-            ${zoomBtn}
+        <div class="map-popup__item">
+          <div class="map-popup__item-info">
+            <span class="map-popup__provider">${item.provider}</span>
+            ${item.sizeLabel ? `<span class="map-popup__size">${item.sizeLabel}</span>` : ''}
+            ${item.outageType ? `<span class=\"map-popup__type\">${item.outageType}</span>` : ''}
+            ${item.cause ? `<span class=\"map-popup__cause\">${item.cause}</span>` : ''}
+            ${item.customerCount !== undefined && item.customerCount !== null ? `<span class=\"map-popup__customers\">${item.customerCount} customers</span>` : ''}
+            ${item.isPlanned !== undefined && item.isPlanned !== null ? `<span class=\"map-popup__planned\">${item.isPlanned ? 'Planned' : 'Unplanned'}</span>` : ''}
+            ${item.etr ? `<span class=\"map-popup__etr\">ETR: ${item.etr}</span>` : ''}
           </div>
-        `
+          ${zoomBtn}
+        </div>
+      `
     })
     .join('')
 

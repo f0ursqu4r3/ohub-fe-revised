@@ -244,6 +244,11 @@ const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData
       nickname,
       bounds,
       sizeLabel,
+      outageType: outage.outage_type ?? null,
+      cause: outage.cause ?? null,
+      customerCount: outage.customer_count ?? null,
+      isPlanned: outage.is_planned ?? null,
+      etr: outage.etr_local || outage.etr_utc || outage.etr_tz || null,
     }
   })
   const extraCount = Math.max(0, outages.length - POPUP_MAX_ITEMS)

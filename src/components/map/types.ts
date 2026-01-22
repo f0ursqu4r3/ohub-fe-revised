@@ -9,6 +9,11 @@ export type PopupItem = {
   nickname: string
   bounds: BoundsLiteral | null
   sizeLabel?: string
+  outageType?: string | null
+  cause?: string | null
+  customerCount?: number | null
+  isPlanned?: boolean | null
+  etr?: string | null
 }
 
 export type PopupData = {
