@@ -232,18 +232,19 @@ const graphPath = computed(() => {
     return { x, y }
   })
 
-  if (!points.length) return ''
+  const first = points[0]
+  if (!first) return ''
   if (points.length === 1) {
-    const x = points[0].x.toFixed(2)
+    const x = first.x.toFixed(2)
     return `M ${x} 0 L ${x} 100`
   }
 
-  let d = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`
+  let d = `M ${first.x.toFixed(2)} ${first.y.toFixed(2)}`
   for (let i = 0; i < points.length - 1; i += 1) {
-    const p0 = points[i - 1] ?? points[i]
-    const p1 = points[i]
     const p2 = points[i + 1]
-    if (!p2) break
+    const p1 = points[i]
+    if (!p1 || !p2) break
+    const p0 = points[i - 1] ?? p1
     const p3 = points[i + 2] ?? p2
 
     const cp1x = p1.x + (p2.x - p0.x) / 6
@@ -266,18 +267,19 @@ const graphAreaPath = computed(() => {
     return { x, y }
   })
 
-  if (!points.length) return ''
+  const first = points[0]
+  if (!first) return ''
   if (points.length === 1) {
-    const x = points[0].x.toFixed(2)
+    const x = first.x.toFixed(2)
     return `M 0 0 L ${x} 0 L ${x} 100 L 0 100 Z`
   }
 
-  let d = `M 0 0 L ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`
+  let d = `M 0 0 L ${first.x.toFixed(2)} ${first.y.toFixed(2)}`
   for (let i = 0; i < points.length - 1; i += 1) {
-    const p0 = points[i - 1] ?? points[i]
-    const p1 = points[i]
     const p2 = points[i + 1]
-    if (!p2) break
+    const p1 = points[i]
+    if (!p1 || !p2) break
+    const p0 = points[i - 1] ?? p1
     const p3 = points[i + 2] ?? p2
 
     const cp1x = p1.x + (p2.x - p0.x) / 6
