@@ -486,14 +486,15 @@ onBeforeUnmount(() => {
             class="pointer-events-none absolute inset-x-0"
             :style="{
               top: `${selectedRatio * 100}%`,
-              height: `${histogramHeight}%`,
             }"
           >
-            <div class="flex h-full w-full items-center justify-end gap-2 pr-1 relative">
-              <span class="h-1/4 w-full rounded-full bg-secondary/70 absolute"></span>
+            <div class="relative w-full pr-1">
+              <span
+                class="absolute left-0 right-0 top-0 h-0.5 rounded-full bg-secondary/70 -translate-y-[50%] shadow-lg"
+              ></span>
               <!-- handle -->
               <span
-                class="flex -mr-4 z-10 h-5 w-10 items-center justify-center rounded-full border border-secondary/70 bg-secondary font-semibold text-[#0b172c]"
+                class="absolute right-0 top-0 z-10 flex h-5 w-10 items-center justify-center rounded-full border border-secondary/70 bg-secondary font-semibold text-[#0b172c] -translate-y-[50%] translate-x-2 shadow-lg"
               >
                 <UIcon name="i-heroicons-bars-3" class="text-black/80" />
               </span>
