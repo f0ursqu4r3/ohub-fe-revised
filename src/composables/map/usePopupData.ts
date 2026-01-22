@@ -15,7 +15,11 @@ export const usePopupData = () => {
 
     const title =
       outages.length === 1 ? (outages[0]?.provider ?? 'Outage') : `${outages.length} events`
-    const timeLabel = blockTs !== null ? formatDate(blockTs) : formatDate(group.ts)
+    const startTs = outages.reduce(
+      (earliest, outage) => Math.min(earliest, outage.startTs),
+      outages[0]!.startTs,
+    )
+    const timeLabel = formatDate(startTs)
     const geometry = group.polygon ? wktToGeoJSON(group.polygon) : null
     const groupAreaInfo = geometry ? computeBoundsAndArea(geometry) : { bounds: null, areaKm2: 0 }
     const groupBounds = groupAreaInfo.bounds
