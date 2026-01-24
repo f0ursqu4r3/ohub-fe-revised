@@ -3,7 +3,6 @@ import { ref, onMounted, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useApiKeysStore } from '@/stores/apiKeys'
 import ApiKeyCard from '@/components/ApiKeyCard.vue'
-import DeveloperLayout from '@/components/DeveloperLayout.vue'
 import type { ApiKeyCreateRequest, ApiKeyUpdateRequest } from '@/types/apiKey'
 
 const apiKeysStore = useApiKeysStore()
@@ -105,14 +104,13 @@ const deletingKeyPrefix = computed(() => {
 </script>
 
 <template>
-  <DeveloperLayout>
-    <div class="py-8 px-4">
-      <div class="max-w-6xl mx-auto">
+  <div class="py-8 px-4">
+    <div class="max-w-6xl mx-auto">
       <!-- Header -->
       <div class="mb-8 flex items-center justify-between">
         <div>
-          <h1 class="text-3xl font-bold text-(--ui-text)">API Keys</h1>
-          <p class="text-(--ui-text-muted) mt-2">
+          <h1 class="text-3xl font-bold text-default">API Keys</h1>
+          <p class="text-muted mt-2">
             Manage your API keys for programmatic access
           </p>
         </div>
@@ -145,18 +143,18 @@ const deletingKeyPrefix = computed(() => {
               <span class="relative inline-flex h-12 w-12 rounded-full bg-primary-500"></span>
             </span>
           </div>
-          <p class="text-sm font-medium text-(--ui-text-muted)">Loading API keys...</p>
+          <p class="text-sm font-medium text-muted">Loading API keys...</p>
         </div>
       </div>
 
       <!-- Empty state -->
       <div
-        v-else-if="!apiKeys.length"
-        class="text-center py-12 bg-(--ui-bg-elevated) rounded-lg border border-(--ui-border)"
+        v-else-if="!isLoading && !apiKeys.length"
+        class="text-center py-12 bg-elevated rounded-lg border border-default"
       >
-        <UIcon name="i-heroicons-key" class="h-12 w-12 text-(--ui-text-dimmed) mx-auto mb-4" />
-        <h3 class="text-lg font-semibold text-(--ui-text) mb-2">No API keys yet</h3>
-        <p class="text-(--ui-text-muted) mb-6">
+        <UIcon name="i-heroicons-key" class="h-12 w-12 text-dimmed mx-auto mb-4" />
+        <h3 class="text-lg font-semibold text-default mb-2">No API keys yet</h3>
+        <p class="text-muted mb-6">
           Create your first API key to access the outage data programmatically
         </p>
         <UButton
@@ -168,7 +166,7 @@ const deletingKeyPrefix = computed(() => {
       </div>
 
       <!-- API keys list -->
-      <div v-else class="space-y-4">
+      <div v-else-if="apiKeys.length" class="space-y-4">
         <ApiKeyCard
           v-for="key in apiKeys"
           :key="key.id"
@@ -177,17 +175,18 @@ const deletingKeyPrefix = computed(() => {
           @delete="openDeleteModal"
         />
       </div>
+    </div>
 
-      <!-- Create modal -->
+    <!-- Create modal -->
       <UModal v-model="showCreateModal">
         <UCard>
           <template #header>
-            <h3 class="text-lg font-semibold text-(--ui-text)">Create API Key</h3>
+            <h3 class="text-lg font-semibold text-default">Create API Key</h3>
           </template>
 
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-(--ui-text) mb-2">
+              <label class="block text-sm font-medium text-default mb-2">
                 Description (optional)
               </label>
               <UTextarea
@@ -244,10 +243,10 @@ const deletingKeyPrefix = computed(() => {
             />
 
             <div>
-              <label class="block text-sm font-medium text-(--ui-text) mb-2"> Your API Key </label>
+              <label class="block text-sm font-medium text-default mb-2"> Your API Key </label>
               <div class="flex gap-2">
                 <code
-                  class="flex-1 font-mono text-sm bg-(--ui-bg-accented) px-3 py-2 rounded border border-(--ui-border) break-all"
+                  class="flex-1 font-mono text-sm bg-accented px-3 py-2 rounded border border-default break-all"
                 >
                   {{ lastCreatedKey }}
                 </code>
@@ -273,12 +272,12 @@ const deletingKeyPrefix = computed(() => {
       <UModal v-model="showEditModal">
         <UCard>
           <template #header>
-            <h3 class="text-lg font-semibold text-(--ui-text)">Edit API Key</h3>
+            <h3 class="text-lg font-semibold text-default">Edit API Key</h3>
           </template>
 
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-(--ui-text) mb-2"> Description </label>
+              <label class="block text-sm font-medium text-default mb-2"> Description </label>
               <UTextarea
                 v-model="editForm.note"
                 placeholder="e.g., Production server access"
@@ -314,11 +313,11 @@ const deletingKeyPrefix = computed(() => {
           </template>
 
           <div class="space-y-4">
-            <p class="text-(--ui-text)">
+            <p class="text-default">
               Are you sure you want to delete this API key? This action cannot be undone.
             </p>
-            <div class="bg-(--ui-bg-accented) px-4 py-3 rounded">
-              <p class="font-mono text-sm text-(--ui-text)">{{ deletingKeyPrefix }}...</p>
+            <div class="bg-accented px-4 py-3 rounded">
+              <p class="font-mono text-sm text-default">{{ deletingKeyPrefix }}...</p>
             </div>
             <UAlert
               color="red"
@@ -347,7 +346,5 @@ const deletingKeyPrefix = computed(() => {
           </template>
         </UCard>
       </UModal>
-      </div>
-    </div>
-  </DeveloperLayout>
+  </div>
 </template>

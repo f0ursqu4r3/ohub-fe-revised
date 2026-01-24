@@ -27,12 +27,12 @@ const menuItems = computed(() => [
     {
       label: 'API Keys',
       icon: 'i-heroicons-key',
-      onSelect: () => router.push('/account/api-keys'),
+      onSelect: () => router.push('/developers/api-keys'),
     },
     {
       label: 'Profile',
       icon: 'i-heroicons-user',
-      onSelect: () => router.push('/account/profile'),
+      onSelect: () => router.push('/developers/profile'),
     },
   ],
   [

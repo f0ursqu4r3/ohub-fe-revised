@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
-import UserMenu from './UserMenu.vue'
+import UserMenu from '@/components/UserMenu.vue'
 import { onMounted } from 'vue'
 
 const authStore = useAuthStore()

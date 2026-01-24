@@ -18,7 +18,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoadingCustomer.value = true
     try {
       const token = await auth0.getAccessTokenSilently()
-      const response = await fetch(`${import.meta.env.VITE_BASE_API_URL}/v1/customers`, {
+      const response = await fetch(`${import.meta.env.VITE_BASE_API_URL}/v1/customers/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       customer.value = await response.json()
