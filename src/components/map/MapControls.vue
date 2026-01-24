@@ -23,33 +23,31 @@ const emit = defineEmits<{
   togglePlaybackControls: []
 }>()
 
-const layerMenuItems = computed(() => [
-  [
-    {
-      label: 'Markers',
-      icon: 'i-heroicons-map-pin',
-      onSelect: () => emit('toggleMarkers'),
-      active: props.showMarkers,
-    },
-    {
-      label: 'Boundaries',
-      icon: 'i-heroicons-squares-2x2',
-      onSelect: () => emit('togglePolygons'),
-      active: props.showPolygons,
-    },
-    {
-      label: 'Heatmap',
-      icon: 'i-heroicons-fire',
-      onSelect: () => emit('toggleHeatmap'),
-      active: props.showHeatmap,
-    },
-    {
-      label: 'Playback',
-      icon: 'i-heroicons-play-circle',
-      onSelect: () => emit('togglePlaybackControls'),
-      active: props.showPlaybackControls,
-    },
-  ],
+const layerItems = computed(() => [
+  {
+    label: 'Markers',
+    icon: 'i-heroicons-map-pin',
+    onClick: () => emit('toggleMarkers'),
+    active: props.showMarkers,
+  },
+  {
+    label: 'Boundaries',
+    icon: 'i-heroicons-squares-2x2',
+    onClick: () => emit('togglePolygons'),
+    active: props.showPolygons,
+  },
+  {
+    label: 'Heatmap',
+    icon: 'i-heroicons-fire',
+    onClick: () => emit('toggleHeatmap'),
+    active: props.showHeatmap,
+  },
+  {
+    label: 'Playback',
+    icon: 'i-heroicons-play-circle',
+    onClick: () => emit('togglePlaybackControls'),
+    active: props.showPlaybackControls,
+  },
 ])
 </script>
 
@@ -113,7 +111,7 @@ const layerMenuItems = computed(() => [
       :aria-label="isDarkMode ? 'Light mode' : 'Dark mode'"
       @click="() => emit('toggleDarkMode')"
     />
-    <UDropdownMenu :items="layerMenuItems" :popper="{ placement: 'left' }">
+    <UPopover :content="{ side: 'left', align: 'center' }" arrow>
       <UButton
         icon="i-heroicons-square-3-stack-3d"
         size="sm"
@@ -122,19 +120,22 @@ const layerMenuItems = computed(() => [
         square
         aria-label="Layer controls"
       />
-      <template #item="{ item }">
-        <div class="flex items-center justify-between w-full gap-3">
-          <div class="flex items-center gap-2">
-            <UIcon :name="item.icon" class="w-4 h-4" />
-            <span>{{ item.label }}</span>
-          </div>
-          <UIcon
-            v-if="item.active"
-            name="i-heroicons-check"
-            class="w-4 h-4 text-primary-500"
-          />
+      <template #content>
+        <div class="p-2 space-y-1 min-w-[180px]">
+          <button
+            v-for="item in layerItems"
+            :key="item.label"
+            @click="item.onClick"
+            class="w-full flex items-center justify-between gap-4 px-3 py-2 rounded-md hover:bg-accented transition-colors text-left"
+          >
+            <div class="flex items-center gap-2">
+              <UIcon :name="item.icon" class="w-4 h-4" />
+              <span class="text-sm">{{ item.label }}</span>
+            </div>
+            <UIcon v-if="item.active" name="i-heroicons-check" class="w-4 h-4 text-primary-500" />
+          </button>
         </div>
       </template>
-    </UDropdownMenu>
+    </UPopover>
   </div>
 </template>
