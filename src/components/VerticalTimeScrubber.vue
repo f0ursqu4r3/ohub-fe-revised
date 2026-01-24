@@ -405,17 +405,15 @@ onBeforeUnmount(() => {
     <transition name="slide">
       <div
         v-show="open"
-        class="scrubber-panel glass mr-4 map-control-surface pointer-events-auto flex h-full w-28 flex-col gap-6 p-4 pl-0 text-(--ui-text) transition-all duration-300 ease-out touch-none select-none"
+        class="map-control-panel mr-4 pointer-events-auto flex h-full w-28 flex-col gap-6 p-4 pl-0 text-default transition-all duration-300 ease-out touch-none select-none bg-white/92 dark:bg-slate-800/92 backdrop-blur-xl rounded-[14px] overflow-hidden relative"
         :class="[$attrs.class]"
       >
         <div class="space-y-1 text-right">
-          <p class="text-[10px] font-semibold uppercase tracking-[0.35em] text-(--ui-text-dimmed)">
-            Selected
-          </p>
-          <p class="text-xl font-semibold leading-tight text-(--ui-text)">
+          <p class="text-[10px] font-semibold uppercase tracking-[0.35em] text-dimmed">Selected</p>
+          <p class="text-xl font-semibold leading-tight text-default">
             {{ selectedLabel }}
           </p>
-          <p class="text-xs text-(--ui-text-muted)">{{ selectedDateLabel }}</p>
+          <p class="text-xs text-muted">{{ selectedDateLabel }}</p>
           <p
             v-if="selectedBlock"
             class="text-xs font-semibold text-secondary-500 dark:text-secondary-400"
@@ -450,12 +448,8 @@ onBeforeUnmount(() => {
                   />
                 </linearGradient>
                 <linearGradient :id="areaGradientId" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stop-color="var(--ui-primary, #18b8a6)" stop-opacity="0.15" />
-                  <stop
-                    offset="100%"
-                    stop-color="var(--ui-secondary, #6ee9d7)"
-                    stop-opacity="0.35"
-                  />
+                  <stop offset="0%" stop-color="var(--ui-secondary, #18b8a6)" stop-opacity="0.15" />
+                  <stop offset="100%" stop-color="var(--ui-accent, #6ee9d7)" stop-opacity="0.35" />
                 </linearGradient>
               </defs>
               <path v-if="graphAreaPath" :d="graphAreaPath" :fill="`url(#${areaGradientId})`" />
@@ -478,7 +472,7 @@ onBeforeUnmount(() => {
               >
                 <span
                   v-if="tick.label"
-                  class="pointer-events-none absolute left-14 w-14 top-1/2 -translate-y-1/2 text-[10px] font-medium text-(--ui-text-muted)"
+                  class="pointer-events-none absolute left-14 w-14 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted"
                 >
                   {{ tick.label }}
                 </span>
@@ -509,16 +503,16 @@ onBeforeUnmount(() => {
     </transition>
 
     <UButton
-      class="map-control-btn map-control-fab pointer-events-auto cursor-pointer transition-all duration-150 hover:scale-105 active:scale-95"
+      :icon="open ? 'i-heroicons-x-mark' : 'i-heroicons-clock'"
+      size="sm"
+      color="primary"
+      variant="soft"
+      square
+      class="pointer-events-auto"
       @click="toggleScrubber"
       type="button"
-      aria-label="Toggle timeline"
-    >
-      <transition name="slide" mode="out-in">
-        <UIcon v-if="!open" name="i-heroicons-clock" class="size-6" />
-        <UIcon v-else name="i-heroicons-x-mark" class="size-6" />
-      </transition>
-    </UButton>
+      :aria-label="open ? 'Close timeline' : 'Open timeline'"
+    />
   </div>
 </template>
 
@@ -541,10 +535,5 @@ onBeforeUnmount(() => {
 .slide-leave-from {
   transform: translateX(0);
   opacity: 1;
-}
-
-.glass {
-  overflow: hidden;
-  position: relative;
 }
 </style>

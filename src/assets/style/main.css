@@ -149,4 +149,17 @@
     background: var(--color-primary-200);
     color: var(--ui-text-highlighted);
   }
+
+  .map-control-panel {
+    box-shadow:
+      0 4px 16px rgba(5, 15, 29, 0.1),
+      0 1px 2px rgba(5, 15, 29, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  .dark .map-control-panel {
+    box-shadow:
+      0 4px 16px rgba(0, 0, 0, 0.25),
+      0 1px 2px rgba(0, 0, 0, 0.1);
+  }
 }

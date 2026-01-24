@@ -261,7 +261,9 @@ const scrollActiveIntoView = () => {
 
 <template>
   <div class="pointer-events-none w-full max-w-xl" v-bind="$attrs">
-    <div class="map-control-surface pointer-events-auto relative transition-colors duration-300">
+    <div
+      class="map-control-panel pointer-events-auto relative transition-colors duration-300 bg-white/92 dark:bg-slate-800/92 backdrop-blur-xl rounded-[14px] overflow-hidden"
+    >
       <div class="flex items-center gap-3 px-4 py-3">
         <UInput
           v-model="query"
@@ -297,33 +299,29 @@ const scrollActiveIntoView = () => {
       <transition name="fade">
         <div
           v-if="showDropdown"
-          class="map-control-surface absolute left-0 right-0 top-[calc(100%+6px)] overflow-hidden transition-colors duration-300"
+          class="map-control-panel absolute left-0 right-0 top-[calc(100%+6px)] overflow-hidden transition-colors duration-300 bg-white/92 dark:bg-slate-800/92 backdrop-blur-xl rounded-[14px]"
         >
-          <div v-if="isLoading" class="px-4 py-3 text-sm text-(--ui-text-muted)">Searching…</div>
+          <div v-if="isLoading" class="px-4 py-3 text-sm text-muted">Searching…</div>
           <div
             v-else-if="error"
             class="px-4 py-3 text-sm font-medium text-amber-600 dark:text-amber-400"
           >
             {{ error }}
           </div>
-          <div v-else-if="!results.length" class="px-4 py-3 text-sm text-(--ui-text-muted)">
+          <div v-else-if="!results.length" class="px-4 py-3 text-sm text-muted">
             No matches yet — keep typing.
           </div>
-          <ul
-            v-else
-            ref="listRef"
-            class="max-h-64 divide-y divide-(--ui-border-muted) overflow-y-auto"
-          >
+          <ul v-else ref="listRef" class="max-h-64 divide-y divide-muted overflow-y-auto">
             <li
               v-for="(item, index) in results"
               :key="item.id"
-              class="cursor-pointer bg-(--ui-bg-elevated) px-4 py-3 transition hover:bg-primary-50 dark:hover:bg-primary-950/50"
+              class="cursor-pointer bg-elevated px-4 py-3 transition hover:bg-primary-50 dark:hover:bg-primary-950/50"
               :class="{ 'bg-primary-50 dark:bg-primary-950/50': index === activeIndex }"
               :data-index="index"
               @mousedown.prevent="selectResult(item)"
             >
-              <p class="text-sm font-semibold text-(--ui-text)">{{ item.label }}</p>
-              <p class="text-xs text-(--ui-text-muted)">{{ item.description }}</p>
+              <p class="text-sm font-semibold text-default">{{ item.label }}</p>
+              <p class="text-xs text-muted">{{ item.description }}</p>
             </li>
           </ul>
         </div>

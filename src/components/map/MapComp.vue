@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import 'leaflet/dist/leaflet.css'
-import './map-comp.css'
-import './map-markers.css'
 import L from 'leaflet'
 
 // Make L available globally for plugins that expect it
@@ -106,7 +104,6 @@ const pendingFocusBounds = ref<BoundsLiteral | null>(null)
 const showMarkers = ref(true)
 const showPolygons = ref(true)
 const showHeatmap = ref(false)
-const showLayerControls = ref(false)
 const showPlaybackControls = ref(false)
 
 // Tile style - synced with global dark mode
@@ -284,10 +281,6 @@ const toggleDarkMode = () => {
   darkModeStore.toggle()
 }
 
-const toggleLayerControls = () => {
-  showLayerControls.value = !showLayerControls.value
-}
-
 // Watch for global dark mode changes to update map tiles
 watch(globalDarkMode, (isDark) => {
   switchTileLayer(isDark ? 'dark' : 'light')
@@ -462,69 +455,491 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="wrapperEl" class="map-wrapper" :class="{ 'map-wrapper--dark': isDarkMode }">
+  <div
+    ref="wrapperEl"
+    class="relative w-full h-full min-h-[400px] overflow-hidden bg-linear-to-br from-[#e8eef7] to-[#d8e4f3] shadow-[0_4px_24px_rgba(5,15,29,0.08),0_1px_3px_rgba(5,15,29,0.04),inset_0_1px_0_rgba(255,255,255,0.6)]"
+  >
     <!-- Loading Overlay -->
-    <Transition name="fade">
-      <div v-if="isLoading" class="map-loading">
-        <div class="map-loading__spinner"></div>
-        <span class="map-loading__text">Loading map...</span>
+    <Transition
+      enter-active-class="transition-opacity duration-300 ease-in-out"
+      leave-active-class="transition-opacity duration-300 ease-in-out"
+      enter-from-class="opacity-0"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="isLoading"
+        class="absolute inset-0 z-1000 flex flex-col items-center justify-center gap-3 bg-linear-to-br from-[rgba(232,238,247,0.95)] to-[rgba(216,228,243,0.95)] backdrop-blur-lg"
+      >
+        <div
+          class="w-9 h-9 border-[3px] border-primary-200 border-t-primary-500 rounded-full animate-spin"
+        ></div>
+        <span class="text-sm font-medium text-muted">Loading map...</span>
       </div>
     </Transition>
 
     <!-- Map Container -->
-    <div ref="el" class="map-container"></div>
+    <div ref="el" class="w-full h-full z-1"></div>
 
     <!-- Controls -->
     <MapControls
       :is-dark-mode="isDarkMode"
       :is-fullscreen="isFullscreen"
-      :show-layer-controls="showLayerControls"
-      @zoom-in="zoomIn"
-      @zoom-out="zoomOut"
-      @reset-view="resetView"
-      @locate-me="locateMe"
-      @toggle-fullscreen="toggleFullscreen"
-      @toggle-dark-mode="toggleDarkMode"
-      @toggle-layer-controls="toggleLayerControls"
+      :show-markers="showMarkers"
+      :show-polygons="showPolygons"
+      :show-heatmap="showHeatmap"
+      :show-playback-controls="showPlaybackControls"
+      @zoomIn="zoomIn"
+      @zoomOut="zoomOut"
+      @resetView="resetView"
+      @locateMe="locateMe"
+      @toggleFullscreen="toggleFullscreen"
+      @toggleDarkMode="toggleDarkMode"
+      @toggleMarkers="showMarkers = !showMarkers"
+      @togglePolygons="showPolygons = !showPolygons"
+      @toggleHeatmap="showHeatmap = !showHeatmap"
+      @togglePlaybackControls="showPlaybackControls = !showPlaybackControls"
     />
 
-    <!-- Layer Controls Panel -->
-    <Transition name="slide-fade">
-      <div v-if="showLayerControls" class="map-layer-controls">
-        <h4 class="map-layer-controls__title">Layers</h4>
-        <label class="map-layer-toggle">
-          <input v-model="showMarkers" type="checkbox" class="map-layer-toggle__input" />
-          <span class="map-layer-toggle__slider"></span>
-          <span class="map-layer-toggle__label">Markers</span>
-        </label>
-        <label class="map-layer-toggle">
-          <input v-model="showPolygons" type="checkbox" class="map-layer-toggle__input" />
-          <span class="map-layer-toggle__slider"></span>
-          <span class="map-layer-toggle__label">Boundaries</span>
-        </label>
-        <label class="map-layer-toggle">
-          <input v-model="showHeatmap" type="checkbox" class="map-layer-toggle__input" />
-          <span class="map-layer-toggle__slider"></span>
-          <span class="map-layer-toggle__label">Heatmap</span>
-        </label>
-        <label class="map-layer-toggle">
-          <input v-model="showPlaybackControls" type="checkbox" class="map-layer-toggle__input" />
-          <span class="map-layer-toggle__slider"></span>
-          <span class="map-layer-toggle__label">Playback</span>
-        </label>
-      </div>
-    </Transition>
-
     <!-- Minimap -->
-    <div ref="minimapEl" class="map-minimap"></div>
+    <div
+      ref="minimapEl"
+      class="absolute bottom-[50px] right-4 z-999 w-[150px] h-[100px] bg-white/95 dark:bg-slate-800/90 backdrop-blur-lg rounded-lg border-2 border-primary-300/30 shadow-[0_4px_12px_rgba(5,15,29,0.12),0_1px_2px_rgba(5,15,29,0.06)] overflow-hidden"
+    ></div>
 
     <!-- Slot for content that should be visible in fullscreen -->
     <slot name="fullscreen-content" :is-fullscreen="isFullscreen"></slot>
 
     <!-- Attribution badge -->
-    <div class="map-badge">
-      <span class="map-badge__dot"></span>
+    <div
+      class="map-badge absolute bottom-4 left-4 z-1000 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-primary-900 dark:text-primary-300 bg-primary-100/25 dark:bg-primary-500/20 backdrop-blur-lg border border-primary-500/30 dark:border-primary-400/40 rounded-full transition-[left] duration-200"
+    >
+      <span class="badge-dot w-1.5 h-1.5 bg-primary-500 rounded-full animate-pulse-dot"></span>
       Live Data
     </div>
   </div>
 </template>
+
+<style>
+/* Animations */
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes marker-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes cluster-ring-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.3;
+  }
+}
+
+@keyframes search-ring-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Timeline open state - adjusts badge position when sidebar is open */
+body.timeline-open .map-badge {
+  left: calc(32px + 7rem);
+}
+
+/* Global marker styles (applied to dynamically created Leaflet elements) */
+.map-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.map-marker .marker-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(145deg, #ff9c1a, #ff7c00);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow:
+    0 2px 8px rgba(255, 156, 26, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.map-marker .marker-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 156, 26, 0.3);
+  border-radius: 50%;
+  animation: marker-pulse 2s ease-out infinite;
+}
+
+/* CircleMarker styles (lightweight SVG markers for large datasets) */
+.map-circle-marker {
+  cursor: pointer;
+  transition: stroke-width 0.15s ease;
+}
+
+.map-circle-marker:hover {
+  stroke-width: 3;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* CircleMarker cluster count labels */
+.circle-marker-label-container {
+  background: transparent !important;
+  border: none !important;
+  pointer-events: none;
+}
+
+.circle-marker-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Cluster styles */
+.map-cluster {
+  background: transparent !important;
+  border: none !important;
+}
+
+.map-cluster .cluster-ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(24, 184, 166, 0.4);
+  border-radius: 50%;
+  animation: cluster-ring-pulse 3s ease-in-out infinite;
+}
+
+.map-cluster .cluster-core {
+  position: absolute;
+  inset: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #18b8a6, #0f9c8d);
+  border-radius: 50%;
+  box-shadow:
+    0 3px 12px rgba(24, 184, 166, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.map-cluster .cluster-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.map-cluster--sm .cluster-count {
+  font-size: 10px;
+}
+.map-cluster--md .cluster-count {
+  font-size: 12px;
+}
+.map-cluster--lg .cluster-count {
+  font-size: 13px;
+}
+.map-cluster--xl .cluster-count {
+  font-size: 14px;
+}
+
+/* Search marker */
+.map-search-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.map-search-marker .search-marker-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(145deg, #6366f1, #4f46e5);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.5);
+}
+
+.map-search-marker .search-marker-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(99, 102, 241, 0.5);
+  border-radius: 50%;
+  animation: search-ring-pulse 2s ease-out infinite;
+}
+
+/* Popup styles */
+.map-popup-container .leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 8px 32px rgba(5, 15, 29, 0.15),
+    0 2px 8px rgba(5, 15, 29, 0.08);
+  overflow: hidden;
+}
+
+.dark .map-popup-container .leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.94);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.map-popup-container .leaflet-popup-content {
+  margin: 0;
+  min-width: 180px;
+}
+
+.map-popup-container .leaflet-popup-tip {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 2px 4px rgba(5, 15, 29, 0.1);
+}
+
+.dark .map-popup-container .leaflet-popup-tip {
+  background: rgba(15, 23, 42, 0.94);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.map-popup-container .leaflet-popup-close-button {
+  top: 8px !important;
+  right: 8px !important;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: #4b5567;
+  background: rgba(5, 15, 29, 0.05);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.dark .map-popup-container .leaflet-popup-close-button {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.map-popup-container .leaflet-popup-close-button:hover {
+  color: #ff9c1a;
+  background: rgba(255, 156, 26, 0.1);
+}
+
+.dark .map-popup-container .leaflet-popup-close-button:hover {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.18);
+}
+
+.map-popup {
+  padding: 16px;
+}
+
+.map-popup__title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0b1628;
+}
+
+.map-popup__time {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #4b5567;
+}
+
+.map-popup__items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-popup__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  background: rgba(5, 15, 29, 0.03);
+  border-radius: 8px;
+}
+
+.map-popup__item-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.map-popup__zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: rgba(24, 184, 166, 0.1);
+  color: #18b8a6;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.map-popup__zoom-btn:hover {
+  background: rgba(24, 184, 166, 0.2);
+  color: #14a897;
+  transform: scale(1.05);
+}
+
+.map-popup__zoom-btn:active {
+  transform: scale(0.95);
+}
+
+.map-popup__provider {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e2b44;
+}
+
+.map-popup__size {
+  font-size: 11px;
+  font-weight: 500;
+  color: #18b8a6;
+  background: rgba(24, 184, 166, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.map-popup__extra {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #4b5567;
+  text-align: center;
+}
+
+.map-popup__empty {
+  margin: 0;
+  font-size: 13px;
+  color: #4b5567;
+  text-align: center;
+}
+
+.dark .map-popup__empty {
+  color: #94a3b8;
+}
+
+/* Tooltip styles */
+.map-tooltip-container {
+  background: rgba(11, 22, 40, 0.95) !important;
+  backdrop-filter: blur(8px);
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 0 !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.map-tooltip-container::before {
+  border-top-color: rgba(11, 22, 40, 0.95) !important;
+}
+
+.map-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+}
+
+.map-tooltip strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.map-tooltip span {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* Leaflet control overrides */
+.leaflet-container {
+  font-family: 'Space Grotesk', 'Manrope', system-ui, sans-serif;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(4px);
+  padding: 2px 8px !important;
+  border-radius: 8px 0 0 0 !important;
+}
+
+.leaflet-control-attribution a {
+  color: #4b5567 !important;
+}
+
+/* Minimap deep selector overrides */
+.map-minimap :deep(.leaflet-container) {
+  background: transparent;
+}
+
+.map-minimap :deep(.leaflet-tile-pane) {
+  opacity: 0.7;
+}
+</style>

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from 'vue'
-import { Pause, Play, StepBack, StepForward } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { useOutageStore } from '@/stores/outages'
 import {
@@ -194,6 +193,18 @@ const { buildPopupData } = usePopupData()
 
 <template>
   <div class="flex relative w-full h-full">
+    <!-- Developer Portal link in top-left -->
+    <div class="fixed top-4 right-4 z-40">
+      <UButton
+        to="/developers"
+        icon="i-heroicons-code-bracket"
+        color="gray"
+        variant="soft"
+        label="API"
+        class="shadow-md"
+      />
+    </div>
+
     <MapComp
       :markers="mapMarkers"
       :polygons="mapPolygons"
@@ -210,7 +221,9 @@ const { buildPopupData } = usePopupData()
         <VerticalTimeScrubber v-if="isFullscreen" class="fixed inset-x-0 left-0 z-20" />
       </template>
     </MapComp>
+
     <VerticalTimeScrubber class="fixed inset-x-0 left-0 z-20" />
+
     <FloatingSearchBar
       class="fixed left-1/2 top-4 z-30 w-full max-w-2xl -translate-x-1/2 px-4"
       @locationSelected="onLocationSelected"
@@ -219,7 +232,7 @@ const { buildPopupData } = usePopupData()
 
     <div
       v-if="loading"
-      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 flex items-center gap-2.5 rounded-full border border-primary-200/50 bg-(--ui-bg-elevated)/95 px-4 py-2.5 text-sm font-medium text-(--ui-text) shadow-lg shadow-primary-900/10 backdrop-blur-sm transition-colors duration-300"
+      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 flex items-center gap-2.5 rounded-full border border-primary-200/50 bg-(--ui-bg-elevated)/95 px-4 py-2.5 text-sm font-medium text-default shadow-lg shadow-primary-900/10 backdrop-blur-sm transition-colors duration-300"
     >
       <span class="relative flex h-2.5 w-2.5">
         <span
@@ -244,9 +257,9 @@ const { buildPopupData } = usePopupData()
     </div>
     <div
       v-else-if="!selectedBlockOutages.length"
-      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-(--ui-border) bg-(--ui-bg-elevated)/95 px-4 py-2.5 text-sm font-medium text-(--ui-text-muted) shadow-lg shadow-slate-900/10 backdrop-blur-sm transition-colors duration-300"
+      class="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-default bg-(--ui-bg-elevated)/95 px-4 py-2.5 text-sm font-medium text-muted shadow-lg shadow-slate-900/10 backdrop-blur-sm transition-colors duration-300"
     >
-      <UIcon name="i-heroicons-map" class="h-4 w-4 text-(--ui-text-dimmed)" />
+      <UIcon name="i-heroicons-map" class="h-4 w-4 text-dimmed" />
       No outages in the selected window.
     </div>
 
@@ -254,15 +267,15 @@ const { buildPopupData } = usePopupData()
     <Transition name="fade">
       <div
         v-if="showPlaybackControls && blocks.length > 1"
-        class="fixed bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-(--ui-border-accented) bg-(--ui-bg-elevated)/95 px-3 py-2 shadow-lg shadow-primary-900/15 backdrop-blur-sm transition-colors duration-300"
+        class="fixed bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 rounded-full border border-accented bg-(--ui-bg-elevated)/95 px-3 py-2 shadow-lg shadow-primary-900/15 backdrop-blur-sm transition-colors duration-300"
       >
         <button
-          class="flex h-8 w-8 items-center justify-center rounded-full text-(--ui-text-muted) transition-all hover:bg-primary-500/10 hover:text-primary-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-(--ui-text-muted)"
+          class="flex h-8 w-8 items-center justify-center rounded-full text-muted transition-all hover:bg-primary-500/10 hover:text-primary-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
           :disabled="!canPlayBackward"
           title="Step backward"
           @click="stepBackward"
         >
-          <StepBack class="h-4 w-4" />
+          <UIcon name="i-heroicons-backward" class="h-4 w-4" />
         </button>
 
         <button
@@ -270,23 +283,23 @@ const { buildPopupData } = usePopupData()
           :title="isPlaying ? 'Pause' : 'Play'"
           @click="togglePlayback"
         >
-          <Play v-if="!isPlaying" class="ml-0.5 h-5 w-5" />
-          <Pause v-else class="h-5 w-5" />
+          <UIcon v-if="!isPlaying" name="i-heroicons-play" class="ml-0.5 h-5 w-5" />
+          <UIcon v-else name="i-heroicons-pause" class="h-5 w-5" />
         </button>
 
         <button
-          class="flex h-8 w-8 items-center justify-center rounded-full text-(--ui-text-muted) transition-all hover:bg-primary-500/10 hover:text-primary-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-(--ui-text-muted)"
+          class="flex h-8 w-8 items-center justify-center rounded-full text-muted transition-all hover:bg-primary-500/10 hover:text-primary-500 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
           :disabled="!canPlayForward"
           title="Step forward"
           @click="stepForward"
         >
-          <StepForward class="h-4 w-4" />
+          <UIcon name="i-heroicons-forward" class="h-4 w-4" />
         </button>
 
-        <div class="mx-1 h-5 w-px bg-(--ui-border)"></div>
+        <div class="mx-1 h-5 w-px bg-border"></div>
 
         <button
-          class="flex h-7 items-center gap-1 rounded-full px-2 text-xs font-semibold text-(--ui-text-muted) transition-all hover:bg-primary-500/10 hover:text-primary-500"
+          class="flex h-7 items-center gap-1 rounded-full px-2 text-xs font-semibold text-muted transition-all hover:bg-primary-500/10 hover:text-primary-500"
           title="Change playback speed"
           @click="cycleSpeed"
         >
