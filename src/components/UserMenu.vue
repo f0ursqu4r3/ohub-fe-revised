@@ -62,7 +62,6 @@ const menuItems = computed(() => [
     <UButton
       class="flex h-10 w-10 items-center justify-center rounded-full bg-primary-500 text-white font-semibold text-sm shadow-md hover:bg-primary-600 hover:scale-105 active:scale-95 transition-all p-0"
       :title="user?.email"
-      :ui="{ padding: { sm: 'p-0' } }"
     >
       {{ userInitials }}
     </UButton>

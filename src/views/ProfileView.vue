@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import DeveloperLayout from '@/components/DeveloperLayout.vue'
 
 const authStore = useAuthStore()
-const { user, customer, isLoadingCustomer } = storeToRefs(authStore)
+const { user, customer, isLoading } = storeToRefs(authStore)
 
 onMounted(() => {
   if (!customer.value) authStore.fetchCustomer()
@@ -27,7 +27,7 @@ const formatDate = (dateString?: string) => {
       <div class="max-w-4xl mx-auto">
       <h1 class="text-3xl font-bold text-(--ui-text) mb-8">Profile</h1>
 
-      <div v-if="isLoadingCustomer" class="flex justify-center py-12">
+      <div v-if="isLoading" class="flex justify-center py-12">
         <span class="relative flex h-12 w-12">
           <span
             class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75"
