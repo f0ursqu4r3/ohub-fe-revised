@@ -31,35 +31,37 @@ const formatDate = (dateString: string | null) => {
 
 <template>
   <UCard>
-    <div class="flex items-start justify-between gap-4">
+    <div class="flex items-start justify-between gap-3">
       <div class="flex-1">
-        <div class="flex items-center gap-2 mb-2">
-          <code class="font-mono text-sm font-semibold bg-accented px-2 py-1 rounded">
+        <div class="flex items-center gap-1.5 mb-1.5">
+          <code class="font-mono text-xs font-semibold bg-accented px-1.5 py-0.5 rounded">
             {{ apiKey.apiKey.substring(0, 8) }}...
           </code>
-          <button @click="copyKeyPrefix" class="p-1.5 rounded hover:bg-accented">
-            <UIcon :name="copied ? 'i-heroicons-check' : 'i-heroicons-clipboard'" class="h-4 w-4" />
+          <button @click="copyKeyPrefix" class="p-1 rounded hover:bg-accented">
+            <UIcon :name="copied ? 'i-heroicons-check' : 'i-heroicons-clipboard'" class="h-3.5 w-3.5" />
           </button>
         </div>
-        <p v-if="apiKey.note" class="text-sm text-muted mb-3">{{ apiKey.note }}</p>
-        <div class="flex gap-4 text-xs text-dimmed">
+        <p v-if="apiKey.note" class="text-xs text-muted mb-2">{{ apiKey.note }}</p>
+        <div class="flex gap-3 text-xs text-dimmed">
           <span>Created: {{ formatDate(apiKey.createdAt) }}</span>
           <span v-if="apiKey.expiresAt">Expires: {{ formatDate(apiKey.expiresAt) }}</span>
         </div>
       </div>
-      <div class="flex gap-1">
+      <div class="flex gap-0.5">
         <UButton
           icon="i-heroicons-pencil"
           color="gray"
           variant="ghost"
-          size="sm"
+          size="xs"
+          square
           @click="emit('edit', apiKey.id)"
         />
         <UButton
           icon="i-heroicons-trash"
           color="red"
           variant="ghost"
-          size="sm"
+          size="xs"
+          square
           @click="emit('delete', apiKey.id)"
         />
       </div>

@@ -22,69 +22,67 @@ const formatDate = (dateString?: string) => {
 </script>
 
 <template>
-  <div class="py-8 px-4">
-    <div class="max-w-4xl mx-auto">
-      <h1 class="text-3xl font-bold text-default mb-8">Profile</h1>
+  <div>
+    <!-- Header -->
+    <div class="bg-elevated px-6 py-4 border-b border-default">
+      <h1 class="text-xl font-semibold text-default">Profile</h1>
+      <p class="text-muted mt-0.5 text-xs">Manage your account information</p>
+    </div>
 
-        <div v-if="isLoading" class="flex justify-center py-12">
-          <span class="relative flex h-12 w-12">
+    <!-- Content -->
+    <div class="p-6">
+      <div class="max-w-3xl">
+        <div v-if="isLoading" class="flex justify-center py-8">
+          <span class="relative flex h-10 w-10">
             <span
               class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75"
             ></span>
-            <span class="relative inline-flex h-12 w-12 rounded-full bg-primary-500"></span>
+            <span class="relative inline-flex h-10 w-10 rounded-full bg-primary-500"></span>
           </span>
         </div>
 
         <UCard v-else>
           <template #header>
-            <h2 class="text-xl font-semibold">Account Information</h2>
+            <h2 class="text-base font-semibold">Account Information</h2>
           </template>
 
           <div class="space-y-4">
-            <div v-if="user?.picture" class="flex justify-center mb-6">
+            <div v-if="user?.picture" class="flex justify-center">
               <img
                 :src="user.picture"
                 :alt="user.name"
-                class="h-24 w-24 rounded-full ring-4 ring-default"
+                class="h-16 w-16 rounded-full ring-2 ring-primary-500/20"
               />
             </div>
 
-            <div>
-              <label class="text-sm font-medium text-muted">Name</label>
-              <p class="text-default mt-1">{{ user?.name || 'Not set' }}</p>
-            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="text-sm font-medium text-muted">Name</label>
+                <p class="text-default mt-1">{{ user?.name || 'Not set' }}</p>
+              </div>
 
-            <div>
-              <label class="text-sm font-medium text-muted">Email</label>
-              <p class="text-default mt-1">{{ user?.email }}</p>
-              <UBadge
-                v-if="user?.email_verified"
-                color="primary"
-                variant="soft"
-                size="xs"
-                class="mt-1"
-              >
-                Verified
-              </UBadge>
-            </div>
+              <div>
+                <label class="text-sm font-medium text-muted">Email</label>
+                <p class="text-default mt-1">{{ user?.email }}</p>
+                <UBadge
+                  v-if="user?.email_verified"
+                  color="primary"
+                  variant="soft"
+                  size="xs"
+                  class="mt-1"
+                >
+                  Verified
+                </UBadge>
+              </div>
 
-            <div v-if="customer">
-              <label class="text-sm font-medium text-muted">Member Since</label>
-              <p class="text-default mt-1">{{ formatDate(customer.createdAt) }}</p>
+              <div v-if="customer">
+                <label class="text-sm font-medium text-muted">Member Since</label>
+                <p class="text-default mt-1">{{ formatDate(customer.createdAt) }}</p>
+              </div>
             </div>
           </div>
         </UCard>
-
-        <div class="flex gap-4 mt-6">
-          <UButton
-            to="/developers/api-keys"
-            icon="i-heroicons-key"
-            color="primary"
-            variant="soft"
-            label="Manage API Keys"
-          />
-          <UButton to="/" icon="i-heroicons-home" color="gray" variant="ghost" label="Home" />
-        </div>
+      </div>
     </div>
   </div>
 </template>
