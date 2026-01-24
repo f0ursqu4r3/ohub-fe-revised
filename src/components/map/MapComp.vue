@@ -503,7 +503,7 @@ defineExpose({
     <!-- Minimap -->
     <div
       ref="minimapEl"
-      class="absolute bottom-[50px] right-4 z-999 w-[150px] h-[100px] bg-white/95 dark:bg-slate-800/90 backdrop-blur-lg rounded-lg border-2 border-primary-300/30 shadow-[0_4px_12px_rgba(5,15,29,0.12),0_1px_2px_rgba(5,15,29,0.06)] overflow-hidden"
+      class="map-minimap map-control-panel absolute bottom-[50px] right-4 z-999 w-[150px] h-[100px] bg-white/92 dark:bg-slate-800/92 backdrop-blur-xl rounded-[14px] border border-primary-300/30 dark:border-primary-600/30 overflow-hidden"
     ></div>
 
     <!-- Slot for content that should be visible in fullscreen -->
