@@ -29,10 +29,21 @@ onMounted(() => {
 
 const selectedEndpoint = ref('/v1/outages')
 const selectedApiKey = ref('')
-const sinceParam = ref('')
-const untilParam = ref('')
+const sinceDatetime = ref('')
+const untilDatetime = ref('')
 const outageIdParam = ref('')
 const providerParam = ref('')
+
+// Convert datetime-local to epoch seconds
+const sinceEpoch = computed(() => {
+  if (!sinceDatetime.value) return ''
+  return String(Math.floor(new Date(sinceDatetime.value).getTime() / 1000))
+})
+
+const untilEpoch = computed(() => {
+  if (!untilDatetime.value) return ''
+  return String(Math.floor(new Date(untilDatetime.value).getTime() / 1000))
+})
 
 const isLoading = ref(false)
 const response = ref<object | null>(null)
@@ -97,8 +108,8 @@ const buildPath = computed(() => {
 
   if (selectedEndpoint.value === '/v1/outages') {
     const params = new URLSearchParams()
-    if (sinceParam.value) params.append('since', sinceParam.value)
-    if (untilParam.value) params.append('until', untilParam.value)
+    if (sinceEpoch.value) params.append('since', sinceEpoch.value)
+    if (untilEpoch.value) params.append('until', untilEpoch.value)
     if (providerParam.value) params.append('provider', providerParam.value)
     const queryString = params.toString()
     if (queryString) path += `?${queryString}`
@@ -339,10 +350,17 @@ const executeRequest = async () => {
   }
 }
 
+// Convert Date to datetime-local format (YYYY-MM-DDTHH:mm)
+const toDatetimeLocal = (date: Date) => {
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 const setTimeRange = (hours: number) => {
-  const now = Math.floor(Date.now() / 1000)
-  sinceParam.value = String(now - hours * 3600)
-  untilParam.value = String(now)
+  const now = new Date()
+  const since = new Date(now.getTime() - hours * 3600 * 1000)
+  sinceDatetime.value = toDatetimeLocal(since)
+  untilDatetime.value = toDatetimeLocal(now)
 }
 </script>
 
@@ -398,12 +416,12 @@ const setTimeRange = (hours: number) => {
               <template v-if="selectedEndpoint === '/v1/outages'">
                 <div class="grid grid-cols-2 gap-3">
                   <div>
-                    <label class="block text-sm font-medium text-default mb-2">Since (Unix)</label>
-                    <UInput v-model="sinceParam" placeholder="1700000000" />
+                    <label class="block text-sm font-medium text-default mb-2">Since</label>
+                    <UInput v-model="sinceDatetime" type="datetime-local" />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-default mb-2">Until (Unix)</label>
-                    <UInput v-model="untilParam" placeholder="1700100000" />
+                    <label class="block text-sm font-medium text-default mb-2">Until</label>
+                    <UInput v-model="untilDatetime" type="datetime-local" />
                   </div>
                 </div>
                 <div class="flex gap-2">
@@ -439,6 +457,7 @@ const setTimeRange = (hours: number) => {
                     value-key="value"
                     placeholder="All providers"
                     class="w-full"
+                    clear
                   />
                 </div>
               </template>
