@@ -14,7 +14,11 @@ export default defineConfig({
     tailwindcss(),
     ui({
       ui: {
-        themes: ['light', 'dark'],
+        colors: {
+          primary: 'primary',
+          secondary: 'secondary',
+          neutral: 'neutral',
+        },
       },
     }),
   ],
