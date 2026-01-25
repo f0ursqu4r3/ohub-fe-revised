@@ -297,9 +297,30 @@ const highlightedCode = computed(() => {
   return hljs.highlight(generatedCode.value, { language: lang }).value
 })
 
+const truncatedResponse = computed(() => {
+  if (!response.value) return null
+  const data = response.value as { outages?: unknown[] }
+  if (data.outages && data.outages.length > 10) {
+    return {
+      ...data,
+      outages: data.outages.slice(0, 10),
+    }
+  }
+  return response.value
+})
+
+const truncatedCount = computed(() => {
+  if (!response.value) return 0
+  const data = response.value as { outages?: unknown[] }
+  if (data.outages && data.outages.length > 10) {
+    return data.outages.length - 10
+  }
+  return 0
+})
+
 const highlightedResponse = computed(() => {
-  if (!response.value) return ''
-  const jsonStr = JSON.stringify(response.value, null, 2)
+  if (!truncatedResponse.value) return ''
+  const jsonStr = JSON.stringify(truncatedResponse.value, null, 2)
   return hljs.highlight(jsonStr, { language: 'json' }).value
 })
 
@@ -558,11 +579,14 @@ const setTimeRange = (hours: number) => {
                 </div>
               </template>
 
-              <div v-if="responseError" class="text-sm text-red-500">
+              <div v-if="responseError" class="text-sm text-red-500 p-4">
                 {{ responseError }}
               </div>
               <div v-else-if="response" class="flex-1 min-h-0 overflow-auto">
                 <pre class="text-xs font-mono hljs rounded p-4" v-html="highlightedResponse"></pre>
+                <p v-if="truncatedCount > 0" class="text-xs text-muted p-4">
+                  Showing 10 of {{ truncatedCount + 10 }} outages.
+                </p>
               </div>
               <div v-else class="text-sm text-muted flex-1 flex items-center justify-center p-4">
                 Send a request to see the response
