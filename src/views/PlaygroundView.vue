@@ -9,7 +9,6 @@ import python from 'highlight.js/lib/languages/python'
 import rust from 'highlight.js/lib/languages/rust'
 import go from 'highlight.js/lib/languages/go'
 import json from 'highlight.js/lib/languages/json'
-import 'highlight.js/styles/github-dark.css'
 
 hljs.registerLanguage('bash', bash)
 hljs.registerLanguage('javascript', javascript)
