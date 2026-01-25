@@ -68,7 +68,9 @@ const copyExample = async () => {
             <div class="flex-1">
               <h2 class="text-base font-semibold text-default mb-2">Make Your First Request</h2>
               <p class="text-sm text-muted mb-3">
-                Use your API key in the X-API-Key header to authenticate requests.
+                Use your API key in the
+                <code class="text-sm font-mono text-default">X-API-KEY</code> header to authenticate
+                requests.
               </p>
               <div class="relative">
                 <pre
