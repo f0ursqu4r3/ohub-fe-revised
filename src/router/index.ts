@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router'
 import { authGuard } from '@auth0/auth0-vue'
+import { useAuthStore } from '@/stores/auth'
 
 // Guard to redirect authenticated users away from /developers
 const guestOnlyGuard = async (
@@ -8,8 +9,6 @@ const guestOnlyGuard = async (
   _from: RouteLocationNormalized,
   next: NavigationGuardNext,
 ) => {
-  // Dynamically import the auth store
-  const { useAuthStore } = await import('@/stores/auth')
   const authStore = useAuthStore()
 
   // Wait for auth to be ready

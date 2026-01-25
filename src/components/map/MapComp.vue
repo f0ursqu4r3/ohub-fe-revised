@@ -934,12 +934,12 @@ body.timeline-open .map-badge {
   color: #4b5567 !important;
 }
 
-/* Minimap deep selector overrides */
-.map-minimap :deep(.leaflet-container) {
+/* Minimap overrides */
+.map-minimap.leaflet-container {
   background: transparent;
 }
 
-.map-minimap :deep(.leaflet-tile-pane) {
+.map-minimap .leaflet-tile-pane {
   opacity: 0.7;
 }
 </style>

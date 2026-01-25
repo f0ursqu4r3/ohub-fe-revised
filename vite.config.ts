@@ -8,11 +8,6 @@ import ui from '@nuxt/ui/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  css: {
-    lightningcss: {
-      errorRecovery: true,
-    },
-  },
   plugins: [
     vue(),
     vueDevTools(),
