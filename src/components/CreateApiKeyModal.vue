@@ -3,6 +3,8 @@ import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useApiKeysStore } from '@/stores/apiKeys'
 
+const toast = useToast()
+
 const emit = defineEmits<{
   created: [apiKey: string]
 }>()
@@ -21,11 +23,24 @@ const open = () => {
 }
 
 const handleCreate = async () => {
-  const result = await apiKeysStore.createApiKey(createForm.value)
-  if (result) {
-    showCreateModal.value = false
-    showKeyModal.value = true
-    emit('created', result.apiKey)
+  try {
+    const result = await apiKeysStore.createApiKey(createForm.value)
+    if (result) {
+      showCreateModal.value = false
+      showKeyModal.value = true
+      emit('created', result.apiKey)
+      toast.add({
+        title: 'API key created',
+        color: 'success',
+        icon: 'i-heroicons-check-circle',
+      })
+    }
+  } catch {
+    toast.add({
+      title: 'Failed to create API key',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle',
+    })
   }
 }
 
@@ -37,8 +52,17 @@ const copyFullKey = async () => {
       setTimeout(() => {
         copiedFullKey.value = false
       }, 2000)
-    } catch (err) {
-      console.error('Failed to copy:', err)
+      toast.add({
+        title: 'API key copied to clipboard',
+        color: 'success',
+        icon: 'i-heroicons-clipboard-document-check',
+      })
+    } catch {
+      toast.add({
+        title: 'Failed to copy to clipboard',
+        color: 'error',
+        icon: 'i-heroicons-exclamation-circle',
+      })
     }
   }
 }

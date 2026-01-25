@@ -1,11 +1,7 @@
 export interface ApiKey {
-  id: number
-  customerId: number
   apiKey: string
   note: string | null
-  createdAt: string
-  updatedAt: string
-  expiresAt: string | null
+  expiresAt: number | null
 }
 
 export interface ApiKeyCreateRequest {

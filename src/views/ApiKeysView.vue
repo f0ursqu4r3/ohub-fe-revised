@@ -6,6 +6,8 @@ import ApiKeyCard from '@/components/ApiKeyCard.vue'
 import CreateApiKeyModal from '@/components/CreateApiKeyModal.vue'
 import type { ApiKeyUpdateRequest } from '@/types/apiKey'
 
+const toast = useToast()
+
 const apiKeysStore = useApiKeysStore()
 const { apiKeys, isLoading, error } = storeToRefs(apiKeysStore)
 
@@ -14,55 +16,74 @@ const createApiKeyModal = ref<InstanceType<typeof CreateApiKeyModal> | null>(nul
 const showEditModal = ref(false)
 const showDeleteModal = ref(false)
 
-const editingKeyId = ref<number | null>(null)
+const editingApiKey = ref<string | null>(null)
 const editForm = ref<ApiKeyUpdateRequest>({
   note: '',
 })
-const deletingKeyId = ref<number | null>(null)
+const deletingApiKey = ref<string | null>(null)
 
 onMounted(() => {
   apiKeysStore.fetchApiKeys()
 })
 
-const openEditModal = (id: number) => {
-  const key = apiKeys.value.find((k) => k.id === id)
+const openEditModal = (apiKey: string) => {
+  const key = apiKeys.value.find((k) => k.apiKey === apiKey)
   if (key) {
-    editingKeyId.value = id
+    editingApiKey.value = apiKey
     editForm.value = { note: key.note || '' }
     showEditModal.value = true
   }
 }
 
 const handleEdit = async () => {
-  if (editingKeyId.value) {
-    const key = apiKeys.value.find((k) => k.id === editingKeyId.value)
-    if (key) {
-      await apiKeysStore.updateApiKey(key.apiKey, editForm.value)
+  if (editingApiKey.value) {
+    try {
+      await apiKeysStore.updateApiKey(editingApiKey.value, editForm.value)
       showEditModal.value = false
-      editingKeyId.value = null
+      editingApiKey.value = null
+      toast.add({
+        title: 'API key updated',
+        color: 'success',
+        icon: 'i-heroicons-check-circle',
+      })
+    } catch {
+      toast.add({
+        title: 'Failed to update API key',
+        color: 'error',
+        icon: 'i-heroicons-exclamation-circle',
+      })
     }
   }
 }
 
-const openDeleteModal = (id: number) => {
-  deletingKeyId.value = id
+const openDeleteModal = (apiKey: string) => {
+  deletingApiKey.value = apiKey
   showDeleteModal.value = true
 }
 
 const handleDelete = async () => {
-  if (deletingKeyId.value) {
-    const key = apiKeys.value.find((k) => k.id === deletingKeyId.value)
-    if (key) {
-      await apiKeysStore.deleteApiKey(key.apiKey)
+  if (deletingApiKey.value) {
+    try {
+      await apiKeysStore.deleteApiKey(deletingApiKey.value)
       showDeleteModal.value = false
-      deletingKeyId.value = null
+      deletingApiKey.value = null
+      toast.add({
+        title: 'API key deleted',
+        color: 'success',
+        icon: 'i-heroicons-check-circle',
+      })
+    } catch {
+      toast.add({
+        title: 'Failed to delete API key',
+        color: 'error',
+        icon: 'i-heroicons-exclamation-circle',
+      })
     }
   }
 }
 
 const deletingKeyPrefix = computed(() => {
-  const key = apiKeys.value.find((k) => k.id === deletingKeyId.value)
-  return key?.apiKey.substring(0, 8) || ''
+  return deletingApiKey.value?.substring(0, 8) || ''
 })
 </script>
 
@@ -127,7 +148,7 @@ const deletingKeyPrefix = computed(() => {
       <div v-else-if="apiKeys.length" class="space-y-2">
         <ApiKeyCard
           v-for="key in apiKeys"
-          :key="key.id"
+          :key="key.apiKey"
           :api-key="key"
           @edit="openEditModal"
           @delete="openDeleteModal"

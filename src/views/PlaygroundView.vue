@@ -419,7 +419,18 @@ const setTimeRange = (hours: number) => {
               <!-- API Key -->
               <div>
                 <label class="block text-sm font-medium text-default mb-2">API Key</label>
+                <p v-if="!apiKeys.length" class="text-xs text-muted mt-1">
+                  <UButton
+                    icon="i-heroicons-plus"
+                    color="primary"
+                    @click="createApiKeyModal?.open()"
+                    block
+                  >
+                    Create an API key to test requests
+                  </UButton>
+                </p>
                 <USelectMenu
+                  v-else
                   v-model="selectedApiKey"
                   :items="
                     apiKeys.map((k) => ({
@@ -431,16 +442,6 @@ const setTimeRange = (hours: number) => {
                   placeholder="Select an API key..."
                   class="w-full"
                 />
-                <p v-if="!apiKeys.length" class="text-xs text-muted mt-1">
-                  <button
-                    type="button"
-                    class="text-primary-500 hover:underline"
-                    @click="createApiKeyModal?.open()"
-                  >
-                    Create an API key
-                  </button>
-                  to test requests
-                </p>
               </div>
 
               <!-- Parameters for /v1/outages -->
@@ -576,7 +577,7 @@ const setTimeRange = (hours: number) => {
           <div class="lg:absolute lg:inset-0">
             <UCard
               class="h-full flex flex-col"
-              :ui="{ body: 'flex-1 min-h-0 overflow-hidden flex flex-col p-0!' }"
+              :ui="{ body: 'min-h-0 overflow-hidden flex flex-col p-0!' }"
             >
               <template #header>
                 <div class="flex items-center justify-between">
@@ -610,6 +611,6 @@ const setTimeRange = (hours: number) => {
       </div>
     </div>
 
-<CreateApiKeyModal ref="createApiKeyModal" @created="onApiKeyCreated" />
+    <CreateApiKeyModal ref="createApiKeyModal" @created="onApiKeyCreated" />
   </div>
 </template>

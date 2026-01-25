@@ -51,25 +51,51 @@ export const useApiKeysStore = defineStore('apiKeys', () => {
   }
 
   const updateApiKey = async (apiKey: string, request: ApiKeyUpdateRequest) => {
-    const token = await authStore.getAccessToken()
-    await fetch(`${baseUrl}/v1/api-keys/${apiKey}`, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    })
-    await fetchApiKeys()
+    isLoading.value = true
+    error.value = null
+    try {
+      const token = await authStore.getAccessToken()
+      const response = await fetch(`${baseUrl}/v1/api-keys/${encodeURIComponent(apiKey)}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || 'Failed to update API key')
+      }
+      await fetchApiKeys()
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to update API key'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
   }
 
   const deleteApiKey = async (apiKey: string) => {
-    const token = await authStore.getAccessToken()
-    await fetch(`${baseUrl}/v1/api-keys/${apiKey}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    await fetchApiKeys()
+    isLoading.value = true
+    error.value = null
+    try {
+      const token = await authStore.getAccessToken()
+      const response = await fetch(`${baseUrl}/v1/api-keys/${encodeURIComponent(apiKey)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || 'Failed to delete API key')
+      }
+      await fetchApiKeys()
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete API key'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
   }
 
   const clearLastCreatedKey = () => {

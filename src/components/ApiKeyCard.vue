@@ -2,27 +2,42 @@
 import { ref } from 'vue'
 import type { ApiKey } from '@/types/apiKey'
 
+const toast = useToast()
+
 const props = defineProps<{
   apiKey: ApiKey
 }>()
 
 const emit = defineEmits<{
-  edit: [id: number]
-  delete: [id: number]
+  edit: [apiKey: string]
+  delete: [apiKey: string]
 }>()
 
 const copied = ref(false)
 const showKey = ref(false)
 
 const copyKey = async () => {
-  await navigator.clipboard.writeText(props.apiKey.apiKey)
-  copied.value = true
-  setTimeout(() => (copied.value = false), 2000)
+  try {
+    await navigator.clipboard.writeText(props.apiKey.apiKey)
+    copied.value = true
+    setTimeout(() => (copied.value = false), 2000)
+    toast.add({
+      title: 'API key copied to clipboard',
+      color: 'success',
+      icon: 'i-heroicons-clipboard-document-check',
+    })
+  } catch {
+    toast.add({
+      title: 'Failed to copy to clipboard',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle',
+    })
+  }
 }
 
-const formatDate = (dateString: string | null) => {
-  if (!dateString) return 'Never'
-  return new Date(Number(dateString) * 1000).toLocaleDateString(undefined, {
+const formatDate = (timestamp: number | null) => {
+  if (!timestamp) return 'Never'
+  return new Date(timestamp * 1000).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -65,7 +80,7 @@ const formatDate = (dateString: string | null) => {
           variant="ghost"
           size="xs"
           square
-          @click="emit('edit', apiKey.id)"
+          @click="emit('edit', apiKey.apiKey)"
         />
         <UButton
           icon="i-heroicons-trash"
@@ -73,7 +88,7 @@ const formatDate = (dateString: string | null) => {
           variant="ghost"
           size="xs"
           square
-          @click="emit('delete', apiKey.id)"
+          @click="emit('delete', apiKey.apiKey)"
         />
       </div>
     </div>
