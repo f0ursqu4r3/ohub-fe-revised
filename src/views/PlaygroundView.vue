@@ -227,9 +227,9 @@ const data = await response.json();
 console.log(data);`
 
     case 'python':
-      return `import requests
+      return `import httpx
 
-response = requests.get(
+response = httpx.get(
     "${url}",
     headers={"X-API-Key": "${apiKey}"}
 )
