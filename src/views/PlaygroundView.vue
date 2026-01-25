@@ -552,7 +552,7 @@ const setTimeRange = (hours: number) => {
 
               <div class="rounded-md overflow-hidden min-h-0">
                 <pre
-                  class="hljs p-4 text-xs font-mono overflow-x-auto max-h-[500px]"
+                  class="hljs p-4 text-xs font-mono overflow-x-auto"
                   v-html="highlightedCode"
                 ></pre>
               </div>
