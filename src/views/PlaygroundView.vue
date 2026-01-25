@@ -582,8 +582,8 @@ const setTimeRange = (hours: number) => {
               <div v-if="responseError" class="text-sm text-red-500 p-4">
                 {{ responseError }}
               </div>
-              <div v-else-if="response" class="flex-1 min-h-0 overflow-auto">
-                <pre class="text-xs font-mono hljs rounded p-4" v-html="highlightedResponse"></pre>
+              <div v-else-if="response" class="flex flex-1 min-h-0 overflow-auto">
+                <pre class="flex-1 text-xs font-mono hljs p-4" v-html="highlightedResponse"></pre>
                 <p v-if="truncatedCount > 0" class="text-xs text-muted p-4">
                   Showing 10 of {{ truncatedCount + 10 }} outages.
                 </p>
