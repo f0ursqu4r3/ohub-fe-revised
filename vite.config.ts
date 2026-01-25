@@ -28,5 +28,12 @@ export default defineConfig({
     watch: {
       ignored: ['**/ref/**'],
     },
+    proxy: {
+      '/api': {
+        target: 'https://api.canadianpoweroutages.ca',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
   },
 })

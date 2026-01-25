@@ -104,14 +104,10 @@ const deletingKeyPrefix = computed(() => {
 </script>
 
 <template>
-  <div>
-    <!-- Header -->
-    <div class="bg-elevated px-6 py-4 border-b border-default">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-xl font-semibold text-default">API Keys</h1>
-          <p class="text-muted mt-0.5 text-xs">Manage your API keys for programmatic access</p>
-        </div>
+  <div class="p-6">
+    <div class="max-w-4xl">
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-semibold text-default">API Keys</h1>
         <UButton
           icon="i-heroicons-plus"
           color="primary"
@@ -120,65 +116,59 @@ const deletingKeyPrefix = computed(() => {
           @click="openCreateModal"
         />
       </div>
-    </div>
+      <!-- Error state -->
+      <UAlert
+        v-if="error"
+        color="red"
+        variant="soft"
+        icon="i-heroicons-exclamation-triangle"
+        :title="error"
+        class="mb-6"
+      />
 
-    <!-- Content -->
-    <div class="p-6">
-      <div class="max-w-4xl">
-        <!-- Error state -->
-        <UAlert
-          v-if="error"
-          color="red"
-          variant="soft"
-          icon="i-heroicons-exclamation-triangle"
-          :title="error"
-          class="mb-6"
-        />
-
-        <!-- Loading state -->
-        <div v-if="isLoading && !apiKeys.length" class="flex items-center justify-center py-8">
-          <div class="text-center">
-            <div class="mb-3">
-              <span class="relative flex h-10 w-10 mx-auto">
-                <span
-                  class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75"
-                ></span>
-                <span class="relative inline-flex h-10 w-10 rounded-full bg-primary-500"></span>
-              </span>
-            </div>
-            <p class="text-xs font-medium text-muted">Loading API keys...</p>
+      <!-- Loading state -->
+      <div v-if="isLoading && !apiKeys.length" class="flex items-center justify-center py-8">
+        <div class="text-center">
+          <div class="mb-3">
+            <span class="relative flex h-10 w-10 mx-auto">
+              <span
+                class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75"
+              ></span>
+              <span class="relative inline-flex h-10 w-10 rounded-full bg-primary-500"></span>
+            </span>
           </div>
+          <p class="text-xs font-medium text-muted">Loading API keys...</p>
         </div>
+      </div>
 
-        <!-- Empty state -->
-        <div
-          v-else-if="!isLoading && !apiKeys.length"
-          class="text-center py-12 bg-elevated rounded-lg border border-default"
-        >
-          <UIcon name="i-heroicons-key" class="h-10 w-10 text-dimmed mx-auto mb-3" />
-          <h3 class="text-base font-semibold text-default mb-1">No API keys yet</h3>
-          <p class="text-muted text-xs mb-4">
-            Create your first API key to access the outage data programmatically
-          </p>
-          <UButton
-            icon="i-heroicons-plus"
-            color="primary"
-            size="sm"
-            label="Create API Key"
-            @click="openCreateModal"
-          />
-        </div>
+      <!-- Empty state -->
+      <div
+        v-else-if="!isLoading && !apiKeys.length"
+        class="text-center py-12 bg-elevated rounded-lg border border-default"
+      >
+        <UIcon name="i-heroicons-key" class="h-10 w-10 text-dimmed mx-auto mb-3" />
+        <h3 class="text-base font-semibold text-default mb-1">No API keys yet</h3>
+        <p class="text-muted text-xs mb-4">
+          Create your first API key to access the outage data programmatically
+        </p>
+        <UButton
+          icon="i-heroicons-plus"
+          color="primary"
+          size="sm"
+          label="Create API Key"
+          @click="openCreateModal"
+        />
+      </div>
 
-        <!-- API keys list -->
-        <div v-else-if="apiKeys.length" class="space-y-2">
-          <ApiKeyCard
-            v-for="key in apiKeys"
-            :key="key.id"
-            :api-key="key"
-            @edit="openEditModal"
-            @delete="openDeleteModal"
-          />
-        </div>
+      <!-- API keys list -->
+      <div v-else-if="apiKeys.length" class="space-y-2">
+        <ApiKeyCard
+          v-for="key in apiKeys"
+          :key="key.id"
+          :api-key="key"
+          @edit="openEditModal"
+          @delete="openDeleteModal"
+        />
       </div>
     </div>
 
@@ -194,16 +184,9 @@ const deletingKeyPrefix = computed(() => {
               v-model="createForm.note"
               placeholder="e.g., Production server access"
               :rows="3"
+              class="w-full"
             />
           </div>
-
-          <UAlert
-            color="blue"
-            variant="soft"
-            icon="i-heroicons-information-circle"
-            title="The API key will only be shown once"
-            description="Make sure to copy it immediately after creation."
-          />
         </div>
       </template>
 
@@ -219,14 +202,6 @@ const deletingKeyPrefix = computed(() => {
     <UModal v-model:open="showKeyModal" title="API Key Created Successfully!" :dismissible="false">
       <template #body>
         <div class="space-y-4">
-          <UAlert
-            color="amber"
-            variant="soft"
-            icon="i-heroicons-exclamation-triangle"
-            title="Save this key now"
-            description="This is the only time you'll see the full key. Store it securely."
-          />
-
           <div>
             <label class="block text-sm font-medium text-default mb-2">Your API Key</label>
             <div class="flex gap-2">
@@ -263,6 +238,7 @@ const deletingKeyPrefix = computed(() => {
               v-model="editForm.note"
               placeholder="e.g., Production server access"
               :rows="3"
+              class="w-full"
             />
           </div>
         </div>

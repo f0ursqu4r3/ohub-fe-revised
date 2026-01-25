@@ -21,6 +21,7 @@
     "@auth0/auth0-vue": "^2.5.0",
     "@nuxt/ui": "^4.4.0",
     "@tailwindcss/vite": "^4.1.17",
+    "highlight.js": "^11.11.1",
     "leaflet": "^1.9.4",
     "leaflet.heat": "^0.2.0",
     "pinia": "^3.0.3",

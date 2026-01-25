@@ -18,7 +18,7 @@ const guestOnlyGuard = async (
   }
 
   if (authStore.isAuthenticated) {
-    next({ name: 'api-keys' })
+    next({ name: 'getting-started' })
   } else {
     next()
   }
@@ -47,9 +47,23 @@ const router = createRouter({
       beforeEnter: guestOnlyGuard,
     },
     {
+      path: '/developers/getting-started',
+      name: 'getting-started',
+      component: () => import('../views/GettingStartedView.vue'),
+      meta: { layout: 'developer' },
+      beforeEnter: authGuard,
+    },
+    {
       path: '/developers/api-keys',
       name: 'api-keys',
       component: () => import('../views/ApiKeysView.vue'),
+      meta: { layout: 'developer' },
+      beforeEnter: authGuard,
+    },
+    {
+      path: '/developers/playground',
+      name: 'playground',
+      component: () => import('../views/PlaygroundView.vue'),
       meta: { layout: 'developer' },
       beforeEnter: authGuard,
     },
