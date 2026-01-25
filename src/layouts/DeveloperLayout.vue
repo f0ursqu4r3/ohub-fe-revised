@@ -6,7 +6,7 @@ import { onMounted, computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const authStore = useAuthStore()
-const { isAuthenticated, user } = storeToRefs(authStore)
+const { isAuthenticated } = storeToRefs(authStore)
 
 const route = useRoute()
 const collapsed = ref(false)
@@ -55,9 +55,20 @@ const navItems = computed(() => [
       ]"
     >
       <!-- Logo/Title -->
-      <div class="px-3 py-3">
+      <div class="p-2">
         <div class="flex items-center gap-2">
-          <UButton to="/" icon="i-heroicons-home" color="gray" variant="ghost" size="sm" square />
+          <UButton to="/" color="gray" variant="ghost" square class="group">
+            <div class="relative w-5 h-5 overflow-hidden">
+              <UIcon
+                name="i-heroicons-map"
+                class="absolute inset-0 w-5 h-5 transition-transform duration-200 group-hover:-translate-x-full"
+              />
+              <UIcon
+                name="i-heroicons-chevron-left"
+                class="absolute inset-0 w-5 h-5 translate-x-full transition-transform duration-200 group-hover:translate-x-0"
+              />
+            </div>
+          </UButton>
           <h1 v-if="!collapsed" class="text-sm font-semibold text-default">Developers</h1>
         </div>
       </div>
