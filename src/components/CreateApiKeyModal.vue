@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useToast } from '@nuxt/ui/composables'
 import { useApiKeysStore } from '@/stores/apiKeys'
 
 const toast = useToast()

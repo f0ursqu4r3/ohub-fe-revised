@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useToast } from '@nuxt/ui/composables'
 import type { ApiKey } from '@/types/apiKey'
 
 const toast = useToast()

@@ -33,11 +33,9 @@ const layout = computed(() => {
 </script>
 
 <template>
-  <UToaster>
-    <UApp :ui="{ root: isDark ? 'dark' : '' }">
-      <component :is="layout">
-        <RouterView />
-      </component>
-    </UApp>
-  </UToaster>
+  <UApp :ui="{ root: isDark ? 'dark' : '' }">
+    <component :is="layout">
+      <RouterView />
+    </component>
+  </UApp>
 </template>

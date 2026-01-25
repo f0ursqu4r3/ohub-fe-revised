@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useToast } from '@nuxt/ui/composables'
 import { useApiKeysStore } from '@/stores/apiKeys'
 import ApiKeyCard from '@/components/ApiKeyCard.vue'
 import CreateApiKeyModal from '@/components/CreateApiKeyModal.vue'
