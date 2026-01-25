@@ -562,7 +562,7 @@ const setTimeRange = (hours: number) => {
                 />
               </div>
 
-              <div class="rounded-md overflow-hidden min-h-0">
+              <div class="rounded-md overflow-hidden min-h-0 border border-default">
                 <pre
                   class="hljs p-4 text-xs font-mono overflow-x-auto"
                   v-html="highlightedCode"
@@ -577,7 +577,7 @@ const setTimeRange = (hours: number) => {
           <div class="lg:absolute lg:inset-0">
             <UCard
               class="h-full flex flex-col"
-              :ui="{ body: 'min-h-0 overflow-hidden flex flex-col p-0!' }"
+              :ui="{ body: 'min-h-0 overflow-hidden flex flex-col flex-1 p-0!' }"
             >
               <template #header>
                 <div class="flex items-center justify-between">
@@ -596,15 +596,18 @@ const setTimeRange = (hours: number) => {
               <div v-if="responseError" class="text-sm text-red-500 p-4">
                 {{ responseError }}
               </div>
-              <div v-else-if="response" class="flex flex-1 min-h-0 overflow-auto">
-                <pre class="flex-1 text-xs font-mono hljs p-4" v-html="highlightedResponse"></pre>
-                <p v-if="truncatedCount > 0" class="text-xs text-muted p-4">
-                  Showing 10 of {{ truncatedCount + 10 }} outages.
-                </p>
-              </div>
+              <div
+                v-else-if="response"
+                class="flex-1 min-h-0 overflow-auto text-xs font-mono hljs p-4 whitespace-pre"
+                v-html="highlightedResponse"
+              ></div>
               <div v-else class="text-sm text-muted flex-1 flex items-center justify-center p-4">
                 Send a request to see the response
               </div>
+
+              <template v-if="truncatedCount > 0" #footer>
+                <p class="text-xs text-muted">Showing 10 of {{ truncatedCount + 10 }} outages.</p>
+              </template>
             </UCard>
           </div>
         </div>

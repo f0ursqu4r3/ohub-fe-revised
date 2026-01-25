@@ -180,7 +180,6 @@
 .hljs {
   background: var(--ui-bg-muted);
   color: var(--ui-text);
-  border: 1px solid var(--ui-border);
 }
 
 /* Light mode syntax colors */
