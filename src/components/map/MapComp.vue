@@ -935,11 +935,11 @@ body.timeline-open .map-badge {
 }
 
 /* Minimap deep selector overrides */
-.map-minimap ::deep(.leaflet-container) {
+.map-minimap :deep(.leaflet-container) {
   background: transparent;
 }
 
-.map-minimap ::deep(.leaflet-tile-pane) {
+.map-minimap :deep(.leaflet-tile-pane) {
   opacity: 0.7;
 }
 </style>
