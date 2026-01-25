@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useApiKeysStore } from '@/stores/apiKeys'
+import CreateApiKeyModal from '@/components/CreateApiKeyModal.vue'
 import hljs from 'highlight.js/lib/core'
 import bash from 'highlight.js/lib/languages/bash'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -19,6 +20,12 @@ hljs.registerLanguage('json', json)
 
 const apiKeysStore = useApiKeysStore()
 const { apiKeys } = storeToRefs(apiKeysStore)
+
+const createApiKeyModal = ref<InstanceType<typeof CreateApiKeyModal> | null>(null)
+
+const onApiKeyCreated = (apiKey: string) => {
+  selectedApiKey.value = apiKey
+}
 
 onMounted(() => {
   if (!apiKeys.value.length) {
@@ -425,9 +432,13 @@ const setTimeRange = (hours: number) => {
                   class="w-full"
                 />
                 <p v-if="!apiKeys.length" class="text-xs text-muted mt-1">
-                  <RouterLink to="/developers/api-keys" class="text-primary-500 hover:underline">
+                  <button
+                    type="button"
+                    class="text-primary-500 hover:underline"
+                    @click="createApiKeyModal?.open()"
+                  >
                     Create an API key
-                  </RouterLink>
+                  </button>
                   to test requests
                 </p>
               </div>
@@ -447,21 +458,21 @@ const setTimeRange = (hours: number) => {
                 <div class="flex gap-2">
                   <UButton
                     size="xs"
-                    color="gray"
+                    color="neutral"
                     variant="soft"
                     label="Last hour"
                     @click="setTimeRange(1)"
                   />
                   <UButton
                     size="xs"
-                    color="gray"
+                    color="neutral"
                     variant="soft"
                     label="Last 24h"
                     @click="setTimeRange(24)"
                   />
                   <UButton
                     size="xs"
-                    color="gray"
+                    color="neutral"
                     variant="soft"
                     label="Last 7d"
                     @click="setTimeRange(168)"
@@ -520,7 +531,7 @@ const setTimeRange = (hours: number) => {
                 <div class="flex items-center gap-1">
                   <UButton
                     :icon="showApiKey ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-                    color="gray"
+                    color="neutral"
                     variant="ghost"
                     size="xs"
                     :title="showApiKey ? 'Hide API key' : 'Show API key'"
@@ -528,7 +539,7 @@ const setTimeRange = (hours: number) => {
                   />
                   <UButton
                     :icon="copiedCode ? 'i-heroicons-check' : 'i-heroicons-clipboard'"
-                    :color="copiedCode ? 'green' : 'gray'"
+                    :color="copiedCode ? 'success' : 'neutral'"
                     variant="ghost"
                     size="xs"
                     @click="copyCode"
@@ -543,7 +554,7 @@ const setTimeRange = (hours: number) => {
                   v-for="lang in languages"
                   :key="lang.value"
                   :label="lang.label"
-                  :color="selectedLanguage === lang.value ? 'primary' : 'gray'"
+                  :color="selectedLanguage === lang.value ? 'primary' : 'neutral'"
                   :variant="selectedLanguage === lang.value ? 'soft' : 'ghost'"
                   size="xs"
                   @click="selectedLanguage = lang.value"
@@ -572,7 +583,7 @@ const setTimeRange = (hours: number) => {
                   <h2 class="text-base font-semibold">Response</h2>
                   <UBadge
                     v-if="responseStatus"
-                    :color="responseStatus >= 200 && responseStatus < 300 ? 'green' : 'red'"
+                    :color="responseStatus >= 200 && responseStatus < 300 ? 'success' : 'error'"
                     variant="soft"
                     size="xs"
                   >
@@ -598,5 +609,7 @@ const setTimeRange = (hours: number) => {
         </div>
       </div>
     </div>
+
+<CreateApiKeyModal ref="createApiKeyModal" @created="onApiKeyCreated" />
   </div>
 </template>

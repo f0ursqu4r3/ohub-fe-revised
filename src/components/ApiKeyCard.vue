@@ -36,7 +36,7 @@ const formatDate = (dateString: string | null) => {
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-1.5 mb-1.5 min-w-0">
           <div
-            class="shrink font-mono text-xs font-semibold bg-accented px-1.5 py-0.5 rounded truncate min-w-0"
+            class="shrink font-mono text-xs font-semibold bg-accented p-2 rounded truncate min-w-0"
           >
             {{ showKey ? apiKey.apiKey : '•'.repeat(apiKey.apiKey.length) }}
           </div>
@@ -61,7 +61,7 @@ const formatDate = (dateString: string | null) => {
       <div class="flex gap-0.5">
         <UButton
           icon="i-heroicons-pencil"
-          color="gray"
+          color="neutral"
           variant="ghost"
           size="xs"
           square
@@ -69,7 +69,7 @@ const formatDate = (dateString: string | null) => {
         />
         <UButton
           icon="i-heroicons-trash"
-          color="red"
+          color="error"
           variant="ghost"
           size="xs"
           square

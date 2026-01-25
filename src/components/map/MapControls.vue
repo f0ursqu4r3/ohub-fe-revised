@@ -58,7 +58,7 @@ const layerItems = computed(() => [
     <UButton
       icon="i-heroicons-plus"
       size="sm"
-      color="gray"
+      color="neutral"
       variant="ghost"
       square
       aria-label="Zoom in"
@@ -67,7 +67,7 @@ const layerItems = computed(() => [
     <UButton
       icon="i-heroicons-minus"
       size="sm"
-      color="gray"
+      color="neutral"
       variant="ghost"
       square
       aria-label="Zoom out"
@@ -77,7 +77,7 @@ const layerItems = computed(() => [
     <UButton
       icon="i-heroicons-arrow-path"
       size="sm"
-      color="gray"
+      color="neutral"
       variant="ghost"
       square
       aria-label="Reset view"
@@ -86,7 +86,7 @@ const layerItems = computed(() => [
     <UButton
       icon="i-heroicons-map-pin"
       size="sm"
-      color="gray"
+      color="neutral"
       variant="ghost"
       square
       aria-label="My location"
@@ -95,7 +95,7 @@ const layerItems = computed(() => [
     <UButton
       :icon="isFullscreen ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
       size="sm"
-      color="gray"
+      color="neutral"
       variant="ghost"
       square
       :aria-label="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
@@ -105,7 +105,7 @@ const layerItems = computed(() => [
     <UButton
       :icon="isDarkMode ? 'i-heroicons-sun' : 'i-heroicons-moon'"
       size="sm"
-      :color="isDarkMode ? 'primary' : 'gray'"
+      :color="isDarkMode ? 'primary' : 'neutral'"
       :variant="isDarkMode ? 'soft' : 'ghost'"
       square
       :aria-label="isDarkMode ? 'Light mode' : 'Dark mode'"
@@ -115,7 +115,7 @@ const layerItems = computed(() => [
       <UButton
         icon="i-heroicons-square-3-stack-3d"
         size="sm"
-        color="gray"
+        color="neutral"
         variant="ghost"
         square
         aria-label="Layer controls"

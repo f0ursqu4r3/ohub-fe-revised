@@ -198,7 +198,7 @@ const { buildPopupData } = usePopupData()
       <UButton
         to="/developers"
         icon="i-heroicons-code-bracket"
-        color="gray"
+        color="neutral"
         variant="soft"
         label="API"
         class="shadow-md"

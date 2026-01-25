@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import hljs from 'highlight.js/lib/core'
+
+import bash from 'highlight.js/lib/languages/bash'
+
+hljs.registerLanguage('bash', bash)
 
 const copiedCurl = ref(false)
 
 const curlExample = `curl -H "X-API-Key: your_api_key" \\
   "https://api.canadianpoweroutages.ca/v1/outages?since=1700000000&until=1700100000"`
+
+const hilightedCurl = computed(() => hljs.highlight(curlExample, { language: 'bash' }).value)
 
 const copyExample = async () => {
   try {
@@ -66,10 +73,11 @@ const copyExample = async () => {
               <div class="relative">
                 <pre
                   class="bg-elevated border border-default rounded-lg p-4 text-xs font-mono text-default overflow-x-auto"
-                >{{ curlExample }}</pre>
+                  v-html="hilightedCurl"
+                ></pre>
                 <UButton
                   :icon="copiedCurl ? 'i-heroicons-check' : 'i-heroicons-clipboard'"
-                  :color="copiedCurl ? 'green' : 'gray'"
+                  :color="copiedCurl ? 'success' : 'neutral'"
                   variant="ghost"
                   size="xs"
                   class="absolute top-2 right-2"
@@ -134,7 +142,7 @@ const copyExample = async () => {
 
         <!-- Base URL -->
         <UAlert
-          color="blue"
+          color="info"
           variant="soft"
           icon="i-heroicons-information-circle"
           title="Base URL"
@@ -144,3 +152,4 @@ const copyExample = async () => {
     </div>
   </div>
 </template>
+computed,

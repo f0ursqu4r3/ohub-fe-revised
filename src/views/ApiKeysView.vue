@@ -3,43 +3,26 @@ import { ref, onMounted, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useApiKeysStore } from '@/stores/apiKeys'
 import ApiKeyCard from '@/components/ApiKeyCard.vue'
-import type { ApiKeyCreateRequest, ApiKeyUpdateRequest } from '@/types/apiKey'
+import CreateApiKeyModal from '@/components/CreateApiKeyModal.vue'
+import type { ApiKeyUpdateRequest } from '@/types/apiKey'
 
 const apiKeysStore = useApiKeysStore()
-const { apiKeys, isLoading, error, lastCreatedKey } = storeToRefs(apiKeysStore)
+const { apiKeys, isLoading, error } = storeToRefs(apiKeysStore)
 
-const showCreateModal = ref(false)
+const createApiKeyModal = ref<InstanceType<typeof CreateApiKeyModal> | null>(null)
+
 const showEditModal = ref(false)
 const showDeleteModal = ref(false)
-const showKeyModal = ref(false)
 
-const createForm = ref<ApiKeyCreateRequest>({
-  note: '',
-})
 const editingKeyId = ref<number | null>(null)
 const editForm = ref<ApiKeyUpdateRequest>({
   note: '',
 })
 const deletingKeyId = ref<number | null>(null)
 
-const copiedFullKey = ref(false)
-
 onMounted(() => {
   apiKeysStore.fetchApiKeys()
 })
-
-const openCreateModal = () => {
-  createForm.value = { note: '' }
-  showCreateModal.value = true
-}
-
-const handleCreate = async () => {
-  const result = await apiKeysStore.createApiKey(createForm.value)
-  if (result) {
-    showCreateModal.value = false
-    showKeyModal.value = true
-  }
-}
 
 const openEditModal = (id: number) => {
   const key = apiKeys.value.find((k) => k.id === id)
@@ -77,26 +60,6 @@ const handleDelete = async () => {
   }
 }
 
-const copyFullKey = async () => {
-  if (lastCreatedKey.value) {
-    try {
-      await navigator.clipboard.writeText(lastCreatedKey.value)
-      copiedFullKey.value = true
-      setTimeout(() => {
-        copiedFullKey.value = false
-      }, 2000)
-    } catch (err) {
-      console.error('Failed to copy:', err)
-    }
-  }
-}
-
-const closeKeyModal = () => {
-  showKeyModal.value = false
-  apiKeysStore.clearLastCreatedKey()
-  copiedFullKey.value = false
-}
-
 const deletingKeyPrefix = computed(() => {
   const key = apiKeys.value.find((k) => k.id === deletingKeyId.value)
   return key?.apiKey.substring(0, 8) || ''
@@ -113,13 +76,13 @@ const deletingKeyPrefix = computed(() => {
           color="primary"
           size="sm"
           label="Create API Key"
-          @click="openCreateModal"
+          @click="createApiKeyModal?.open()"
         />
       </div>
       <!-- Error state -->
       <UAlert
         v-if="error"
-        color="red"
+        color="error"
         variant="soft"
         icon="i-heroicons-exclamation-triangle"
         :title="error"
@@ -156,7 +119,7 @@ const deletingKeyPrefix = computed(() => {
           color="primary"
           size="sm"
           label="Create API Key"
-          @click="openCreateModal"
+          @click="createApiKeyModal?.open()"
         />
       </div>
 
@@ -172,61 +135,7 @@ const deletingKeyPrefix = computed(() => {
       </div>
     </div>
 
-    <!-- Create modal -->
-    <UModal v-model:open="showCreateModal" title="Create API Key">
-      <template #body>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-default mb-2">
-              Description (optional)
-            </label>
-            <UTextarea
-              v-model="createForm.note"
-              placeholder="e.g., Production server access"
-              :rows="3"
-              class="w-full"
-            />
-          </div>
-        </div>
-      </template>
-
-      <template #footer>
-        <div class="flex justify-end gap-3">
-          <UButton color="gray" variant="ghost" label="Cancel" @click="showCreateModal = false" />
-          <UButton color="primary" label="Create Key" :loading="isLoading" @click="handleCreate" />
-        </div>
-      </template>
-    </UModal>
-
-    <!-- Show created key modal -->
-    <UModal v-model:open="showKeyModal" title="API Key Created Successfully!" :dismissible="false">
-      <template #body>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-default mb-2">Your API Key</label>
-            <div class="flex gap-2">
-              <code
-                class="flex-1 font-mono text-sm bg-accented px-3 py-2 rounded border border-default break-all"
-              >
-                {{ lastCreatedKey }}
-              </code>
-              <UButton
-                :icon="copiedFullKey ? 'i-heroicons-check' : 'i-heroicons-clipboard'"
-                :color="copiedFullKey ? 'green' : 'gray'"
-                variant="soft"
-                @click="copyFullKey"
-              />
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <template #footer>
-        <div class="flex justify-end">
-          <UButton color="primary" label="Done" @click="closeKeyModal" />
-        </div>
-      </template>
-    </UModal>
+    <CreateApiKeyModal ref="createApiKeyModal" />
 
     <!-- Edit modal -->
     <UModal v-model:open="showEditModal" title="Edit API Key">
@@ -246,7 +155,7 @@ const deletingKeyPrefix = computed(() => {
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <UButton color="gray" variant="ghost" label="Cancel" @click="showEditModal = false" />
+          <UButton color="neutral" variant="ghost" label="Cancel" @click="showEditModal = false" />
           <UButton color="primary" label="Save Changes" :loading="isLoading" @click="handleEdit" />
         </div>
       </template>
@@ -263,7 +172,7 @@ const deletingKeyPrefix = computed(() => {
             <p class="font-mono text-sm text-default">{{ deletingKeyPrefix }}...</p>
           </div>
           <UAlert
-            color="red"
+            color="error"
             variant="soft"
             icon="i-heroicons-exclamation-triangle"
             title="This will immediately revoke access"
@@ -274,8 +183,8 @@ const deletingKeyPrefix = computed(() => {
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <UButton color="gray" variant="ghost" label="Cancel" @click="showDeleteModal = false" />
-          <UButton color="red" label="Delete Key" :loading="isLoading" @click="handleDelete" />
+          <UButton color="neutral" variant="ghost" label="Cancel" @click="showDeleteModal = false" />
+          <UButton color="error" label="Delete Key" :loading="isLoading" @click="handleDelete" />
         </div>
       </template>
     </UModal>

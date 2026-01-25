@@ -19,6 +19,11 @@ export default defineConfig({
           secondary: 'secondary',
           neutral: 'neutral',
         },
+        card: {
+          slots: {
+            root: 'shadow-sm',
+          },
+        },
       },
     }),
   ],

@@ -281,7 +281,7 @@ const scrollActiveIntoView = () => {
           <template v-if="query.length" #trailing>
             <UButton
               icon="i-heroicons-x-mark"
-              color="gray"
+              color="neutral"
               variant="soft"
               size="sm"
               square

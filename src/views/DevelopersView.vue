@@ -14,7 +14,7 @@ const handleLogin = () => authStore.login()
     <header class="border-b border-default bg-elevated">
       <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <UButton to="/" icon="i-heroicons-arrow-left" color="gray" variant="ghost" square />
+          <UButton to="/" icon="i-heroicons-arrow-left" color="neutral" variant="ghost" square />
           <h1 class="text-xl font-bold text-default">Developer Portal</h1>
         </div>
         <div v-if="isLoading" class="h-10 w-24 animate-pulse rounded bg-accented" />
@@ -241,7 +241,7 @@ const handleLogin = () => authStore.login()
             <UButton
               to="/"
               icon="i-heroicons-map"
-              color="gray"
+              color="neutral"
               variant="soft"
               size="lg"
               label="View Outage Map"

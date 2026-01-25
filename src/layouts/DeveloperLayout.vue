@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
+import { useDarkModeStore } from '@/stores/darkMode'
 
 import { onMounted, computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const authStore = useAuthStore()
 const { isAuthenticated } = storeToRefs(authStore)
+
+const darkModeStore = useDarkModeStore()
+const { isDark } = storeToRefs(darkModeStore)
 
 const route = useRoute()
 const collapsed = ref(false)
@@ -50,14 +54,14 @@ const navItems = computed(() => [
     <!-- Sidebar -->
     <aside
       :class="[
-        'border-r border-default bg-elevated flex flex-col shrink-0 transition-all duration-200',
+        'border-r border-default bg-elevated flex flex-col shrink-0 transition-all duration-200 shadow-md',
         collapsed ? 'w-12' : 'w-56',
       ]"
     >
       <!-- Logo/Title -->
       <div class="p-2">
         <div class="flex items-center gap-2">
-          <UButton to="/" color="gray" variant="ghost" square class="group">
+          <UButton to="/" color="neutral" variant="ghost" square class="group">
             <div class="relative w-5 h-5 overflow-hidden">
               <UIcon
                 name="i-heroicons-map"
@@ -84,7 +88,7 @@ const navItems = computed(() => [
                 :to="item.to"
                 :icon="item.icon"
                 :label="collapsed ? undefined : item.label"
-                :color="item.active ? 'primary' : 'gray'"
+                :color="item.active ? 'primary' : 'neutral'"
                 :variant="item.active ? 'soft' : 'ghost'"
                 :block="!collapsed"
                 :square="collapsed"
@@ -95,18 +99,39 @@ const navItems = computed(() => [
         </ul>
       </nav>
 
-      <USeparator />
-
       <!-- Collapse toggle -->
-      <div class="flex justify-end items-center p-2">
-        <UButton
-          class="w-full flex justify-end"
-          color="neutral"
-          variant="ghost"
-          @click="collapsed = !collapsed"
-        >
-          <UIcon :name="collapsed ? 'i-heroicons-chevron-right' : 'i-heroicons-chevron-left'" />
-        </UButton>
+      <div>
+        <div class="p-2">
+          <UTooltip
+            :text="isDark ? 'Light mode' : 'Dark mode'"
+            :delay-open="0"
+            side="right"
+            :disabled="!collapsed"
+          >
+            <UButton
+              :icon="isDark ? 'i-heroicons-sun' : 'i-heroicons-moon'"
+              :label="collapsed ? undefined : isDark ? 'Light mode' : 'Dark mode'"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              :block="!collapsed"
+              :square="collapsed"
+              :class="{ 'justify-start': !collapsed }"
+              @click="darkModeStore.toggle()"
+            />
+          </UTooltip>
+        </div>
+        <USeparator />
+        <div class="flex justify-end items-center p-2">
+          <UButton
+            class="w-full flex justify-end"
+            color="neutral"
+            variant="ghost"
+            @click="collapsed = !collapsed"
+          >
+            <UIcon :name="collapsed ? 'i-heroicons-chevron-right' : 'i-heroicons-chevron-left'" />
+          </UButton>
+        </div>
       </div>
     </aside>
 
