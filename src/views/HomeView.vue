@@ -199,7 +199,7 @@ const { buildPopupData } = usePopupData()
         to="/developers"
         icon="i-heroicons-code-bracket"
         color="neutral"
-        variant="soft"
+        variant="ghost"
         label="API"
         class="shadow-md"
       />
