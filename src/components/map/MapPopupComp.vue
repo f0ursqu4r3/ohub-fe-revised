@@ -28,7 +28,6 @@ interface OutageItem {
   isPlanned: boolean | null
   etr: string | null
   bounds: BoundsLiteral | null
-  duration: string | null
   isSingle: boolean
 }
 
