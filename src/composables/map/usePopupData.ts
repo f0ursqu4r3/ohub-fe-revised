@@ -81,6 +81,7 @@ export const usePopupData = () => {
     return {
       title,
       timeLabel,
+      startTs,
       items,
       extraCount,
       geoJsonText: geometry ? JSON.stringify(geometry) : null,

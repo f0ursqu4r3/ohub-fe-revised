@@ -19,6 +19,7 @@ export type PopupItem = {
 
 export type PopupData = {
   title: string
+  startTs?: number
   timeLabel: string
   items: PopupItem[]
   extraCount: number

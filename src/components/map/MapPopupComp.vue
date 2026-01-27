@@ -10,7 +10,7 @@ const emit = defineEmits<{
   (e: 'zoom', bounds: BoundsLiteral): void
 }>()
 
-function encodeBounds(bounds: BoundsLiteral) {
+function encodeBounds(bounds: BoundsLiteral): string {
   return encodeURIComponent(JSON.stringify(bounds))
 }
 
@@ -18,13 +18,101 @@ function onZoom(bounds: BoundsLiteral) {
   emit('zoom', bounds)
 }
 
-const isSingle = computed(
-  () => props.popupData.items.length === 1 && props.popupData.extraCount === 0,
-)
+interface OutageItem {
+  id: string
+  provider: string
+  outageType: string | null
+  cause: string | null
+  customerCount: number | null
+  sizeLabel: string | null
+  isPlanned: boolean | null
+  etr: string | null
+  bounds: BoundsLiteral | null
+  duration: string | null
+  isSingle: boolean
+}
+
+const durationString = computed(() => {
+  const startTs = props.popupData.startTs
+  if (!startTs) return null
+
+  // startTs is in seconds, Date.now() is in milliseconds
+  const durationSeconds = Math.floor(Date.now() / 1000) - startTs
+  if (durationSeconds < 0) return null
+
+  if (durationSeconds < 60) {
+    return 'Less than a minute'
+  } else if (durationSeconds < 3600) {
+    const mins = Math.floor(durationSeconds / 60)
+    return `${mins} minute${mins !== 1 ? 's' : ''}`
+  } else if (durationSeconds < 86400) {
+    const hours = Math.floor(durationSeconds / 3600)
+    return `${hours} hour${hours !== 1 ? 's' : ''}`
+  } else {
+    const days = Math.floor(durationSeconds / 86400)
+    return `${days} day${days !== 1 ? 's' : ''}`
+  }
+})
+
+const outageItem = computed<OutageItem>(() => {
+  const items = props.popupData.items
+  const isSingle = items.length === 1 && props.popupData.extraCount === 0
+
+  if (isSingle && items[0]) {
+    const item = items[0]
+    return {
+      id: String(item.id),
+      provider: item.provider,
+      outageType: item.outageType ?? null,
+      cause: item.cause ?? null,
+      customerCount: item.customerCount ?? null,
+      sizeLabel: item.sizeLabel ?? null,
+      isPlanned: item.isPlanned ?? null,
+      etr: item.etr ?? null,
+      bounds: item.bounds,
+      isSingle: true,
+    }
+  }
+
+  // Combine multiple items
+  const totalCustomers = items.reduce((sum, item) => sum + (item.customerCount ?? 0), 0)
+  const outageTypes = [...new Set(items.map((i) => i.outageType).filter(Boolean))]
+  const causes = [...new Set(items.map((i) => i.cause).filter(Boolean))]
+  const hasPlanned = items.some((i) => i.isPlanned === true)
+  const hasUnplanned = items.some((i) => i.isPlanned === false)
+
+  // Compute combined bounds from all items
+  const allBounds = items.map((i) => i.bounds).filter((b): b is BoundsLiteral => b !== null)
+  let combinedBounds: BoundsLiteral | null = null
+  if (allBounds.length > 0) {
+    const minLng = Math.min(...allBounds.map((b) => b[0][0]))
+    const minLat = Math.min(...allBounds.map((b) => b[0][1]))
+    const maxLng = Math.max(...allBounds.map((b) => b[1][0]))
+    const maxLat = Math.max(...allBounds.map((b) => b[1][1]))
+    combinedBounds = [
+      [minLng, minLat],
+      [maxLng, maxLat],
+    ]
+  }
+
+  return {
+    id: 'combined',
+    provider: props.popupData.title,
+    outageType:
+      outageTypes.length === 1 ? outageTypes[0]! : outageTypes.length > 1 ? 'Mixed' : null,
+    cause: causes.length === 1 ? causes[0]! : causes.length > 1 ? 'Multiple causes' : null,
+    customerCount: totalCustomers > 0 ? totalCustomers : null,
+    sizeLabel: null,
+    isPlanned: hasPlanned && !hasUnplanned ? true : !hasPlanned && hasUnplanned ? false : null,
+    etr: null,
+    bounds: combinedBounds,
+    isSingle: false,
+  }
+})
 </script>
 
 <template>
-  <div class="max-w-[320px] min-w-[220px] overflow-hidden p-0 pb-2.5 text-[15px] text-default">
+  <div class="max-w-96 min-w-72 overflow-hidden p-0 pb-2.5 text-[15px] text-default">
     <div class="flex items-center gap-3 pb-2.5 pl-3.5 pr-4 pt-3">
       <div class="min-w-0 flex-1">
         <h3 class="mb-px truncate text-[17px] font-bold leading-[1.2] text-default">
@@ -35,57 +123,58 @@ const isSingle = computed(
         </time>
       </div>
     </div>
-    <div class="flex flex-col gap-3 p-2">
-      <div
-        v-for="(item, idx) in popupData.items"
-        :key="idx"
-        class="flex items-start justify-between gap-2.5 rounded-lg border border-muted bg-(--ui-bg-elevated)/70 px-2.5 pb-[7px] pt-2 shadow-[0_1px_2px_rgba(24,184,166,0.04)] transition-shadow duration-150 hover:shadow-[0_2px_8px_rgba(24,184,166,0.1)]"
+    <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 px-3.5 pb-2 text-[13px]">
+      <dt v-if="outageItem.outageType" class="text-muted">Type</dt>
+      <dd v-if="outageItem.outageType" class="text-amber-600 dark:text-amber-400">
+        {{ outageItem.outageType }}
+      </dd>
+
+      <dt v-if="outageItem.isPlanned != null" class="text-muted">Status</dt>
+      <dd v-if="outageItem.isPlanned != null" class="text-default">
+        {{ outageItem.isPlanned ? 'Planned' : 'Unplanned' }}
+      </dd>
+
+      <dt v-if="outageItem.customerCount != null" class="text-muted">Affected</dt>
+      <dd v-if="outageItem.customerCount != null" class="font-semibold text-default">
+        {{ outageItem.customerCount.toLocaleString() }} customers
+      </dd>
+
+      <dt v-if="outageItem.sizeLabel" class="text-muted">Area</dt>
+      <dd v-if="outageItem.sizeLabel" class="text-default">{{ outageItem.sizeLabel }}</dd>
+
+      <dt v-if="outageItem.cause" class="text-muted">Cause</dt>
+      <dd v-if="outageItem.cause" class="text-rose-600 dark:text-rose-400">
+        {{ outageItem.cause }}
+      </dd>
+
+      <dt v-if="durationString" class="text-muted">Duration</dt>
+      <dd v-if="durationString" class="text-default">{{ durationString }}</dd>
+
+      <dt v-if="outageItem.etr" class="text-muted">Est. restore</dt>
+      <dd v-if="outageItem.etr" class="text-primary-600 dark:text-primary-400">
+        {{ outageItem.etr }}
+      </dd>
+    </dl>
+
+    <div class="px-3.5 pb-1">
+      <!-- Zoom button -->
+      <button
+        v-if="outageItem.bounds"
+        class="mt-1 inline-flex w-fit cursor-pointer items-center gap-1 rounded-[7px] border border-default bg-elevated px-2 py-1 text-[13px] text-primary-600 shadow-sm transition duration-150 hover:bg-primary-500/10 hover:text-primary-700 active:scale-95 dark:text-primary-400 dark:hover:text-primary-300"
+        :data-bounds="encodeBounds(outageItem.bounds)"
+        title="Zoom to extent"
+        @click.stop="onZoom(outageItem.bounds)"
       >
-        <div class="flex min-w-0 flex-1 flex-col gap-0.5 wrap-break-word">
-          <template v-if="isSingle">
-            <span v-if="item.sizeLabel" class="text-[13px] text-muted">{{ item.sizeLabel }}</span>
-            <span v-if="item.outageType" class="text-[13px] text-amber-600 dark:text-amber-400">
-              {{ item.outageType }}
-            </span>
-            <span v-if="item.cause" class="text-[13px] text-rose-600 dark:text-rose-400">
-              {{ item.cause }}
-            </span>
-            <span v-if="item.customerCount != null" class="text-[13px] text-default">
-              {{ item.customerCount }} customers
-            </span>
-            <span v-if="item.isPlanned != null" class="text-[13px] text-muted">
-              {{ item.isPlanned ? 'Planned' : 'Unplanned' }}
-            </span>
-            <span v-if="item.etr" class="text-[13px] text-primary-600 dark:text-primary-400">
-              ETR: {{ item.etr }}
-            </span>
-          </template>
-          <template v-else>
-            <span class="text-[14px] font-semibold text-primary-600 dark:text-primary-400">{{
-              item.provider
-            }}</span>
-            <span v-if="item.sizeLabel" class="text-[13px] text-muted">{{ item.sizeLabel }}</span>
-            <span v-if="item.outageType" class="text-[13px] text-amber-600 dark:text-amber-400">
-              {{ item.outageType }}
-            </span>
-            <span v-if="item.customerCount != null" class="text-[13px] text-default">
-              {{ item.customerCount }} customers
-            </span>
-          </template>
-        </div>
-        <button
-          v-if="item.bounds"
-          class="ml-1.5 inline-flex cursor-pointer items-center gap-0.5 self-start rounded-[7px] border border-default bg-elevated p-1 text-primary-600 shadow-[0_1px_2px_rgba(24,184,166,0.07)] transition duration-150 hover:bg-primary-500/10 hover:text-primary-700 hover:shadow-[0_2px_8px_rgba(24,184,166,0.13)] active:scale-95 dark:text-primary-400 dark:hover:text-primary-300"
-          :data-bounds="encodeBounds(item.bounds)"
-          title="Zoom to extent"
-          @click.stop="onZoom(item.bounds)"
-        >
-          <UIcon name="i-heroicons-magnifying-glass-plus" class="h-4 w-4" />
-        </button>
-      </div>
+        <UIcon name="i-heroicons-magnifying-glass-plus" class="h-4 w-4" />
+        <span>Zoom to area</span>
+      </button>
     </div>
-    <p v-if="popupData.extraCount > 0" class="mt-2.5 pl-[18px] text-[13px] text-muted">
-      +{{ popupData.extraCount }} more
+    <!-- Multi-item indicator -->
+    <p
+      v-if="!outageItem.isSingle"
+      class="mt-2 border-t border-muted px-3.5 pt-2 text-[13px] text-muted"
+    >
+      {{ popupData.items.length }}{{ popupData.extraCount > 0 ? '+' : '' }} outages in this area
     </p>
   </div>
 </template>
