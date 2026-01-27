@@ -5,6 +5,7 @@ import type { BoundsLiteral, GroupedOutage } from '@/lib/utils'
 export type { BoundsLiteral }
 
 export type PopupItem = {
+  id: string | number
   provider: string
   nickname: string
   bounds: BoundsLiteral | null

@@ -64,15 +64,16 @@ export const usePopupData = () => {
       const bounds =
         entry.bounds ?? groupBounds ?? fallbackPointBounds(outage.latitude, outage.longitude)
       return {
+        id: outage.id,
         provider: outage.provider,
         nickname,
         bounds,
         sizeLabel,
-        outageType: outage.outage_type ?? null,
+        outageType: outage.outageType ?? null,
         cause: outage.cause ?? null,
-        customerCount: outage.customer_count ?? null,
-        isPlanned: outage.is_planned ?? null,
-        etr: outage.etr_local || outage.etr_utc || outage.etr_tz || null,
+        customerCount: outage.customerCount ?? null,
+        isPlanned: outage.isPlanned ?? null,
+        etr: formatDate(outage.etrLocal || outage.etrUtc || outage.etrTz || null),
       }
     })
     const extraCount = Math.max(0, outages.length - POPUP_MAX_ITEMS)

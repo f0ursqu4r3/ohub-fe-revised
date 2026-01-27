@@ -231,7 +231,11 @@ const haversineDistance = (a: Point, b: Point): number => {
  * @param input - The value to format, which can be a Date instance, a timestamp (in seconds or milliseconds), or a string representation of a date or numeric timestamp.
  * @returns A formatted date string in the "MMM D, YYYY h:mm:ss a" format.
  */
-export const formatDate = (input: number | string | Date): string => {
+export const formatDate = (input: number | string | Date | null): string => {
+  if (input === null) {
+    return ''
+  }
+
   let value: Date
 
   if (input instanceof Date) {
