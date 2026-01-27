@@ -292,6 +292,8 @@ watch(globalDarkMode, (isDark) => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 useLeafletEvent(map as any, 'zoomstart', () => {
   isZooming.value = true
+  // Close any open popup to prevent _map null errors during zoom animation
+  map.value?.closePopup()
 })
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
