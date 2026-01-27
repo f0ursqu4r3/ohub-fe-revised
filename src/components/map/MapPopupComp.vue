@@ -75,8 +75,8 @@ const outageItem = computed<OutageItem>(() => {
 
   // Combine multiple items
   const totalCustomers = items.reduce((sum, item) => sum + (item.customerCount ?? 0), 0)
-  const outageTypes = [...new Set(items.map((i) => i.outageType).filter(Boolean))]
-  const causes = [...new Set(items.map((i) => i.cause).filter(Boolean))]
+  const outageTypes = [...new Set(items.map((i) => i.outageType))]
+  const causes = [...new Set(items.map((i) => i.cause))]
   const hasPlanned = items.some((i) => i.isPlanned === true)
   const hasUnplanned = items.some((i) => i.isPlanned === false)
 
@@ -108,6 +108,11 @@ const outageItem = computed<OutageItem>(() => {
     isSingle: false,
   }
 })
+
+// Help text for missing data. We do our best to collect comprehensive outage data,
+// but sometimes data may be incomplete or missing due to provider data availability.
+const whyIsDataMissingHelpText =
+  'This information was not provided by the utility company in their outage report.'
 </script>
 
 <template>
@@ -123,36 +128,51 @@ const outageItem = computed<OutageItem>(() => {
       </div>
     </div>
     <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 px-3.5 pb-2 text-[13px]">
-      <dt v-if="outageItem.outageType" class="text-muted">Type</dt>
+      <dt class="text-muted">Type</dt>
       <dd v-if="outageItem.outageType" class="text-amber-600 dark:text-amber-400">
         {{ outageItem.outageType }}
       </dd>
+      <UTooltip v-else :text="whyIsDataMissingHelpText">
+        <dd class="cursor-help text-muted italic">Unknown</dd>
+      </UTooltip>
 
-      <dt v-if="outageItem.isPlanned != null" class="text-muted">Status</dt>
+      <dt class="text-muted">Status</dt>
       <dd v-if="outageItem.isPlanned != null" class="text-default">
         {{ outageItem.isPlanned ? 'Planned' : 'Unplanned' }}
       </dd>
+      <UTooltip v-else :text="whyIsDataMissingHelpText">
+        <dd class="cursor-help text-muted italic">Unknown</dd>
+      </UTooltip>
 
-      <dt v-if="outageItem.customerCount != null" class="text-muted">Affected</dt>
+      <dt class="text-muted">Affected</dt>
       <dd v-if="outageItem.customerCount != null" class="font-semibold text-default">
         {{ outageItem.customerCount.toLocaleString() }} customers
       </dd>
+      <UTooltip v-else :text="whyIsDataMissingHelpText">
+        <dd class="cursor-help text-muted italic">Unknown</dd>
+      </UTooltip>
 
       <dt v-if="outageItem.sizeLabel" class="text-muted">Area</dt>
       <dd v-if="outageItem.sizeLabel" class="text-default">{{ outageItem.sizeLabel }}</dd>
 
-      <dt v-if="outageItem.cause" class="text-muted">Cause</dt>
+      <dt class="text-muted">Cause</dt>
       <dd v-if="outageItem.cause" class="text-rose-600 dark:text-rose-400">
         {{ outageItem.cause }}
       </dd>
+      <UTooltip v-else :text="whyIsDataMissingHelpText">
+        <dd class="cursor-help text-muted italic">Unknown</dd>
+      </UTooltip>
 
       <dt v-if="durationString" class="text-muted">Duration</dt>
       <dd v-if="durationString" class="text-default">{{ durationString }}</dd>
 
-      <dt v-if="outageItem.etr" class="text-muted">Est. restore</dt>
+      <dt class="text-muted">Est. restore</dt>
       <dd v-if="outageItem.etr" class="text-primary-600 dark:text-primary-400">
         {{ outageItem.etr }}
       </dd>
+      <UTooltip v-else :text="whyIsDataMissingHelpText">
+        <dd class="cursor-help text-muted italic">Unknown</dd>
+      </UTooltip>
     </dl>
 
     <div class="px-3.5 pb-1">

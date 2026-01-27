@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
-// Static import for popup Vue component
-import MapPopupComp from '../../components/map/MapPopupComp.vue'
+// Static import for popup Vue component (wrapper provides UApp context for tooltips)
+import MapPopupComp from '../../components/map/MapPopupWrapper.vue'
 import L from 'leaflet'
 import type { Ref, ShallowRef } from 'vue'
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
