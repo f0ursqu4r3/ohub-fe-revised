@@ -36,7 +36,7 @@ const formatTimestamp = (timestamp?: number | null) => {
 
 const currentPlan = computed(() => {
   if (!subscription.value?.subscription?.priceId) return null
-  return plans.value.find((p) => p.price_id === subscription.value?.subscription?.priceId)
+  return plans.value.find((p) => p.priceId === subscription.value?.subscription?.priceId)
 })
 
 const formatPrice = (amount: number | null, currency: string | null) => {
@@ -171,7 +171,7 @@ const statusLabel = computed(() => {
               <label class="text-sm font-medium text-muted">Plan</label>
               <p class="text-default mt-1">{{ currentPlan?.name || 'Unknown Plan' }}</p>
               <p v-if="currentPlan" class="text-sm text-muted">
-                {{ formatPrice(currentPlan.unit_amount, currentPlan.currency) }}
+                {{ formatPrice(currentPlan.unitAmount, currentPlan.currency) }}
                 <span v-if="currentPlan.interval">/{{ currentPlan.interval }}</span>
               </p>
             </div>
