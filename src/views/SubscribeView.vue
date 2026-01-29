@@ -177,7 +177,7 @@ const handleLogout = () => authStore.logout()
         >
           <div
             v-for="plan in filteredPlans"
-            :key="plan.priceId"
+            :key="plan.priceId ?? undefined"
             :class="[
               'relative rounded-xl bg-elevated border-2 p-8 transition-all duration-200 hover:shadow-xl',
               billingInterval === 'year'

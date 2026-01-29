@@ -69,7 +69,7 @@ export const useBillingStore = defineStore('billing', () => {
 
   const currentPlan = computed(() => {
     if (!subscription.value?.subscription?.priceId) return null
-    return plans.value.find((p) => p.price_id === subscription.value?.subscription?.priceId)
+    return plans.value.find((p) => p.priceId === subscription.value?.subscription?.priceId)
   })
 
   const createCheckout = async (priceId: string) => {
