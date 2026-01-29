@@ -55,7 +55,7 @@ const statusColor = computed(() => {
       return 'success'
     case 'trialing':
       return 'info'
-    case 'past_due':
+    case 'pastDue':
       return 'warning'
     case 'canceled':
     case 'incomplete':
@@ -72,7 +72,7 @@ const statusLabel = computed(() => {
       return 'Active'
     case 'trialing':
       return 'Trial'
-    case 'past_due':
+    case 'pastDue':
       return 'Past Due'
     case 'canceled':
       return 'Canceled'
