@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { PopupData, BoundsLiteral } from './types'
 
 const props = defineProps<{
@@ -113,6 +113,17 @@ const outageItem = computed<OutageItem>(() => {
 // but sometimes data may be incomplete or missing due to provider data availability.
 const whyIsDataMissingHelpText =
   'This information was not provided by the utility company in their outage report.'
+
+const copyStatus = ref<'idle' | 'copied'>('idle')
+
+async function copyGeoJsonText() {
+  if (!props.popupData.geoJsonText) return
+  await navigator.clipboard.writeText(props.popupData.geoJsonText)
+  copyStatus.value = 'copied'
+  setTimeout(() => {
+    copyStatus.value = 'idle'
+  }, 2000)
+}
 </script>
 
 <template>
@@ -175,10 +186,9 @@ const whyIsDataMissingHelpText =
       </UTooltip>
     </dl>
 
-    <div class="px-3.5 pb-1">
+    <div v-if="outageItem.bounds" class="flex gap-2 px-3.5 pb-1">
       <!-- Zoom button -->
       <button
-        v-if="outageItem.bounds"
         class="mt-1 inline-flex w-fit cursor-pointer items-center gap-1 rounded-[7px] border border-default bg-elevated px-2 py-1 text-[13px] text-primary-600 shadow-sm transition duration-150 hover:bg-primary-500/10 hover:text-primary-700 active:scale-95 dark:text-primary-400 dark:hover:text-primary-300"
         :data-bounds="encodeBounds(outageItem.bounds)"
         title="Zoom to extent"
@@ -186,6 +196,18 @@ const whyIsDataMissingHelpText =
       >
         <UIcon name="i-heroicons-magnifying-glass-plus" class="h-4 w-4" />
         <span>Zoom to area</span>
+      </button>
+      <!-- Copy GeoJSON button -->
+      <button
+        class="mt-1 inline-flex w-fit cursor-pointer items-center gap-1 rounded-[7px] border border-default bg-elevated px-2 py-1 text-[13px] text-primary-600 shadow-sm transition duration-150 hover:bg-primary-500/10 hover:text-primary-700 active:scale-95 dark:text-primary-400 dark:hover:text-primary-300"
+        title="Copy bounds as GeoJSON"
+        @click.stop="copyGeoJsonText"
+      >
+        <UIcon
+          :name="copyStatus === 'copied' ? 'i-heroicons-check' : 'i-heroicons-clipboard-document'"
+          class="h-4 w-4"
+        />
+        <span>{{ copyStatus === 'copied' ? 'Copied!' : 'Copy GeoJSON' }}</span>
       </button>
     </div>
     <!-- Multi-item indicator -->
