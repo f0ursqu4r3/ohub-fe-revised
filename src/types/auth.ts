@@ -17,26 +17,26 @@ export interface Customer {
 
 export interface SubscriptionDetails {
   status: string
-  price_id: string | null
-  current_period_end: number | null
-  cancel_at: number | null
-  trial_end: number | null
+  priceId: string | null
+  currentPeriodEnd: number | null
+  cancelAt: number | null
+  trialEnd: number | null
 }
 
 export interface SubscriptionResponse {
-  has_subscription: boolean
+  hasSubscription: boolean
   subscription: SubscriptionDetails | null
 }
 
 export interface BillingPlan {
-  price_id: string
-  product_id: string | null
+  priceId: string | null
+  productId: string | null
   name: string
   description: string | null
   currency: string | null
-  unit_amount: number | null
+  unitAmount: number | null
   interval: string | null
-  interval_count: number | null
+  intervalCount: number | null
   features: Record<string, unknown> | null
   metadata: Record<string, unknown> | null
 }

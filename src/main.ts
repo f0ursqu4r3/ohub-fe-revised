@@ -20,7 +20,7 @@ app.use(
       audience: import.meta.env.VITE_AUTH0_AUDIENCE,
     },
     useRefreshTokens: true,
-    cacheLocation: 'memory',
+    cacheLocation: 'localstorage',
   }),
 )
 app.use(router)

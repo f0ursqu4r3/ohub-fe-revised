@@ -4,8 +4,6 @@ import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
 const { isAuthenticated, user, isLoading } = storeToRefs(authStore)
-
-const handleLogin = () => authStore.login()
 </script>
 
 <template>
@@ -21,18 +19,18 @@ const handleLogin = () => authStore.login()
         <div v-else-if="isAuthenticated" class="flex items-center gap-3">
           <span class="text-sm text-muted">{{ user?.email }}</span>
           <UButton
-            to="/developers/api-keys"
-            icon="i-heroicons-key"
+            to="/developers/getting-started"
+            icon="i-heroicons-arrow-right"
             color="primary"
-            label="My API Keys"
+            label="Go to Dashboard"
           />
         </div>
         <UButton
           v-else
+          to="/login"
           icon="i-heroicons-user"
           color="primary"
           label="Sign In"
-          @click="handleLogin"
         />
       </div>
     </header>
@@ -111,24 +109,24 @@ const handleLogin = () => authStore.login()
           <h3 class="text-2xl font-bold text-default mb-6">Quick Start</h3>
           <div class="grid md:grid-cols-2 gap-6">
             <div>
-              <h4 class="font-semibold text-default mb-3">1. Get an API Key</h4>
+              <h4 class="font-semibold text-default mb-3">1. Subscribe & Get an API Key</h4>
               <p class="text-sm text-muted mb-4">
-                Sign in with your email to create and manage API keys. Keys are free and can be
-                created instantly.
+                Choose a subscription plan to access the API. Once subscribed, you can create and
+                manage API keys from your developer dashboard.
               </p>
               <UButton
                 v-if="!isAuthenticated"
-                icon="i-heroicons-user"
+                to="/login"
+                icon="i-heroicons-arrow-right"
                 color="primary"
-                label="Sign In to Get Started"
-                @click="handleLogin"
+                label="Get Started"
               />
               <UButton
                 v-else
-                to="/developers/api-keys"
-                icon="i-heroicons-key"
+                to="/developers/getting-started"
+                icon="i-heroicons-arrow-right"
                 color="primary"
-                label="Manage API Keys"
+                label="Go to Dashboard"
               />
             </div>
 
@@ -218,17 +216,16 @@ const handleLogin = () => authStore.login()
         >
           <h3 class="text-2xl font-bold text-default mb-4">Ready to Get Started?</h3>
           <p class="text-muted mb-6 max-w-2xl mx-auto">
-            Sign in to create your first API key and start accessing Canadian power outage data in
-            seconds.
+            Subscribe to access the Canadian Power Outage API. All plans include a free trial.
           </p>
           <div class="flex gap-3 justify-center">
             <UButton
               v-if="!isAuthenticated"
-              icon="i-heroicons-user"
+              to="/login"
+              icon="i-heroicons-arrow-right"
               color="primary"
               size="lg"
-              label="Sign In"
-              @click="handleLogin"
+              label="Get Started"
             />
             <UButton
               v-else
@@ -236,7 +233,7 @@ const handleLogin = () => authStore.login()
               icon="i-heroicons-key"
               color="primary"
               size="lg"
-              label="Manage API Keys"
+              label="Go to Dashboard"
             />
             <UButton
               to="/"

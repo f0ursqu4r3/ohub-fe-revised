@@ -29,7 +29,15 @@ export const useAuthStore = defineStore('auth', () => {
 
   const login = () =>
     auth0.loginWithRedirect({
-      appState: { target: '/developers/api-keys' },
+      appState: { target: '/subscribe' },
+    })
+
+  const signup = () =>
+    auth0.loginWithRedirect({
+      appState: { target: '/subscribe' },
+      authorizationParams: {
+        screen_hint: 'signup',
+      },
     })
 
   const logout = () => {
@@ -46,6 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading,
     fetchCustomer,
     login,
+    signup,
     logout,
     getAccessToken,
   }

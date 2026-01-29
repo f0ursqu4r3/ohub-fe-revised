@@ -35,8 +35,8 @@ const formatTimestamp = (timestamp?: number | null) => {
 }
 
 const currentPlan = computed(() => {
-  if (!subscription.value?.subscription?.price_id) return null
-  return plans.value.find((p) => p.price_id === subscription.value?.subscription?.price_id)
+  if (!subscription.value?.subscription?.priceId) return null
+  return plans.value.find((p) => p.price_id === subscription.value?.subscription?.priceId)
 })
 
 const formatPrice = (amount: number | null, currency: string | null) => {
@@ -159,7 +159,7 @@ const statusLabel = computed(() => {
           </span>
         </div>
 
-        <div v-else-if="!subscription?.has_subscription" class="text-center py-4">
+        <div v-else-if="!subscription?.hasSubscription" class="text-center py-4">
           <UIcon name="i-heroicons-credit-card" class="h-12 w-12 text-muted mx-auto mb-3" />
           <p class="text-muted">No active subscription</p>
           <p class="text-sm text-muted mt-1">Subscribe to access premium features</p>
@@ -185,24 +185,24 @@ const statusLabel = computed(() => {
               </div>
             </div>
 
-            <div v-if="subscription.subscription?.current_period_end">
+            <div v-if="subscription.subscription?.currentPeriodEnd">
               <label class="text-sm font-medium text-muted">Current Period Ends</label>
               <p class="text-default mt-1">
-                {{ formatTimestamp(subscription.subscription.current_period_end) }}
+                {{ formatTimestamp(subscription.subscription.currentPeriodEnd) }}
               </p>
             </div>
 
-            <div v-if="subscription.subscription?.trial_end">
+            <div v-if="subscription.subscription?.trialEnd">
               <label class="text-sm font-medium text-muted">Trial Ends</label>
               <p class="text-default mt-1">
-                {{ formatTimestamp(subscription.subscription.trial_end) }}
+                {{ formatTimestamp(subscription.subscription.trialEnd) }}
               </p>
             </div>
 
-            <div v-if="subscription.subscription?.cancel_at">
+            <div v-if="subscription.subscription?.cancelAt">
               <label class="text-sm font-medium text-muted">Cancels On</label>
               <p class="mt-1 text-warning">
-                {{ formatTimestamp(subscription.subscription.cancel_at) }}
+                {{ formatTimestamp(subscription.subscription.cancelAt) }}
               </p>
             </div>
           </div>
