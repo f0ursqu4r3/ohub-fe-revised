@@ -1,3 +1,9 @@
+export interface FetchOutageParams {
+  since?: number
+  until?: number
+  provider?: string
+}
+
 export interface Outage {
   id: number
   provider: string

@@ -116,9 +116,16 @@ const whyIsDataMissingHelpText =
 
 const copyStatus = ref<'idle' | 'copied'>('idle')
 
-async function copyGeoJsonText() {
-  if (!props.popupData.geoJsonText) return
-  await navigator.clipboard.writeText(props.popupData.geoJsonText)
+async function copyGeoJsonText(event: MouseEvent) {
+  if (!navigator.clipboard || !outageItem.value) return
+  else if (outageItem.value && event.altKey) {
+    await navigator.clipboard.writeText(JSON.stringify(outageItem.value, null, 2))
+  } else if (!props.popupData.geoJsonText) return
+  else {
+    await navigator.clipboard.writeText(
+      JSON.stringify(JSON.parse(props.popupData.geoJsonText), null, 2),
+    )
+  }
   copyStatus.value = 'copied'
   setTimeout(() => {
     copyStatus.value = 'idle'
@@ -219,3 +226,4 @@ async function copyGeoJsonText() {
     </p>
   </div>
 </template>
+import type { stringify } from 'querystring';import type { log } from 'console';

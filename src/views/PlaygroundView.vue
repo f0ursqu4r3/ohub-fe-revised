@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useApiKeysStore } from '@/stores/apiKeys'
-import CreateApiKeyModal from '@/components/CreateApiKeyModal.vue'
+import { ref, computed, onMounted } from 'vue'
+import { useOutageStore, type FetchOutageParams } from '@/stores/outages'
 import hljs from 'highlight.js/lib/core'
 import bash from 'highlight.js/lib/languages/bash'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -18,23 +16,12 @@ hljs.registerLanguage('rust', rust)
 hljs.registerLanguage('go', go)
 hljs.registerLanguage('json', json)
 
-const apiKeysStore = useApiKeysStore()
-const { apiKeys } = storeToRefs(apiKeysStore)
+const outageStore = useOutageStore()
+const { fetchProviders, fetchOutages, fetchOutage } = outageStore
 
-const createApiKeyModal = ref<InstanceType<typeof CreateApiKeyModal> | null>(null)
-
-const onApiKeyCreated = (apiKey: string) => {
-  selectedApiKey.value = apiKey
-}
-
-onMounted(() => {
-  if (!apiKeys.value.length) {
-    apiKeysStore.fetchApiKeys()
-  }
-})
+const displayBaseUrl = 'https://api.canadianpoweroutages.ca'
 
 const selectedEndpoint = ref('/v1/outages')
-const selectedApiKey = ref('')
 const sinceDatetime = ref('')
 const untilDatetime = ref('')
 const outageIdParam = ref('')
@@ -55,36 +42,9 @@ const isLoading = ref(false)
 const response = ref<object | null>(null)
 const responseError = ref('')
 const responseStatus = ref<number | null>(null)
-
 const providers = ref<string[]>([])
-
-const apiBaseUrl = import.meta.env.DEV ? '/api' : 'https://api.canadianpoweroutages.ca'
-
-const fetchProviders = async (apiKey: string) => {
-  try {
-    const res = await fetch(`${apiBaseUrl}/v1/providers`, {
-      headers: { 'X-API-Key': apiKey },
-    })
-    if (res.ok) {
-      const data = await res.json()
-      providers.value = data.providers || []
-    }
-  } catch {
-    // Silently fail - providers are optional
-  }
-}
-
-watch(selectedApiKey, (newKey) => {
-  if (newKey) {
-    fetchProviders(newKey)
-  } else {
-    providers.value = []
-  }
-})
-
 const selectedLanguage = ref('curl')
 const copiedCode = ref(false)
-const showApiKey = ref(false)
 
 const endpoints = [
   { value: '/v1/outages', label: 'GET /v1/outages', description: 'List outages in time range' },
@@ -99,9 +59,6 @@ const languages = [
   { value: 'rust', label: 'Rust' },
   { value: 'go', label: 'Go' },
 ]
-
-const baseUrl = import.meta.env.DEV ? '/api' : 'https://api.canadianpoweroutages.ca'
-const displayBaseUrl = 'https://api.canadianpoweroutages.ca'
 
 const buildPath = computed(() => {
   let path = ''
@@ -124,57 +81,100 @@ const buildPath = computed(() => {
   return path
 })
 
-const buildUrl = computed(() => baseUrl + buildPath.value)
 const displayUrl = computed(() => displayBaseUrl + buildPath.value)
 
-const apiKeyDisplay = computed(() => {
-  if (!selectedApiKey.value) return 'YOUR_API_KEY'
-  if (showApiKey.value) return selectedApiKey.value
-  // Show first 8 chars + masked remainder
-  const key = selectedApiKey.value
-  return key.substring(0, 8) + '••••••••••••••••'
+const queryParams = computed(() => {
+  const params: { key: string; value: string }[] = []
+  if (selectedEndpoint.value === '/v1/outages') {
+    if (sinceEpoch.value) params.push({ key: 'since', value: sinceEpoch.value })
+    if (untilEpoch.value) params.push({ key: 'until', value: untilEpoch.value })
+    if (providerParam.value) params.push({ key: 'provider', value: providerParam.value })
+  }
+  return params
+})
+
+const baseEndpointUrl = computed(() => {
+  let path = ''
+  if (selectedEndpoint.value === '/v1/outages/:id') {
+    path = `/v1/outages/${outageIdParam.value || ':id'}`
+  } else {
+    path = selectedEndpoint.value
+  }
+  return displayBaseUrl + path
 })
 
 const generatedCode = computed(() => {
   const url = displayUrl.value
-  const apiKey = apiKeyDisplay.value
+  const base = baseEndpointUrl.value
+  const params = queryParams.value
 
   switch (selectedLanguage.value) {
     case 'curl':
       return `curl -X GET "${url}" \\
-  -H "X-API-Key: ${apiKey}"`
+  -H "X-API-Key: YOUR_API_KEY"`
 
-    case 'javascript':
-      return `const response = await fetch("${url}", {
-  method: "GET",
+    case 'javascript': {
+      if (params.length === 0) {
+        return `const response = await fetch("${url}", {
   headers: {
-    "X-API-Key": "${apiKey}"
+    "X-API-Key": "YOUR_API_KEY"
   }
 });
 
 const data = await response.json();
 console.log(data);`
+      }
+      const jsParams = params.map((p) => `url.searchParams.set("${p.key}", "${p.value}");`).join('\n')
+      return `const url = new URL("${base}");
+${jsParams}
 
-    case 'python':
-      return `import httpx
+const response = await fetch(url, {
+  headers: {
+    "X-API-Key": "YOUR_API_KEY"
+  }
+});
+
+const data = await response.json();
+console.log(data);`
+    }
+
+    case 'python': {
+      if (params.length === 0) {
+        return `import httpx
 
 response = httpx.get(
     "${url}",
-    headers={"X-API-Key": "${apiKey}"}
+    headers={"X-API-Key": "YOUR_API_KEY"}
 )
 
 data = response.json()
 print(data)`
+      }
+      const pyParams = params.map((p) => `    "${p.key}": "${p.value}",`).join('\n')
+      return `import httpx
 
-    case 'rust':
-      return `use reqwest::header;
+response = httpx.get(
+    "${base}",
+    headers={"X-API-Key": "YOUR_API_KEY"},
+    params={
+${pyParams}
+    }
+)
+
+data = response.json()
+print(data)`
+    }
+
+    case 'rust': {
+      if (params.length === 0) {
+        return `use reqwest::header;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
     let response = client
         .get("${url}")
-        .header("X-API-Key", "${apiKey}")
+        .header("X-API-Key", "YOUR_API_KEY")
         .send()
         .await?
         .json::<serde_json::Value>()
@@ -183,9 +183,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{:#?}", response);
     Ok(())
 }`
+      }
+      const rsQuery = params.map((p) => `        ("${p.key}", "${p.value}"),`).join('\n')
+      return `use reqwest::header;
 
-    case 'go':
-      return `package main
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = reqwest::Client::new();
+    let response = client
+        .get("${base}")
+        .header("X-API-Key", "YOUR_API_KEY")
+        .query(&[
+${rsQuery}
+        ])
+        .send()
+        .await?
+        .json::<serde_json::Value>()
+        .await?;
+
+    println!("{:#?}", response);
+    Ok(())
+}`
+    }
+
+    case 'go': {
+      if (params.length === 0) {
+        return `package main
 
 import (
 	"fmt"
@@ -195,7 +218,7 @@ import (
 
 func main() {
 	req, _ := http.NewRequest("GET", "${url}", nil)
-	req.Header.Set("X-API-Key", "${apiKey}")
+	req.Header.Set("X-API-Key", "YOUR_API_KEY")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -207,73 +230,25 @@ func main() {
 	body, _ := io.ReadAll(resp.Body)
 	fmt.Println(string(body))
 }`
-
-    default:
-      return ''
-  }
-})
-
-const copyableCode = computed(() => {
-  const url = displayUrl.value
-  const apiKey = selectedApiKey.value || 'YOUR_API_KEY'
-
-  switch (selectedLanguage.value) {
-    case 'curl':
-      return `curl -X GET "${url}" \\
-  -H "X-API-Key: ${apiKey}"`
-
-    case 'javascript':
-      return `const response = await fetch("${url}", {
-  method: "GET",
-  headers: {
-    "X-API-Key": "${apiKey}"
-  }
-});
-
-const data = await response.json();
-console.log(data);`
-
-    case 'python':
-      return `import httpx
-
-response = httpx.get(
-    "${url}",
-    headers={"X-API-Key": "${apiKey}"}
-)
-
-data = response.json()
-print(data)`
-
-    case 'rust':
-      return `use reqwest::header;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = reqwest::Client::new();
-    let response = client
-        .get("${url}")
-        .header("X-API-Key", "${apiKey}")
-        .send()
-        .await?
-        .json::<serde_json::Value>()
-        .await?;
-
-    println!("{:#?}", response);
-    Ok(())
-}`
-
-    case 'go':
+      }
+      const goParams = params.map((p) => `	q.Set("${p.key}", "${p.value}")`).join('\n')
       return `package main
 
 import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 func main() {
-	req, _ := http.NewRequest("GET", "${url}", nil)
-	req.Header.Set("X-API-Key", "${apiKey}")
+	u, _ := url.Parse("${base}")
+	q := u.Query()
+${goParams}
+	u.RawQuery = q.Encode()
+
+	req, _ := http.NewRequest("GET", u.String(), nil)
+	req.Header.Set("X-API-Key", "YOUR_API_KEY")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -285,6 +260,7 @@ func main() {
 	body, _ := io.ReadAll(resp.Body)
 	fmt.Println(string(body))
 }`
+    }
 
     default:
       return ''
@@ -333,7 +309,7 @@ const highlightedResponse = computed(() => {
 
 const copyCode = async () => {
   try {
-    await navigator.clipboard.writeText(copyableCode.value)
+    await navigator.clipboard.writeText(generatedCode.value)
     copiedCode.value = true
     setTimeout(() => {
       copiedCode.value = false
@@ -344,34 +320,44 @@ const copyCode = async () => {
 }
 
 const executeRequest = async () => {
-  if (!selectedApiKey.value) {
-    responseError.value = 'Please select an API key'
-    return
-  }
-
   isLoading.value = true
   response.value = null
   responseError.value = ''
   responseStatus.value = null
 
   try {
-    const res = await fetch(buildUrl.value, {
-      method: 'GET',
-      headers: {
-        'X-API-Key': selectedApiKey.value,
-      },
-    })
-
-    responseStatus.value = res.status
-    const data = await res.json()
-
-    if (!res.ok) {
-      responseError.value = data.message || data.error || 'Request failed'
-    } else {
-      response.value = data
+    switch (selectedEndpoint.value) {
+      case '/v1/outages': {
+        const params: FetchOutageParams = {}
+        if (sinceEpoch.value) params.since = Number(sinceEpoch.value)
+        if (untilEpoch.value) params.until = Number(untilEpoch.value)
+        if (providerParam.value) params.provider = providerParam.value
+        const res = await fetchOutages(params)
+        response.value = { outages: res.outages }
+        responseStatus.value = res.status
+        break
+      }
+      case '/v1/outages/:id': {
+        if (!outageIdParam.value) {
+          throw new Error('Outage ID is required')
+        }
+        const res = await fetchOutage(outageIdParam.value)
+        console.log(res)
+        response.value = res
+        responseStatus.value = res.status
+        break
+      }
+      case '/v1/providers': {
+        const res = await fetchProviders()
+        response.value = { providers: res.providers }
+        responseStatus.value = res.status
+        break
+      }
+      default:
+        throw new Error('Invalid endpoint selected')
     }
-  } catch (err) {
-    responseError.value = err instanceof Error ? err.message : 'Network error'
+  } catch (err: any) {
+    responseError.value = err.message || 'An error occurred'
   } finally {
     isLoading.value = false
   }
@@ -389,6 +375,11 @@ const setTimeRange = (hours: number) => {
   sinceDatetime.value = toDatetimeLocal(since)
   untilDatetime.value = toDatetimeLocal(now)
 }
+
+onMounted(async () => {
+  const providersResp = await fetchProviders()
+  providers.value = providersResp.providers || []
+})
 </script>
 
 <template>
@@ -412,34 +403,6 @@ const setTimeRange = (hours: number) => {
                   v-model="selectedEndpoint"
                   :items="endpoints"
                   value-key="value"
-                  class="w-full"
-                />
-              </div>
-
-              <!-- API Key -->
-              <div>
-                <label class="block text-sm font-medium text-default mb-2">API Key</label>
-                <p v-if="!apiKeys.length" class="text-xs text-muted mt-1">
-                  <UButton
-                    icon="i-heroicons-plus"
-                    color="primary"
-                    @click="createApiKeyModal?.open()"
-                    block
-                  >
-                    Create an API key to test requests
-                  </UButton>
-                </p>
-                <USelectMenu
-                  v-else
-                  v-model="selectedApiKey"
-                  :items="
-                    apiKeys.map((k) => ({
-                      value: k.apiKey,
-                      label: k.note || k.apiKey.substring(0, 12) + '...',
-                    }))
-                  "
-                  value-key="value"
-                  placeholder="Select an API key..."
                   class="w-full"
                 />
               </div>
@@ -517,7 +480,7 @@ const setTimeRange = (hours: number) => {
                 color="primary"
                 label="Send Request"
                 :loading="isLoading"
-                :disabled="!selectedApiKey"
+                :disabled="isLoading"
                 block
                 @click="executeRequest"
               />
@@ -530,14 +493,6 @@ const setTimeRange = (hours: number) => {
               <div class="flex items-center justify-between">
                 <h2 class="text-base font-semibold">Generated Code</h2>
                 <div class="flex items-center gap-1">
-                  <UButton
-                    :icon="showApiKey ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-                    color="neutral"
-                    variant="ghost"
-                    size="xs"
-                    :title="showApiKey ? 'Hide API key' : 'Show API key'"
-                    @click="showApiKey = !showApiKey"
-                  />
                   <UButton
                     :icon="copiedCode ? 'i-heroicons-check' : 'i-heroicons-clipboard'"
                     :color="copiedCode ? 'success' : 'neutral'"
@@ -613,7 +568,5 @@ const setTimeRange = (hours: number) => {
         </div>
       </div>
     </div>
-
-    <CreateApiKeyModal ref="createApiKeyModal" @created="onApiKeyCreated" />
   </div>
 </template>

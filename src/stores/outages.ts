@@ -1,7 +1,13 @@
 import { ref, computed, watch, type ComputedRef } from 'vue'
 import { defineStore } from 'pinia'
 import { useFetch } from '@vueuse/core'
-import { TimeInterval, type OutageResponse, type Outage, type OutageBlock } from '../types/outage'
+import {
+  TimeInterval,
+  type OutageResponse,
+  type Outage,
+  type OutageBlock,
+  type FetchOutageParams,
+} from '../types/outage'
 
 export const useOutageStore = defineStore('outages', () => {
   const baseApiUrl = import.meta.env.VITE_BASE_API_URL || ''
@@ -64,6 +70,30 @@ export const useOutageStore = defineStore('outages', () => {
       .sort((a, b) => a.startTs - b.startTs)
   })
 
+  const fetchOutages = async (params: FetchOutageParams): Promise<Response> => {
+    const fetchUrl = new URL(`${baseApiUrl}/outages`)
+    if (params.since) {
+      fetchUrl.searchParams.append('start', params.since.toString())
+    }
+    if (params.until) {
+      fetchUrl.searchParams.append('end', params.until.toString())
+    }
+    if (params.provider) {
+      fetchUrl.searchParams.append('provider', params.provider)
+    }
+    return fetch(fetchUrl.toString())
+  }
+
+  const fetchOutage = async (id: string): Promise<Response> => {
+    const fetchUrl = new URL(`${baseApiUrl}/outages/${id}`)
+    return fetch(fetchUrl.toString())
+  }
+
+  const fetchProviders = async (): Promise<Response> => {
+    const fetchUrl = new URL(`${baseApiUrl}/v1/providers`)
+    return fetch(fetchUrl.toString())
+  }
+
   watch(
     [blocks, selectedOutageTs],
     ([blockList, selected]) => {
@@ -95,6 +125,9 @@ export const useOutageStore = defineStore('outages', () => {
     loading,
     error,
     refetch,
+    fetchOutages,
+    fetchOutage,
+    fetchProviders,
   }
 })
 

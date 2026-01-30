@@ -194,7 +194,15 @@ const { buildPopupData } = usePopupData()
 <template>
   <div class="flex relative w-full h-full">
     <!-- Developer Portal link in top-left -->
-    <div class="fixed top-4 right-4 z-40">
+    <div class="fixed top-4 right-4 z-40 flex items-center gap-2">
+      <UButton
+        to="/analytics"
+        icon="i-heroicons-chart-bar"
+        color="neutral"
+        variant="ghost"
+        label="Analytics"
+        class="shadow-md"
+      />
       <UButton
         to="/developers"
         icon="i-heroicons-code-bracket"

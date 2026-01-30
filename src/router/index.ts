@@ -7,35 +7,41 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: () => import('../views/HomeView.vue'),
+      name: 'map',
+      component: () => import('../views/MapView.vue'),
+      meta: { layout: 'empty' },
+    },
+    {
+      path: '/analytics',
+      name: 'analytics',
+      component: () => import('../views/AnalyticsView.vue'),
       meta: { layout: 'default' },
     },
     {
       path: '/callback',
       name: 'callback',
       component: () => import('../views/CallbackView.vue'),
-      meta: { layout: 'default' },
+      meta: { layout: 'empty' },
     },
     {
       path: '/developers',
       name: 'developers',
       component: () => import('../views/DevelopersView.vue'),
-      meta: { layout: 'default' },
+      meta: { layout: 'empty' },
       beforeEnter: guestOnlyGuard,
     },
     {
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
-      meta: { layout: 'default' },
+      meta: { layout: 'empty' },
       beforeEnter: guestOnlyGuard,
     },
     {
       path: '/subscribe',
       name: 'subscribe',
       component: () => import('../views/SubscribeView.vue'),
-      meta: { layout: 'default' },
+      meta: { layout: 'empty' },
       beforeEnter: [authGuard, subscribedUserGuard],
     },
     {
@@ -69,7 +75,7 @@ const router = createRouter({
     // catch-all route to main page for undefined routes
     {
       path: '/:pathMatch(.*)*',
-      redirect: { name: 'home' },
+      redirect: { name: 'map' },
     },
   ],
 })

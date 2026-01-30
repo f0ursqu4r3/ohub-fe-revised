@@ -3,6 +3,7 @@ import { watch, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDarkModeStore } from '@/stores/darkMode'
 import { useRoute } from 'vue-router'
+import EmptyLayout from '@/layouts/EmptyLayout.vue'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import DeveloperLayout from '@/layouts/DeveloperLayout.vue'
 
@@ -21,14 +22,15 @@ watch(
 
 // Map layout names to components
 const layouts = {
+  empty: EmptyLayout,
   default: DefaultLayout,
   developer: DeveloperLayout,
 }
 
 // Get the current layout component based on route meta
 const layout = computed(() => {
-  const layoutName = (route.meta.layout as string) || 'default'
-  return layouts[layoutName as keyof typeof layouts] || DefaultLayout
+  const layoutName = (route.meta.layout as string) || 'empty'
+  return layouts[layoutName as keyof typeof layouts] || EmptyLayout
 })
 </script>
 
