@@ -31,7 +31,8 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     try {
       const response = await fetch(`${baseUrl}/v1/norm-compliance/summary`)
       if (!response.ok) throw new Error('Failed to fetch compliance summaries')
-      summaries.value = await response.json()
+      const data = await response.json()
+      summaries.value = data.summaries
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
@@ -75,7 +76,8 @@ export const useAnalyticsStore = defineStore('analytics', () => {
         `${baseUrl}/v1/norm-compliance/series?${searchParams.toString()}`,
       )
       if (!response.ok) throw new Error('Failed to fetch compliance series')
-      series.value = await response.json()
+      const data = await response.json()
+      series.value = data.buckets ?? []
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
@@ -89,7 +91,8 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     try {
       const response = await fetch(`${baseUrl}/v1/norm-compliance/worker`)
       if (!response.ok) throw new Error('Failed to fetch worker health')
-      workerRun.value = await response.json()
+      const data = await response.json()
+      workerRun.value = data.latest
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {

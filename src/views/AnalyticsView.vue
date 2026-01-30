@@ -153,7 +153,7 @@ const workerStatusColor = computed(() => {
 
 const lastRunLabel = computed(() => {
   if (!workerRun.value) return 'Never'
-  const finishedMs = workerRun.value.finished_at * 1000
+  const finishedMs = new Date(workerRun.value.finished_at).getTime()
   const diff = Date.now() - finishedMs
   const minutes = Math.floor(diff / 60000)
   if (minutes < 1) return 'Just now'
@@ -204,17 +204,21 @@ async function loadSeries() {
   })
 }
 
+const initialized = ref(false)
+
 watch([selectedProvider, selectedGranularity], () => {
-  loadSeries()
+  if (initialized.value) {
+    loadSeries()
+  }
 })
 
 onMounted(async () => {
   await Promise.all([analyticsStore.fetchProviders(), analyticsStore.fetchWorkerHealth()])
-  // Default to __all__ if no provider selected
   if (!selectedProvider.value) {
     selectedProvider.value = '__all__'
   }
   await loadSeries()
+  initialized.value = true
 })
 </script>
 
@@ -527,4 +531,3 @@ onMounted(async () => {
   opacity: 0;
 }
 </style>
-import type { useOutageStore } from '@/stores/outages'

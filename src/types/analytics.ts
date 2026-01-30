@@ -31,8 +31,9 @@ export interface ProviderSummary {
 }
 
 export interface WorkerRun {
-  started_at: number
-  finished_at: number
+  id: number
+  started_at: string
+  finished_at: string
   processed_buckets: number
   skipped_buckets: number
   elapsed_ms: number
