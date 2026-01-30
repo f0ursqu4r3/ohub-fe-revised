@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useOutageStore, type FetchOutageParams } from '@/stores/outages'
+import { useOutageStore } from '@/stores/outages'
+import type { FetchOutageParams } from '@/types/outage'
 import hljs from 'highlight.js/lib/core'
 import bash from 'highlight.js/lib/languages/bash'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -333,8 +334,9 @@ const executeRequest = async () => {
         if (untilEpoch.value) params.until = Number(untilEpoch.value)
         if (providerParam.value) params.provider = providerParam.value
         const res = await fetchOutages(params)
-        response.value = { outages: res.outages }
         responseStatus.value = res.status
+        const data = await res.json()
+        response.value = data
         break
       }
       case '/v1/outages/:id': {
@@ -342,15 +344,16 @@ const executeRequest = async () => {
           throw new Error('Outage ID is required')
         }
         const res = await fetchOutage(outageIdParam.value)
-        console.log(res)
-        response.value = res
         responseStatus.value = res.status
+        const data = await res.json()
+        response.value = data
         break
       }
       case '/v1/providers': {
         const res = await fetchProviders()
-        response.value = { providers: res.providers }
         responseStatus.value = res.status
+        const data = await res.json()
+        response.value = data
         break
       }
       default:
@@ -377,8 +380,9 @@ const setTimeRange = (hours: number) => {
 }
 
 onMounted(async () => {
-  const providersResp = await fetchProviders()
-  providers.value = providersResp.providers || []
+  const res = await fetchProviders()
+  const data = await res.json()
+  providers.value = data.providers || []
 })
 </script>
 
