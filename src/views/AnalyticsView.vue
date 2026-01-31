@@ -1,6 +1,21 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
+import {
+  select,
+  scaleTime,
+  scaleLinear,
+  axisLeft,
+  axisBottom,
+  area,
+  line,
+  curveMonotoneX,
+  timeWeek,
+  timeFormat,
+  format,
+  extent,
+  max,
+} from 'd3'
 import { useAnalyticsStore } from '@/stores/analytics'
 import type { ComplianceBucket } from '@/types/analytics'
 
@@ -146,10 +161,7 @@ function buildGridDays(rawDays: DayCell[]): { grid: DayCell[]; numWeeks: number 
   return { grid: padded, numWeeks }
 }
 
-function computeMonthLabels(
-  days: DayCell[],
-  numWeeks: number,
-): { label: string; col: number }[] {
+function computeMonthLabels(days: DayCell[], numWeeks: number): { label: string; col: number }[] {
   const labels: { label: string; col: number }[] = []
   let lastMonth = -1
   for (let w = 0; w < numWeeks; w++) {
@@ -172,6 +184,119 @@ const getCompletionOpacity = (value: number, hasData: boolean): number => {
   if (!hasData) return 0
   return 0.15 + (Math.max(0, value) / 100) * 0.85
 }
+
+// Line chart: outages per day over time, aggregated client-side across all providers
+const chartEl = ref<HTMLDivElement>()
+
+type ChartPoint = { date: Date; total: number }
+
+const outageChartPoints = computed<ChartPoint[] | null>(() => {
+  const byProvider = seriesByProvider.value
+  if (byProvider.size === 0) return null
+
+  const totalsMap = new Map<number, number>()
+  for (const [key, buckets] of byProvider) {
+    if (key === '__all__') continue
+    for (const b of buckets) {
+      totalsMap.set(b.bucket_start_ts, (totalsMap.get(b.bucket_start_ts) ?? 0) + b.total)
+    }
+  }
+
+  const sorted = [...totalsMap.entries()].sort((a, b) => a[0] - b[0])
+  if (!sorted.length) return null
+
+  return sorted.map(([ts, total]) => ({ date: new Date(ts * 1000), total }))
+})
+
+function renderChart() {
+  if (!chartEl.value || !outageChartPoints.value) return
+
+  const container = chartEl.value
+  const points = outageChartPoints.value
+
+  // Clear previous
+  select(container).selectAll('*').remove()
+
+  const margin = { top: 8, right: 16, bottom: 24, left: 48 }
+  const width = container.clientWidth - margin.left - margin.right
+  const height = container.clientHeight - margin.top - margin.bottom
+
+  const svg = select(container)
+    .append('svg')
+    .attr('width', container.clientWidth)
+    .attr('height', container.clientHeight)
+    .append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`)
+
+  // Scales
+  const x = scaleTime()
+    .domain(extent(points, (d) => d.date) as [Date, Date])
+    .range([0, width])
+
+  const y = scaleLinear()
+    .domain([0, max(points, (d) => d.total) ?? 0])
+    .nice()
+    .range([height, 0])
+
+  // Grid lines (y only)
+  svg
+    .append('g')
+    .attr('class', 'chart-grid')
+    .call(
+      axisLeft(y)
+        .ticks(5)
+        .tickSize(-width)
+        .tickFormat(() => ''),
+    )
+    .call((g) => g.select('.domain').remove())
+
+  // X axis
+  svg
+    .append('g')
+    .attr('class', 'chart-axis-x')
+    .attr('transform', `translate(0,${height})`)
+    .call(
+      axisBottom(x)
+        .ticks(timeWeek.every(1))
+        .tickFormat((d) => timeFormat('%b %d')(d as Date))
+        .tickSizeOuter(0),
+    )
+    .call((g) => g.select('.domain').remove())
+
+  // Y axis
+  svg
+    .append('g')
+    .attr('class', 'chart-axis-y')
+    .call(axisLeft(y).ticks(5).tickFormat(format('~s')).tickSizeOuter(0))
+    .call((g) => g.select('.domain').remove())
+
+  // Area
+  const areaGen = area<ChartPoint>()
+    .x((d) => x(d.date))
+    .y0(height)
+    .y1((d) => y(d.total))
+    .curve(curveMonotoneX)
+
+  svg
+    .append('path')
+    .datum(points)
+    .attr('class', 'chart-area')
+    .attr('d', areaGen)
+
+  // Line
+  const lineGen = line<ChartPoint>()
+    .x((d) => x(d.date))
+    .y((d) => y(d.total))
+    .curve(curveMonotoneX)
+
+  svg
+    .append('path')
+    .datum(points)
+    .attr('class', 'chart-line')
+    .attr('d', lineGen)
+}
+
+watch(outageChartPoints, () => nextTick(renderChart), { flush: 'post' })
 
 // Dirty bucket total
 const dirtyBucketTotal = computed(() => {
@@ -343,11 +468,17 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Initial loading state -->
+      <!-- Outages over time chart -->
       <div
-        v-if="isLoading && !tiles.length"
-        class="flex items-center justify-center py-20"
+        v-if="outageChartPoints"
+        class="mb-6 rounded-lg border border-default bg-elevated p-4 shadow-sm"
       >
+        <h2 class="text-sm font-medium text-default mb-3">Outages over time</h2>
+        <div ref="chartEl" class="outage-chart text-muted" style="height: 200px" />
+      </div>
+
+      <!-- Initial loading state -->
+      <div v-if="isLoading && !tiles.length" class="flex items-center justify-center py-20">
         <span class="relative flex h-3 w-3 mr-3">
           <span
             class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75"
@@ -377,9 +508,7 @@ onMounted(async () => {
               <span
                 class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75"
               ></span>
-              <span
-                class="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary-500"
-              ></span>
+              <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary-500"></span>
             </span>
             <span
               v-if="tile.overallScore >= 0"
@@ -493,9 +622,7 @@ onMounted(async () => {
                           }}
                         </div>
                         <template v-if="cell.total > 0">
-                          <div class="font-medium mb-2">
-                            Composite: {{ cell.value }}%
-                          </div>
+                          <div class="font-medium mb-2">Composite: {{ cell.value }}%</div>
                           <div class="space-y-1">
                             <div
                               v-for="field in complianceFields"
@@ -513,7 +640,7 @@ onMounted(async () => {
                               >
                                 {{
                                   cell.bucket
-                                    ? `${(cell.bucket[field.value as keyof typeof cell.bucket] as number)}/${cell.bucket.total}`
+                                    ? `${cell.bucket[field.value as keyof typeof cell.bucket] as number}/${cell.bucket.total}`
                                     : '–'
                                 }}
                               </span>
@@ -523,9 +650,7 @@ onMounted(async () => {
                             Total outages: {{ cell.total }}
                           </div>
                         </template>
-                        <div v-else class="text-muted">
-                          No outages reported
-                        </div>
+                        <div v-else class="text-muted">No outages reported</div>
                       </div>
                     </template>
                   </UPopover>
@@ -551,5 +676,36 @@ onMounted(async () => {
 <style scoped>
 .tile-move {
   transition: transform 0.5s ease;
+}
+
+/* D3 chart theme using CSS variables */
+.outage-chart :deep(.chart-line) {
+  fill: none;
+  stroke: var(--color-primary-500);
+  stroke-width: 1.5px;
+}
+
+.outage-chart :deep(.chart-area) {
+  fill: var(--color-primary-500);
+  fill-opacity: 0.1;
+}
+
+.outage-chart :deep(.chart-grid line) {
+  stroke: currentColor;
+  stroke-opacity: 0.1;
+}
+
+.outage-chart :deep(.chart-axis-x text),
+.outage-chart :deep(.chart-axis-y text) {
+  fill: currentColor;
+  opacity: 0.5;
+  font-size: 10px;
+}
+
+.outage-chart :deep(.chart-axis-x .domain),
+.outage-chart :deep(.chart-axis-y .domain),
+.outage-chart :deep(.chart-axis-x line),
+.outage-chart :deep(.chart-axis-y line) {
+  stroke: none;
 }
 </style>
