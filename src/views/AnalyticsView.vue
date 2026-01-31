@@ -67,6 +67,7 @@ type ProviderTile = {
   numWeeks: number
   monthLabels: { label: string; col: number }[]
   overallScore: number
+  sparkPath: string | null
 }
 
 const CELL_SIZE = 11
@@ -110,7 +111,16 @@ function buildTile(
   loading: boolean,
 ): ProviderTile {
   if (!buckets.length)
-    return { key, label, loading, days: [], numWeeks: 0, monthLabels: [], overallScore: -1 }
+    return {
+      key,
+      label,
+      loading,
+      days: [],
+      numWeeks: 0,
+      monthLabels: [],
+      overallScore: -1,
+      sparkPath: null,
+    }
 
   const sorted = [...buckets].sort((a, b) => a.bucket_start_ts - b.bucket_start_ts)
   const rawDays: DayCell[] = sorted.map((b) => ({
@@ -143,7 +153,28 @@ function buildTile(
   const monthLabels = isDaily
     ? computeMonthLabelsDaily(grid, numCols)
     : computeMonthLabelsFlat(grid)
-  return { key, label, loading, days: grid, numWeeks: numCols, monthLabels, overallScore }
+
+  // Sparkline: outage totals over time
+  const sparkData = sorted.map((b) => b.total)
+  const sparkPath = buildSparkPath(sparkData)
+
+  return { key, label, loading, days: grid, numWeeks: numCols, monthLabels, overallScore, sparkPath }
+}
+
+const SPARK_W = 80
+const SPARK_H = 20
+
+function buildSparkPath(data: number[]): string | null {
+  if (data.length < 2) return null
+  const maxVal = Math.max(...data, 1)
+  const stepX = SPARK_W / (data.length - 1)
+  return data
+    .map((v, i) => {
+      const x = i * stepX
+      const y = SPARK_H - (v / maxVal) * SPARK_H
+      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
 }
 
 function buildGridDays(rawDays: DayCell[]): { grid: DayCell[]; numCols: number } {
@@ -787,6 +818,25 @@ onMounted(async () => {
               {{ tile.overallScore }}%
             </span>
           </div>
+
+          <!-- Sparkline -->
+          <svg
+            v-if="tile.sparkPath"
+            :viewBox="`0 0 ${SPARK_W} ${SPARK_H}`"
+            class="mb-1.5 w-full"
+            :style="{ height: `${SPARK_H}px` }"
+            preserveAspectRatio="none"
+          >
+            <path
+              :d="tile.sparkPath"
+              fill="none"
+              stroke="var(--color-primary-500)"
+              vector-effect="non-scaling-stroke"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
 
           <!-- Loading placeholder -->
           <div
