@@ -422,7 +422,7 @@ const fieldBreakdown = computed(() => {
     for (const b of buckets) {
       grandTotal += b.total
       for (const f of complianceFields) {
-        fieldTotals[f.value] += b[f.value as keyof ComplianceBucket] as number
+        fieldTotals[f.value] = (fieldTotals[f.value] ?? 0) + (b[f.value as keyof ComplianceBucket] as number)
       }
     }
   }
