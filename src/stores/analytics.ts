@@ -28,6 +28,9 @@ export const useAnalyticsStore = defineStore('analytics', () => {
   // Filters
   const selectedGranularity = ref<Granularity>('day')
 
+  // AbortController for cancelling in-flight series requests
+  let seriesAbort: AbortController | null = null
+
   // Derived: true when any provider is still loading
   const isLoadingSeries = computed(() => loadingProviders.value.size > 0)
 
@@ -91,12 +94,17 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     }
   }
 
-  const fetchProviderSeries = async (provider: string, granularity: Granularity) => {
+  const fetchProviderSeries = async (
+    provider: string,
+    granularity: Granularity,
+    signal?: AbortSignal,
+  ) => {
     loadingProviders.value = new Set([...loadingProviders.value, provider])
     try {
       const searchParams = new URLSearchParams({ provider, granularity })
       const response = await fetch(
         `${baseUrl}/v1/norm-compliance/series?${searchParams.toString()}`,
+        { signal },
       )
       if (!response.ok) throw new Error(`Failed to fetch series for ${provider}`)
       const data = await response.json()
@@ -104,6 +112,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
       updated.set(provider, data.buckets ?? [])
       seriesByProvider.value = updated
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       error.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
       const next = new Set(loadingProviders.value)
@@ -113,10 +122,15 @@ export const useAnalyticsStore = defineStore('analytics', () => {
   }
 
   const fetchAllSeries = async (granularity: Granularity) => {
+    // Cancel any in-flight series requests
+    if (seriesAbort) seriesAbort.abort()
+    seriesAbort = new AbortController()
+    const { signal } = seriesAbort
+
     seriesByProvider.value = new Map()
     const providerNames = ['__all__', ...providers.value.map((p) => p.provider)]
     loadingProviders.value = new Set(providerNames)
-    await Promise.all(providerNames.map((p) => fetchProviderSeries(p, granularity)))
+    await Promise.all(providerNames.map((p) => fetchProviderSeries(p, granularity, signal)))
   }
 
   const fetchWorkerHealth = async () => {

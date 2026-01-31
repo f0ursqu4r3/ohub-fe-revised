@@ -138,13 +138,16 @@ function buildTile(
     }
   }
 
-  const { grid, numWeeks } = buildGridDays(rawDays)
-  const monthLabels = computeMonthLabels(grid, numWeeks)
-  return { key, label, loading, days: grid, numWeeks, monthLabels, overallScore }
+  const isDaily = selectedGranularity.value === 'day'
+  const { grid, numCols } = isDaily ? buildGridDays(rawDays) : buildGridFlat(rawDays)
+  const monthLabels = isDaily
+    ? computeMonthLabelsDaily(grid, numCols)
+    : computeMonthLabelsFlat(grid)
+  return { key, label, loading, days: grid, numWeeks: numCols, monthLabels, overallScore }
 }
 
-function buildGridDays(rawDays: DayCell[]): { grid: DayCell[]; numWeeks: number } {
-  if (!rawDays.length) return { grid: [], numWeeks: 0 }
+function buildGridDays(rawDays: DayCell[]): { grid: DayCell[]; numCols: number } {
+  if (!rawDays.length) return { grid: [], numCols: 0 }
   const firstDay = rawDays[0]!
   const startDow = firstDay.date.getDay()
   const padded: DayCell[] = Array.from({ length: startDow }, () => ({
@@ -154,17 +157,24 @@ function buildGridDays(rawDays: DayCell[]): { grid: DayCell[]; numWeeks: number 
     empty: true,
   }))
   padded.push(...rawDays)
-  const numWeeks = Math.ceil(padded.length / 7)
-  while (padded.length < numWeeks * 7) {
+  const numCols = Math.ceil(padded.length / 7)
+  while (padded.length < numCols * 7) {
     padded.push({ date: new Date(0), value: 0, total: 0, empty: true })
   }
-  return { grid: padded, numWeeks }
+  return { grid: padded, numCols }
 }
 
-function computeMonthLabels(days: DayCell[], numWeeks: number): { label: string; col: number }[] {
+function buildGridFlat(rawDays: DayCell[]): { grid: DayCell[]; numCols: number } {
+  return { grid: rawDays, numCols: rawDays.length }
+}
+
+function computeMonthLabelsDaily(
+  days: DayCell[],
+  numCols: number,
+): { label: string; col: number }[] {
   const labels: { label: string; col: number }[] = []
   let lastMonth = -1
-  for (let w = 0; w < numWeeks; w++) {
+  for (let w = 0; w < numCols; w++) {
     const cell = days[w * 7]
     if (!cell || cell.empty) continue
     const month = cell.date.getMonth()
@@ -173,6 +183,24 @@ function computeMonthLabels(days: DayCell[], numWeeks: number): { label: string;
       labels.push({
         label: cell.date.toLocaleDateString('en-US', { month: 'short' }),
         col: w,
+      })
+    }
+  }
+  return labels
+}
+
+function computeMonthLabelsFlat(days: DayCell[]): { label: string; col: number }[] {
+  const labels: { label: string; col: number }[] = []
+  let lastMonth = -1
+  for (let i = 0; i < days.length; i++) {
+    const cell = days[i]
+    if (!cell || cell.empty) continue
+    const month = cell.date.getMonth()
+    if (month !== lastMonth) {
+      lastMonth = month
+      labels.push({
+        label: cell.date.toLocaleDateString('en-US', { month: 'short' }),
+        col: i,
       })
     }
   }
@@ -523,7 +551,12 @@ onMounted(async () => {
           <div
             v-if="tile.loading && !tile.days.length"
             class="flex items-center justify-center"
-            :style="{ height: `${7 * (CELL_SIZE + CELL_GAP) + 14}px` }"
+            :style="{
+              height:
+                selectedGranularity === 'day'
+                  ? `${7 * (CELL_SIZE + CELL_GAP) + 14}px`
+                  : `${CELL_SIZE + 14}px`,
+            }"
           >
             <div class="h-1.5 w-16 rounded-full bg-default animate-pulse" />
           </div>
@@ -534,7 +567,7 @@ onMounted(async () => {
             <div
               class="relative h-3.5 mb-0.5"
               :style="{
-                marginLeft: `${DAY_LABEL_WIDTH}px`,
+                marginLeft: selectedGranularity === 'day' ? `${DAY_LABEL_WIDTH}px` : '0',
                 width: `${tile.numWeeks * WEEK_PX}px`,
               }"
             >
@@ -549,8 +582,9 @@ onMounted(async () => {
             </div>
 
             <div class="flex">
-              <!-- Day-of-week labels -->
+              <!-- Day-of-week labels (daily only) -->
               <div
+                v-if="selectedGranularity === 'day'"
                 class="flex flex-col shrink-0"
                 :style="{
                   width: `${DAY_LABEL_WIDTH}px`,
@@ -570,13 +604,23 @@ onMounted(async () => {
               <!-- Cells -->
               <div
                 class="grid"
-                :style="{
-                  gridTemplateRows: `repeat(7, ${CELL_SIZE}px)`,
-                  gridAutoFlow: 'column',
-                  gridAutoColumns: `${CELL_SIZE}px`,
-                  gap: `${CELL_GAP}px`,
-                  width: `${tile.numWeeks * WEEK_PX}px`,
-                }"
+                :style="
+                  selectedGranularity === 'day'
+                    ? {
+                        gridTemplateRows: `repeat(7, ${CELL_SIZE}px)`,
+                        gridAutoFlow: 'column',
+                        gridAutoColumns: `${CELL_SIZE}px`,
+                        gap: `${CELL_GAP}px`,
+                        width: `${tile.numWeeks * WEEK_PX}px`,
+                      }
+                    : {
+                        gridTemplateRows: `${CELL_SIZE}px`,
+                        gridAutoFlow: 'column',
+                        gridAutoColumns: `${CELL_SIZE}px`,
+                        gap: `${CELL_GAP}px`,
+                        width: `${tile.numWeeks * WEEK_PX}px`,
+                      }
+                "
               >
                 <template v-for="(cell, colIdx) in tile.days" :key="colIdx">
                   <div
@@ -612,14 +656,34 @@ onMounted(async () => {
                           {{ tile.label }}
                         </div>
                         <div class="text-muted mb-1">
-                          {{
-                            cell.date.toLocaleDateString('en-US', {
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })
-                          }}
+                          <template v-if="selectedGranularity === 'day'">
+                            {{
+                              cell.date.toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })
+                            }}
+                          </template>
+                          <template v-else-if="selectedGranularity === 'week'">
+                            Week of
+                            {{
+                              cell.date.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })
+                            }}
+                          </template>
+                          <template v-else>
+                            {{
+                              cell.date.toLocaleDateString('en-US', {
+                                month: 'long',
+                                year: 'numeric',
+                              })
+                            }}
+                          </template>
                         </div>
                         <template v-if="cell.total > 0">
                           <div class="font-medium mb-2">Composite: {{ cell.value }}%</div>
@@ -663,7 +727,12 @@ onMounted(async () => {
           <div
             v-else
             class="flex items-center justify-center text-[10px] text-muted"
-            :style="{ height: `${7 * (CELL_SIZE + CELL_GAP) + 14}px` }"
+            :style="{
+              height:
+                selectedGranularity === 'day'
+                  ? `${7 * (CELL_SIZE + CELL_GAP) + 14}px`
+                  : `${CELL_SIZE + 14}px`,
+            }"
           >
             No data
           </div>
