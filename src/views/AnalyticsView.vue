@@ -106,10 +106,22 @@ function buildTile(
   }))
 
   const nonEmpty = rawDays.filter((d) => !d.empty)
+
+  // Weighted overall score: days with more outages count proportionally more
+  const totalOutages = nonEmpty.reduce((sum, d) => sum + d.total, 0)
   const overallScore =
-    nonEmpty.length > 0
-      ? Math.round(nonEmpty.reduce((sum, d) => sum + d.value, 0) / nonEmpty.length)
+    nonEmpty.length > 0 && totalOutages > 0
+      ? Math.round(nonEmpty.reduce((sum, d) => sum + d.value * d.total, 0) / totalOutages)
       : -1
+
+  // Weight each cell's display value by relative volume (sqrt to soften the curve)
+  const maxTotal = Math.max(...nonEmpty.map((d) => d.total), 1)
+  for (const day of rawDays) {
+    if (!day.empty && day.total > 0) {
+      const volumeWeight = Math.sqrt(day.total / maxTotal)
+      day.value = Math.round(day.value * volumeWeight)
+    }
+  }
 
   const { grid, numWeeks } = buildGridDays(rawDays)
   const monthLabels = computeMonthLabels(grid, numWeeks)
@@ -155,10 +167,10 @@ function computeMonthLabels(
   return labels
 }
 
-// Continuous opacity: 0% → 0.1, 100% → 1.0, with a floor so any data is visible
-const getCompletionOpacity = (value: number): number => {
-  if (value <= 0) return 0
-  return 0.1 + (value / 100) * 0.9
+// Continuous opacity with a visible floor so any cell with data is distinguishable from empty
+const getCompletionOpacity = (value: number, hasData: boolean): number => {
+  if (!hasData) return 0
+  return 0.15 + (Math.max(0, value) / 100) * 0.85
 }
 
 // Dirty bucket total
@@ -323,7 +335,7 @@ onMounted(async () => {
               class="absolute inset-0 rounded-[2px]"
               :style="{
                 backgroundColor: 'var(--color-primary-500)',
-                opacity: getCompletionOpacity(val),
+                opacity: getCompletionOpacity(val, val > 0),
               }"
             />
           </div>
@@ -461,7 +473,7 @@ onMounted(async () => {
                         class="absolute inset-0 rounded-[2px]"
                         :style="{
                           backgroundColor: 'var(--color-primary-500)',
-                          opacity: getCompletionOpacity(cell.value),
+                          opacity: getCompletionOpacity(cell.value, cell.total > 0),
                         }"
                       />
                     </div>
@@ -480,34 +492,39 @@ onMounted(async () => {
                             })
                           }}
                         </div>
-                        <div class="font-medium mb-2">
-                          Composite: {{ cell.value }}%
-                        </div>
-                        <div class="space-y-1">
-                          <div
-                            v-for="field in complianceFields"
-                            :key="field.value"
-                            class="flex items-center justify-between gap-4"
-                          >
-                            <span class="text-muted">{{ field.label }}</span>
-                            <span
-                              class="font-medium tabular-nums"
-                              :class="
-                                cell.bucket && fieldPct(cell.bucket, field.value) >= 80
-                                  ? 'text-primary-500'
-                                  : ''
-                              "
-                            >
-                              {{
-                                cell.bucket
-                                  ? `${(cell.bucket[field.value as keyof typeof cell.bucket] as number)}/${cell.bucket.total}`
-                                  : '–'
-                              }}
-                            </span>
+                        <template v-if="cell.total > 0">
+                          <div class="font-medium mb-2">
+                            Composite: {{ cell.value }}%
                           </div>
-                        </div>
-                        <div class="mt-2 pt-2 border-t border-default text-muted">
-                          Total outages: {{ cell.total }}
+                          <div class="space-y-1">
+                            <div
+                              v-for="field in complianceFields"
+                              :key="field.value"
+                              class="flex items-center justify-between gap-4"
+                            >
+                              <span class="text-muted">{{ field.label }}</span>
+                              <span
+                                class="font-medium tabular-nums"
+                                :class="
+                                  cell.bucket && fieldPct(cell.bucket, field.value) >= 80
+                                    ? 'text-primary-500'
+                                    : ''
+                                "
+                              >
+                                {{
+                                  cell.bucket
+                                    ? `${(cell.bucket[field.value as keyof typeof cell.bucket] as number)}/${cell.bucket.total}`
+                                    : '–'
+                                }}
+                              </span>
+                            </div>
+                          </div>
+                          <div class="mt-2 pt-2 border-t border-default text-muted">
+                            Total outages: {{ cell.total }}
+                          </div>
+                        </template>
+                        <div v-else class="text-muted">
+                          No outages reported
                         </div>
                       </div>
                     </template>
