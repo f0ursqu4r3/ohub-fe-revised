@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type {
   ComplianceSummary,
@@ -18,14 +18,18 @@ export const useAnalyticsStore = defineStore('analytics', () => {
   const providers = ref<ProviderSummary[]>([])
   const allSummary = ref<ComplianceSummary | null>(null)
   const series = ref<ComplianceBucket[]>([])
+  const seriesByProvider = ref<Map<string, ComplianceBucket[]>>(new Map())
+  const loadingProviders = ref<Set<string>>(new Set())
   const workerRun = ref<WorkerRun | null>(null)
   const dirtyBuckets = ref<DirtyBucketsResponse | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
   // Filters
-  const selectedProvider = ref<string | null>(null)
   const selectedGranularity = ref<Granularity>('day')
+
+  // Derived: true when any provider is still loading
+  const isLoadingSeries = computed(() => loadingProviders.value.size > 0)
 
   const fetchSummaries = async () => {
     isLoading.value = true
@@ -87,6 +91,34 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     }
   }
 
+  const fetchProviderSeries = async (provider: string, granularity: Granularity) => {
+    loadingProviders.value = new Set([...loadingProviders.value, provider])
+    try {
+      const searchParams = new URLSearchParams({ provider, granularity })
+      const response = await fetch(
+        `${baseUrl}/v1/norm-compliance/series?${searchParams.toString()}`,
+      )
+      if (!response.ok) throw new Error(`Failed to fetch series for ${provider}`)
+      const data = await response.json()
+      const updated = new Map(seriesByProvider.value)
+      updated.set(provider, data.buckets ?? [])
+      seriesByProvider.value = updated
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Unknown error'
+    } finally {
+      const next = new Set(loadingProviders.value)
+      next.delete(provider)
+      loadingProviders.value = next
+    }
+  }
+
+  const fetchAllSeries = async (granularity: Granularity) => {
+    seriesByProvider.value = new Map()
+    const providerNames = ['__all__', ...providers.value.map((p) => p.provider)]
+    loadingProviders.value = new Set(providerNames)
+    await Promise.all(providerNames.map((p) => fetchProviderSeries(p, granularity)))
+  }
+
   const fetchWorkerHealth = async () => {
     isLoading.value = true
     error.value = null
@@ -119,19 +151,23 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     providers,
     allSummary,
     series,
+    seriesByProvider,
+    loadingProviders,
     workerRun,
     dirtyBuckets,
     isLoading,
+    isLoadingSeries,
     error,
 
     // Filters
-    selectedProvider,
     selectedGranularity,
 
     // Actions
     fetchSummaries,
     fetchProviders,
     fetchSeries,
+    fetchProviderSeries,
+    fetchAllSeries,
     fetchWorkerHealth,
     fetchDirtyBuckets,
   }

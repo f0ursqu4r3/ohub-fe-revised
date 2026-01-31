@@ -6,16 +6,17 @@ import type { ComplianceBucket } from '@/types/analytics'
 
 const analyticsStore = useAnalyticsStore()
 const {
-  series,
   providers,
+  seriesByProvider,
+  loadingProviders,
   workerRun,
   dirtyBuckets,
   isLoading,
-  selectedProvider,
+  isLoadingSeries,
   selectedGranularity,
 } = storeToRefs(analyticsStore)
 
-// Compliance field keys for the metric selector
+// Compliance field keys for the popover breakdown
 const complianceFields = [
   { value: 'customer_count_present', label: 'Customer count' },
   { value: 'cause_present', label: 'Cause' },
@@ -26,14 +27,7 @@ const complianceFields = [
   { value: 'polygon_present', label: 'Polygon' },
 ] as const
 
-type ComplianceFieldKey = (typeof complianceFields)[number]['value']
-
-const selectedMetric = ref<ComplianceFieldKey>('polygon_present')
-
-const providerOptions = computed(() => [
-  { value: '__all__', label: 'All Providers' },
-  ...providers.value.map((p) => ({ value: p.provider, label: p.provider })),
-])
+const complianceFieldKeys = complianceFields.map((f) => f.value)
 
 const granularityOptions = [
   { value: 'day', label: 'Daily' },
@@ -46,58 +40,81 @@ type DayCell = {
   date: Date
   value: number
   total: number
-  present: number
   bucket?: ComplianceBucket
   empty?: boolean
 }
 
-type HeatmapRow = {
+type ProviderTile = {
+  key: string
   label: string
+  loading: boolean
   days: DayCell[]
   numWeeks: number
+  monthLabels: { label: string; col: number }[]
+  overallScore: number
 }
 
-const CELL_SIZE = 13
-const CELL_GAP = 3
+const CELL_SIZE = 11
+const CELL_GAP = 2
 const WEEK_PX = CELL_SIZE + CELL_GAP
-const DAY_LABEL_WIDTH = 32
+const DAY_LABEL_WIDTH = 28
 
-const dayOfWeekLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+const dayOfWeekLabels = ['', 'M', '', 'W', '', 'F', ''] as const
 
-// Convert series buckets to heatmap data, grouped by provider
-const heatmapData = computed<HeatmapRow[]>(() => {
-  if (!series.value.length) return []
-
-  const metric = selectedMetric.value
-
-  // Group buckets by provider
-  const byProvider = new Map<string, ComplianceBucket[]>()
-  for (const bucket of series.value) {
-    const key = bucket.provider
-    if (!byProvider.has(key)) byProvider.set(key, [])
-    byProvider.get(key)!.push(bucket)
+// Compute composite completeness: average % across all 7 compliance fields
+function compositeScore(bucket: ComplianceBucket): number {
+  if (bucket.total === 0) return 0
+  let sum = 0
+  for (const key of complianceFieldKeys) {
+    sum += bucket[key as keyof ComplianceBucket] as number
   }
+  return Math.round((sum / (complianceFieldKeys.length * bucket.total)) * 100)
+}
 
-  const rows: HeatmapRow[] = []
-  for (const [provider, buckets] of byProvider) {
-    const sorted = buckets.sort((a, b) => a.bucket_start_ts - b.bucket_start_ts)
-    const rawDays: DayCell[] = sorted.map((b) => {
-      const pct = b.total > 0 ? Math.round((b[metric] / b.total) * 100) : 0
-      return {
-        date: new Date(b.bucket_start_ts * 1000),
-        value: pct,
-        total: b.total,
-        present: b[metric],
-        bucket: b,
-      }
-    })
-
-    const { grid, numWeeks } = buildGridDays(rawDays)
-    rows.push({ label: provider === '__all__' ? 'All Providers' : provider, days: grid, numWeeks })
-  }
-
-  return rows
+// Build provider tiles from seriesByProvider
+const tiles = computed<ProviderTile[]>(() => {
+  const loading = loadingProviders.value
+  const providerNames = providers.value.map((p) => p.provider)
+  const built = providerNames.map((name) => {
+    const buckets = seriesByProvider.value.get(name)
+    return buildTile(name, name, buckets ?? [], loading.has(name))
+  })
+  built.sort((a, b) => {
+    if (a.overallScore === -1 && b.overallScore === -1) return a.label.localeCompare(b.label)
+    if (a.overallScore === -1) return 1
+    if (b.overallScore === -1) return -1
+    return b.overallScore - a.overallScore
+  })
+  return built
 })
+
+function buildTile(
+  key: string,
+  label: string,
+  buckets: ComplianceBucket[],
+  loading: boolean,
+): ProviderTile {
+  if (!buckets.length)
+    return { key, label, loading, days: [], numWeeks: 0, monthLabels: [], overallScore: -1 }
+
+  const sorted = [...buckets].sort((a, b) => a.bucket_start_ts - b.bucket_start_ts)
+  const rawDays: DayCell[] = sorted.map((b) => ({
+    date: new Date(b.bucket_start_ts * 1000),
+    value: compositeScore(b),
+    total: b.total,
+    bucket: b,
+  }))
+
+  const nonEmpty = rawDays.filter((d) => !d.empty)
+  const overallScore =
+    nonEmpty.length > 0
+      ? Math.round(nonEmpty.reduce((sum, d) => sum + d.value, 0) / nonEmpty.length)
+      : -1
+
+  const { grid, numWeeks } = buildGridDays(rawDays)
+  const monthLabels = computeMonthLabels(grid, numWeeks)
+  return { key, label, loading, days: grid, numWeeks, monthLabels, overallScore }
+}
 
 function buildGridDays(rawDays: DayCell[]): { grid: DayCell[]; numWeeks: number } {
   if (!rawDays.length) return { grid: [], numWeeks: 0 }
@@ -107,42 +124,41 @@ function buildGridDays(rawDays: DayCell[]): { grid: DayCell[]; numWeeks: number 
     date: new Date(0),
     value: 0,
     total: 0,
-    present: 0,
     empty: true,
   }))
   padded.push(...rawDays)
   const numWeeks = Math.ceil(padded.length / 7)
   while (padded.length < numWeeks * 7) {
-    padded.push({ date: new Date(0), value: 0, total: 0, present: 0, empty: true })
+    padded.push({ date: new Date(0), value: 0, total: 0, empty: true })
   }
   return { grid: padded, numWeeks }
 }
 
-const monthLabels = computed(() => {
-  if (!heatmapData.value.length || !heatmapData.value[0]) return []
-  const row = heatmapData.value[0]
+function computeMonthLabels(
+  days: DayCell[],
+  numWeeks: number,
+): { label: string; col: number }[] {
   const labels: { label: string; col: number }[] = []
   let lastMonth = -1
-
-  for (let w = 0; w < row.numWeeks; w++) {
-    const cell = row.days[w * 7]
+  for (let w = 0; w < numWeeks; w++) {
+    const cell = days[w * 7]
     if (!cell || cell.empty) continue
     const month = cell.date.getMonth()
     if (month !== lastMonth) {
       lastMonth = month
-      const monthName = cell.date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-      labels.push({ label: monthName, col: w })
+      labels.push({
+        label: cell.date.toLocaleDateString('en-US', { month: 'short' }),
+        col: w,
+      })
     }
   }
   return labels
-})
+}
 
-const getCompletionColor = (value: number): string => {
-  if (value >= 80) return 'var(--color-primary-800)'
-  if (value >= 60) return 'var(--color-primary-600)'
-  if (value >= 40) return 'var(--color-primary-400)'
-  if (value >= 20) return 'var(--color-primary-200)'
-  return 'var(--ui-bg-muted)'
+// Continuous opacity: 0% → 0.1, 100% → 1.0, with a floor so any data is visible
+const getCompletionOpacity = (value: number): number => {
+  if (value <= 0) return 0
+  return 0.1 + (value / 100) * 0.9
 }
 
 // Dirty bucket total
@@ -188,20 +204,23 @@ function fieldPct(bucket: ComplianceBucket, field: string): number {
   return bucket.total > 0 ? Math.round((val / bucket.total) * 100) : 0
 }
 
-// Fetch series when provider or granularity changes
-async function loadSeries() {
-  const provider = selectedProvider.value || '__all__'
-  await analyticsStore.fetchSeries({
-    provider,
-    granularity: selectedGranularity.value,
-  })
+// Loading progress
+const loadingProgress = computed(() => {
+  const total = providers.value.length
+  const done = total - loadingProviders.value.size
+  return { done, total }
+})
+
+// Fetch all series when granularity changes
+async function loadAllSeries() {
+  await analyticsStore.fetchAllSeries(selectedGranularity.value)
 }
 
 const initialized = ref(false)
 
-watch([selectedProvider, selectedGranularity], () => {
+watch(selectedGranularity, () => {
   if (initialized.value) {
-    loadSeries()
+    loadAllSeries()
   }
 })
 
@@ -211,48 +230,24 @@ onMounted(async () => {
     analyticsStore.fetchWorkerHealth(),
     analyticsStore.fetchDirtyBuckets(),
   ])
-  if (!selectedProvider.value) {
-    selectedProvider.value = '__all__'
-  }
-  await loadSeries()
+  await loadAllSeries()
   initialized.value = true
 })
 </script>
 
 <template>
   <div class="min-h-screen bg-default text-default">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-        <h1 class="text-2xl font-semibold tracking-tight">Data completeness</h1>
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 class="text-2xl font-semibold tracking-tight">Data completeness</h1>
+          <p class="text-sm text-muted mt-1">
+            Composite score across all compliance fields per provider
+          </p>
+        </div>
 
         <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-muted">Provider:</span>
-            <select
-              :value="selectedProvider || '__all__'"
-              class="rounded-lg border border-default bg-elevated px-3 py-1.5 text-sm font-medium text-default shadow-sm outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400/30 transition-colors"
-              @change="selectedProvider = ($event.target as HTMLSelectElement).value"
-            >
-              <option v-for="opt in providerOptions" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </option>
-            </select>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-muted">Metric:</span>
-            <select
-              :value="selectedMetric"
-              class="rounded-lg border border-default bg-elevated px-3 py-1.5 text-sm font-medium text-default shadow-sm outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400/30 transition-colors"
-              @change="
-                selectedMetric = ($event.target as HTMLSelectElement).value as ComplianceFieldKey
-              "
-            >
-              <option v-for="m in complianceFields" :key="m.value" :value="m.value">
-                {{ m.label }}
-              </option>
-            </select>
-          </div>
           <div class="flex items-center gap-2">
             <span class="text-sm text-muted">Granularity:</span>
             <select
@@ -270,321 +265,274 @@ onMounted(async () => {
               </option>
             </select>
           </div>
+
+          <!-- Loading progress -->
+          <div v-if="isLoadingSeries" class="flex items-center gap-2">
+            <span class="relative flex h-2.5 w-2.5">
+              <span
+                class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75"
+              ></span>
+              <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary-500"></span>
+            </span>
+            <span class="text-xs text-muted tabular-nums">
+              {{ loadingProgress.done }}/{{ loadingProgress.total }} providers
+            </span>
+          </div>
         </div>
       </div>
 
-      <!-- Main content -->
-      <div class="flex flex-col lg:flex-row gap-6">
-        <!-- Heatmap area -->
-        <div class="flex-1 min-w-0">
-          <div class="rounded-xl border border-default bg-elevated p-6 shadow-sm">
-            <!-- Loading state -->
-            <div v-if="isLoading" class="flex items-center justify-center py-20">
-              <span class="relative flex h-3 w-3 mr-3">
-                <span
-                  class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75"
-                ></span>
-                <span class="relative inline-flex h-3 w-3 rounded-full bg-primary-500"></span>
-              </span>
-              <span class="text-sm text-muted">Loading analytics data...</span>
-            </div>
+      <!-- Status bar -->
+      <div class="flex flex-wrap items-center gap-4 mb-6 text-xs text-muted">
+        <!-- Worker status -->
+        <div class="flex items-center gap-1.5">
+          <span class="relative flex h-2 w-2">
+            <span
+              v-if="workerStatusLabel === 'running'"
+              class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75"
+            ></span>
+            <span
+              class="relative inline-flex h-2 w-2 rounded-full"
+              :class="{
+                'bg-primary-500': workerStatusLabel === 'running',
+                'bg-neutral-400': workerStatusLabel === 'unknown',
+                'bg-red-500': workerStatusLabel === 'error',
+              }"
+            ></span>
+          </span>
+          <span :class="workerStatusColor" class="font-medium">
+            Worker: {{ workerStatusLabel }}
+          </span>
+          <span v-if="workerRun">· {{ lastRunLabel }}</span>
+        </div>
 
-            <!-- Empty state -->
+        <!-- Dirty buckets -->
+        <div v-if="dirtyBucketTotal > 0" class="flex items-center gap-1.5">
+          <span class="font-medium">{{ dirtyBucketTotal.toLocaleString() }}</span>
+          <span>dirty buckets queued</span>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex items-center gap-2 ml-auto">
+          <span class="font-medium">Less</span>
+          <div
+            v-for="val in [0, 25, 50, 75, 100]"
+            :key="val"
+            class="w-[11px] h-[11px] rounded-[2px] bg-muted relative overflow-hidden"
+          >
             <div
-              v-else-if="!heatmapData.length"
-              class="flex flex-col items-center justify-center py-20 text-muted"
+              class="absolute inset-0 rounded-[2px]"
+              :style="{
+                backgroundColor: 'var(--color-primary-500)',
+                opacity: getCompletionOpacity(val),
+              }"
+            />
+          </div>
+          <span class="font-medium">More</span>
+        </div>
+      </div>
+
+      <!-- Initial loading state -->
+      <div
+        v-if="isLoading && !tiles.length"
+        class="flex items-center justify-center py-20"
+      >
+        <span class="relative flex h-3 w-3 mr-3">
+          <span
+            class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75"
+          ></span>
+          <span class="relative inline-flex h-3 w-3 rounded-full bg-primary-500"></span>
+        </span>
+        <span class="text-sm text-muted">Loading providers...</span>
+      </div>
+
+      <!-- Provider tile grid -->
+      <TransitionGroup
+        v-else
+        name="tile"
+        tag="div"
+        class="grid gap-4"
+        style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr))"
+      >
+        <div
+          v-for="tile in tiles"
+          :key="tile.key"
+          class="rounded-lg border border-default bg-elevated p-3 shadow-sm"
+        >
+          <!-- Provider name + score + loading -->
+          <div class="flex items-center gap-1.5 mb-2">
+            <span class="text-xs font-medium text-default truncate">{{ tile.label }}</span>
+            <span v-if="tile.loading" class="relative flex h-1.5 w-1.5 shrink-0">
+              <span
+                class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75"
+              ></span>
+              <span
+                class="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary-500"
+              ></span>
+            </span>
+            <span
+              v-if="tile.overallScore >= 0"
+              class="ml-auto text-[10px] font-medium tabular-nums shrink-0"
+              :class="tile.overallScore >= 80 ? 'text-primary-500' : 'text-muted'"
             >
-              <UIcon name="i-heroicons-chart-bar" class="w-10 h-10 mb-3 opacity-40" />
-              <span class="text-sm">No compliance data available for this selection.</span>
+              {{ tile.overallScore }}%
+            </span>
+          </div>
+
+          <!-- Loading placeholder -->
+          <div
+            v-if="tile.loading && !tile.days.length"
+            class="flex items-center justify-center"
+            :style="{ height: `${7 * (CELL_SIZE + CELL_GAP) + 14}px` }"
+          >
+            <div class="h-1.5 w-16 rounded-full bg-default animate-pulse" />
+          </div>
+
+          <!-- Mini heatmap -->
+          <div v-else-if="tile.days.length">
+            <!-- Month labels -->
+            <div
+              class="relative h-3.5 mb-0.5"
+              :style="{
+                marginLeft: `${DAY_LABEL_WIDTH}px`,
+                width: `${tile.numWeeks * WEEK_PX}px`,
+              }"
+            >
+              <span
+                v-for="ml in tile.monthLabels"
+                :key="ml.label"
+                class="absolute text-[10px] font-medium text-muted leading-none"
+                :style="{ left: `${ml.col * WEEK_PX}px` }"
+              >
+                {{ ml.label }}
+              </span>
             </div>
 
-            <!-- Heatmap grid -->
-            <div v-else class="overflow-x-auto">
-              <!-- Month labels -->
+            <div class="flex">
+              <!-- Day-of-week labels -->
               <div
-                class="relative h-5 mb-1"
+                class="flex flex-col shrink-0"
                 :style="{
-                  marginLeft: `${DAY_LABEL_WIDTH}px`,
-                  width: `${(heatmapData[0]?.numWeeks ?? 0) * WEEK_PX}px`,
+                  width: `${DAY_LABEL_WIDTH}px`,
+                  gap: `${CELL_GAP}px`,
                 }"
               >
                 <span
-                  v-for="ml in monthLabels"
-                  :key="ml.label"
-                  class="absolute text-xs font-medium text-muted"
-                  :style="{ left: `${ml.col * WEEK_PX}px` }"
+                  v-for="day in dayOfWeekLabels"
+                  :key="day"
+                  class="text-[10px] text-muted leading-none"
+                  :style="{ height: `${CELL_SIZE}px`, lineHeight: `${CELL_SIZE}px` }"
                 >
-                  {{ ml.label }}
+                  {{ day }}
                 </span>
               </div>
 
-              <!-- Rows -->
-              <div class="space-y-5">
-                <div v-for="row in heatmapData" :key="row.label">
-                  <div class="text-xs font-medium text-muted mb-1.5">{{ row.label }}</div>
-                  <div class="flex">
-                    <!-- Day-of-week labels -->
-                    <div
-                      class="flex flex-col shrink-0"
-                      :style="{
-                        width: `${DAY_LABEL_WIDTH}px`,
-                        gap: `${CELL_GAP}px`,
-                      }"
-                    >
-                      <span
-                        v-for="(day, i) in dayOfWeekLabels"
-                        :key="day"
-                        class="text-xs text-muted leading-none"
-                        :style="{ height: `${CELL_SIZE}px`, lineHeight: `${CELL_SIZE}px` }"
-                        :class="i % 2 === 1 ? 'visible' : 'invisible'"
-                      >
-                        {{ day }}
-                      </span>
-                    </div>
-                    <!-- Grid -->
-                    <div
-                      class="grid gap-[3px]"
-                      :style="{
-                        gridTemplateRows: `repeat(7, ${CELL_SIZE}px)`,
-                        gridAutoFlow: 'column',
-                        gridAutoColumns: `${CELL_SIZE}px`,
-                        width: `${row.numWeeks * WEEK_PX}px`,
-                      }"
-                    >
-                      <template v-for="(cell, colIdx) in row.days" :key="colIdx">
-                        <div
-                          v-if="cell.empty"
-                          class="invisible"
-                          :style="{ width: `${CELL_SIZE}px`, height: `${CELL_SIZE}px` }"
-                        />
-                        <UPopover
-                          v-else
-                          mode="hover"
-                          :open-delay="150"
-                          :close-delay="50"
-                          :content="{ side: 'top', align: 'center', sideOffset: 6 }"
-                        >
-                          <div
-                            class="rounded-[3px] cursor-pointer transition-all duration-150 hover:ring-2 hover:ring-primary-400/50 hover:scale-125"
-                            :style="{
-                              backgroundColor: getCompletionColor(cell.value),
-                              width: `${CELL_SIZE}px`,
-                              height: `${CELL_SIZE}px`,
-                            }"
-                          />
-                          <template #content>
-                            <div class="p-3 min-w-[180px] text-xs">
-                              <div class="font-semibold mb-2">
-                                {{
-                                  cell.date.toLocaleDateString('en-US', {
-                                    weekday: 'short',
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric',
-                                  })
-                                }}
-                              </div>
-                              <div class="space-y-1">
-                                <div
-                                  v-for="field in complianceFields"
-                                  :key="field.value"
-                                  class="flex items-center justify-between gap-4"
-                                >
-                                  <span class="text-muted">{{ field.label }}</span>
-                                  <span
-                                    class="font-medium tabular-nums"
-                                    :class="
-                                      cell.bucket && fieldPct(cell.bucket, field.value) >= 80
-                                        ? 'text-primary-500'
-                                        : ''
-                                    "
-                                  >
-                                    {{
-                                      cell.bucket
-                                        ? `${(cell.bucket[field.value as keyof typeof cell.bucket] as number)}/${cell.bucket.total}`
-                                        : '–'
-                                    }}
-                                  </span>
-                                </div>
-                              </div>
-                              <div class="mt-2 pt-2 border-t border-default text-muted">
-                                Total outages: {{ cell.total }}
-                              </div>
-                            </div>
-                          </template>
-                        </UPopover>
-                      </template>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Legend -->
-              <div class="mt-6 pt-4 border-t border-default">
-                <div class="flex items-center gap-4">
-                  <span class="text-xs font-medium text-muted">Completeness</span>
-                  <div class="flex items-center gap-3">
-                    <div
-                      v-for="band in [
-                        { label: '0\u201320%', color: getCompletionColor(10) },
-                        { label: '20\u201340%', color: getCompletionColor(30) },
-                        { label: '40\u201360%', color: getCompletionColor(50) },
-                        { label: '60\u201380%', color: getCompletionColor(70) },
-                        { label: '80\u2013100%', color: getCompletionColor(90) },
-                      ]"
-                      :key="band.label"
-                      class="flex items-center gap-1.5"
-                    >
-                      <div class="w-3 h-3 rounded-[3px]" :style="{ backgroundColor: band.color }" />
-                      <span class="text-xs text-dimmed">{{ band.label }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sidebar -->
-        <div class="w-full lg:w-72 space-y-4">
-          <!-- Worker status card -->
-          <div class="rounded-xl border border-default bg-elevated p-5 shadow-sm">
-            <div class="space-y-3">
-              <div class="flex items-center gap-2">
-                <span class="relative flex h-2 w-2">
-                  <span
-                    v-if="workerStatusLabel === 'running'"
-                    class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-400 opacity-75"
-                  ></span>
-                  <span
-                    class="relative inline-flex h-2 w-2 rounded-full"
-                    :class="{
-                      'bg-primary-500': workerStatusLabel === 'running',
-                      'bg-neutral-400': workerStatusLabel === 'unknown',
-                      'bg-red-500': workerStatusLabel === 'error',
-                    }"
-                  ></span>
-                </span>
-                <span class="text-sm font-semibold" :class="workerStatusColor">
-                  Worker: {{ workerStatusLabel }}
-                </span>
-              </div>
-
-              <template v-if="workerRun">
-                <div class="space-y-2 pt-1">
-                  <div class="flex items-center justify-between">
-                    <span class="text-sm text-muted">Processed</span>
-                    <span class="text-sm font-semibold">
-                      {{ workerRun.processed_buckets }} buckets
-                    </span>
-                  </div>
-                  <div class="flex items-center justify-between">
-                    <span class="text-sm text-muted">Skipped</span>
-                    <span class="text-sm font-semibold">
-                      {{ workerRun.skipped_buckets }} buckets
-                    </span>
-                  </div>
-                  <div class="flex items-center justify-between">
-                    <span class="text-sm text-muted">Avg bucket time</span>
-                    <span class="text-sm font-semibold"
-                      >{{ Math.round(workerRun.bucket_ms_avg) }} ms</span
-                    >
-                  </div>
-                  <div class="flex items-center justify-between">
-                    <span class="text-sm text-muted">Elapsed</span>
-                    <span class="text-sm font-semibold"
-                      >{{ Math.round(workerRun.elapsed_ms) }} ms</span
-                    >
-                  </div>
-                  <div class="flex items-center justify-between">
-                    <span class="text-sm text-muted">Last run</span>
-                    <span class="text-sm font-semibold">{{ lastRunLabel }}</span>
-                  </div>
-                  <div v-if="workerRun.errors > 0" class="flex items-center justify-between">
-                    <span class="text-sm text-muted">Errors</span>
-                    <span class="text-sm font-semibold text-red-500">{{ workerRun.errors }}</span>
-                  </div>
-                </div>
-              </template>
-              <div v-else class="text-sm text-muted pt-1">No worker data available.</div>
-            </div>
-          </div>
-
-          <!-- Dirty buckets card -->
-          <div class="rounded-xl border border-default bg-elevated p-5 shadow-sm">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-sm font-semibold">Pending recomputation</span>
-            </div>
-            <div class="text-2xl font-bold tabular-nums">
-              {{ dirtyBucketTotal.toLocaleString() }}
-            </div>
-            <div class="text-xs text-muted mt-1">dirty buckets queued</div>
-            <div
-              v-if="dirtyBuckets?.counts.length"
-              class="mt-3 pt-3 border-t border-default space-y-1.5"
-            >
+              <!-- Cells -->
               <div
-                v-for="c in dirtyBuckets.counts"
-                :key="c.granularity"
-                class="flex items-center justify-between"
+                class="grid"
+                :style="{
+                  gridTemplateRows: `repeat(7, ${CELL_SIZE}px)`,
+                  gridAutoFlow: 'column',
+                  gridAutoColumns: `${CELL_SIZE}px`,
+                  gap: `${CELL_GAP}px`,
+                  width: `${tile.numWeeks * WEEK_PX}px`,
+                }"
               >
-                <span class="text-sm text-muted capitalize">{{ c.granularity }}</span>
-                <span class="text-sm font-semibold tabular-nums">
-                  {{ c.count.toLocaleString() }}
-                </span>
+                <template v-for="(cell, colIdx) in tile.days" :key="colIdx">
+                  <div
+                    v-if="cell.empty"
+                    class="invisible"
+                    :style="{ width: `${CELL_SIZE}px`, height: `${CELL_SIZE}px` }"
+                  />
+                  <UPopover
+                    v-else
+                    mode="hover"
+                    :open-delay="150"
+                    :close-delay="50"
+                    :content="{ side: 'top', align: 'center', sideOffset: 6 }"
+                  >
+                    <div
+                      class="rounded-[2px] cursor-pointer transition-all duration-150 hover:ring-2 hover:ring-primary-400/50 hover:scale-125 bg-muted relative overflow-hidden"
+                      :style="{
+                        width: `${CELL_SIZE}px`,
+                        height: `${CELL_SIZE}px`,
+                      }"
+                    >
+                      <div
+                        class="absolute inset-0 rounded-[2px]"
+                        :style="{
+                          backgroundColor: 'var(--color-primary-500)',
+                          opacity: getCompletionOpacity(cell.value),
+                        }"
+                      />
+                    </div>
+                    <template #content>
+                      <div class="p-3 min-w-[180px] text-xs">
+                        <div class="font-semibold mb-1">
+                          {{ tile.label }}
+                        </div>
+                        <div class="text-muted mb-1">
+                          {{
+                            cell.date.toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })
+                          }}
+                        </div>
+                        <div class="font-medium mb-2">
+                          Composite: {{ cell.value }}%
+                        </div>
+                        <div class="space-y-1">
+                          <div
+                            v-for="field in complianceFields"
+                            :key="field.value"
+                            class="flex items-center justify-between gap-4"
+                          >
+                            <span class="text-muted">{{ field.label }}</span>
+                            <span
+                              class="font-medium tabular-nums"
+                              :class="
+                                cell.bucket && fieldPct(cell.bucket, field.value) >= 80
+                                  ? 'text-primary-500'
+                                  : ''
+                              "
+                            >
+                              {{
+                                cell.bucket
+                                  ? `${(cell.bucket[field.value as keyof typeof cell.bucket] as number)}/${cell.bucket.total}`
+                                  : '–'
+                              }}
+                            </span>
+                          </div>
+                        </div>
+                        <div class="mt-2 pt-2 border-t border-default text-muted">
+                          Total outages: {{ cell.total }}
+                        </div>
+                      </div>
+                    </template>
+                  </UPopover>
+                </template>
               </div>
             </div>
           </div>
 
-          <!-- Sidebar filters (duplicate for mobile convenience) -->
-          <div class="rounded-xl border border-default bg-elevated p-5 shadow-sm space-y-3">
-            <div>
-              <label class="block text-xs font-medium text-muted mb-1.5">Provider</label>
-              <select
-                :value="selectedProvider || '__all__'"
-                class="w-full rounded-lg border border-default bg-default px-3 py-1.5 text-sm text-default outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400/30 transition-colors"
-                @change="selectedProvider = ($event.target as HTMLSelectElement).value"
-              >
-                <option v-for="opt in providerOptions" :key="opt.value" :value="opt.value">
-                  {{ opt.label }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-muted mb-1.5">Metric</label>
-              <select
-                :value="selectedMetric"
-                class="w-full rounded-lg border border-default bg-default px-3 py-1.5 text-sm text-default outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400/30 transition-colors"
-                @change="
-                  selectedMetric = ($event.target as HTMLSelectElement).value as ComplianceFieldKey
-                "
-              >
-                <option v-for="m in complianceFields" :key="m.value" :value="m.value">
-                  {{ m.label }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-muted mb-1.5">Granularity</label>
-              <select
-                :value="selectedGranularity"
-                class="w-full rounded-lg border border-default bg-default px-3 py-1.5 text-sm text-default outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-400/30 transition-colors"
-                @change="
-                  selectedGranularity = ($event.target as HTMLSelectElement).value as
-                    | 'day'
-                    | 'week'
-                    | 'month'
-                "
-              >
-                <option v-for="g in granularityOptions" :key="g.value" :value="g.value">
-                  {{ g.label }}
-                </option>
-              </select>
-            </div>
+          <!-- No data -->
+          <div
+            v-else
+            class="flex items-center justify-center text-[10px] text-muted"
+            :style="{ height: `${7 * (CELL_SIZE + CELL_GAP) + 14}px` }"
+          >
+            No data
           </div>
         </div>
-      </div>
+      </TransitionGroup>
     </div>
-
   </div>
 </template>
+
+<style scoped>
+.tile-move {
+  transition: transform 0.5s ease;
+}
+</style>
