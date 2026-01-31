@@ -55,12 +55,10 @@ export const usePopupData = () => {
     }
 
     const items = sortedOutages.slice(0, POPUP_MAX_ITEMS).map((entry, idx) => {
-      const { outage, areaKm2, durationSeconds } = entry
+      const { outage, areaKm2 } = entry
       const nickname = nicknameForIndex(idx)
       const areaLabel = areaKm2 > 0.1 ? `${Math.round(areaKm2)} km²` : null
-      const durationMinutes = Math.round(durationSeconds / 60)
-      const durationLabel = durationMinutes > 0 ? `${durationMinutes} min` : null
-      const sizeLabel = areaLabel ?? durationLabel ?? undefined
+      const areaLabelStr = areaLabel ?? undefined
       const bounds =
         entry.bounds ?? groupBounds ?? fallbackPointBounds(outage.latitude, outage.longitude)
       return {
@@ -68,7 +66,7 @@ export const usePopupData = () => {
         provider: outage.provider,
         nickname,
         bounds,
-        sizeLabel,
+        areaLabel: areaLabelStr,
         outageType: outage.outageType ?? null,
         cause: outage.cause ?? null,
         customerCount: outage.customerCount ?? null,

@@ -9,7 +9,7 @@ export type PopupItem = {
   provider: string
   nickname: string
   bounds: BoundsLiteral | null
-  sizeLabel?: string
+  areaLabel?: string
   outageType?: string | null
   cause?: string | null
   customerCount?: number | null

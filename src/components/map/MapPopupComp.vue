@@ -24,7 +24,7 @@ interface OutageItem {
   outageType: string | null
   cause: string | null
   customerCount: number | null
-  sizeLabel: string | null
+  areaLabel: string | null
   isPlanned: boolean | null
   etr: string | null
   bounds: BoundsLiteral | null
@@ -65,7 +65,7 @@ const outageItem = computed<OutageItem>(() => {
       outageType: item.outageType ?? null,
       cause: item.cause ?? null,
       customerCount: item.customerCount ?? null,
-      sizeLabel: item.sizeLabel ?? null,
+      areaLabel: item.areaLabel ?? null,
       isPlanned: item.isPlanned ?? null,
       etr: item.etr ?? null,
       bounds: item.bounds,
@@ -101,7 +101,7 @@ const outageItem = computed<OutageItem>(() => {
       outageTypes.length === 1 ? outageTypes[0]! : outageTypes.length > 1 ? 'Mixed' : null,
     cause: causes.length === 1 ? causes[0]! : causes.length > 1 ? 'Multiple causes' : null,
     customerCount: totalCustomers > 0 ? totalCustomers : null,
-    sizeLabel: null,
+    areaLabel: null,
     isPlanned: hasPlanned && !hasUnplanned ? true : !hasPlanned && hasUnplanned ? false : null,
     etr: null,
     bounds: combinedBounds,
@@ -170,8 +170,8 @@ async function copyGeoJsonText(event: MouseEvent) {
         <dd class="cursor-help text-muted italic">Unknown</dd>
       </UTooltip>
 
-      <dt v-if="outageItem.sizeLabel" class="text-muted">Area</dt>
-      <dd v-if="outageItem.sizeLabel" class="text-default">{{ outageItem.sizeLabel }}</dd>
+      <dt v-if="outageItem.areaLabel" class="text-muted">Area</dt>
+      <dd v-if="outageItem.areaLabel" class="text-default">{{ outageItem.areaLabel }}</dd>
 
       <dt class="text-muted">Cause</dt>
       <dd v-if="outageItem.cause" class="text-rose-600 dark:text-rose-400">
