@@ -5,8 +5,15 @@ import { useAnalyticsStore } from '@/stores/analytics'
 import type { ComplianceBucket } from '@/types/analytics'
 
 const analyticsStore = useAnalyticsStore()
-const { series, providers, workerRun, isLoading, selectedProvider, selectedGranularity } =
-  storeToRefs(analyticsStore)
+const {
+  series,
+  providers,
+  workerRun,
+  dirtyBuckets,
+  isLoading,
+  selectedProvider,
+  selectedGranularity,
+} = storeToRefs(analyticsStore)
 
 // Compliance field keys for the metric selector
 const complianceFields = [
@@ -40,6 +47,7 @@ type DayCell = {
   value: number
   total: number
   present: number
+  bucket?: ComplianceBucket
   empty?: boolean
 }
 
@@ -52,6 +60,9 @@ type HeatmapRow = {
 const CELL_SIZE = 13
 const CELL_GAP = 3
 const WEEK_PX = CELL_SIZE + CELL_GAP
+const DAY_LABEL_WIDTH = 32
+
+const dayOfWeekLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 
 // Convert series buckets to heatmap data, grouped by provider
 const heatmapData = computed<HeatmapRow[]>(() => {
@@ -77,6 +88,7 @@ const heatmapData = computed<HeatmapRow[]>(() => {
         value: pct,
         total: b.total,
         present: b[metric],
+        bucket: b,
       }
     })
 
@@ -133,6 +145,12 @@ const getCompletionColor = (value: number): string => {
   return 'var(--ui-bg-muted)'
 }
 
+// Dirty bucket total
+const dirtyBucketTotal = computed(() => {
+  if (!dirtyBuckets.value) return 0
+  return dirtyBuckets.value.counts.reduce((sum, c) => sum + c.count, 0)
+})
+
 // Worker status helpers
 const workerStatusLabel = computed(() => {
   if (!workerRun.value) return 'unknown'
@@ -164,35 +182,10 @@ const lastRunLabel = computed(() => {
   return `${days}d ago`
 })
 
-// Tooltip
-const hoveredCell = ref<{
-  row: number
-  col: number
-  date: Date
-  value: number
-  total: number
-  present: number
-} | null>(null)
-const tooltipStyle = ref({ top: '0px', left: '0px' })
-
-function onCellHover(event: MouseEvent, rowIdx: number, colIdx: number, cell: DayCell) {
-  hoveredCell.value = {
-    row: rowIdx,
-    col: colIdx,
-    date: cell.date,
-    value: cell.value,
-    total: cell.total,
-    present: cell.present,
-  }
-  const rect = (event.target as HTMLElement).getBoundingClientRect()
-  tooltipStyle.value = {
-    top: `${rect.top - 55}px`,
-    left: `${rect.left + rect.width / 2}px`,
-  }
-}
-
-function onCellLeave() {
-  hoveredCell.value = null
+// Helper to compute percentage for a compliance field
+function fieldPct(bucket: ComplianceBucket, field: string): number {
+  const val = bucket[field as keyof ComplianceBucket] as number
+  return bucket.total > 0 ? Math.round((val / bucket.total) * 100) : 0
 }
 
 // Fetch series when provider or granularity changes
@@ -213,7 +206,11 @@ watch([selectedProvider, selectedGranularity], () => {
 })
 
 onMounted(async () => {
-  await Promise.all([analyticsStore.fetchProviders(), analyticsStore.fetchWorkerHealth()])
+  await Promise.all([
+    analyticsStore.fetchProviders(),
+    analyticsStore.fetchWorkerHealth(),
+    analyticsStore.fetchDirtyBuckets(),
+  ])
   if (!selectedProvider.value) {
     selectedProvider.value = '__all__'
   }
@@ -306,7 +303,10 @@ onMounted(async () => {
               <!-- Month labels -->
               <div
                 class="relative h-5 mb-1"
-                :style="{ width: `${(heatmapData[0]?.numWeeks ?? 0) * WEEK_PX}px` }"
+                :style="{
+                  marginLeft: `${DAY_LABEL_WIDTH}px`,
+                  width: `${(heatmapData[0]?.numWeeks ?? 0) * WEEK_PX}px`,
+                }"
               >
                 <span
                   v-for="ml in monthLabels"
@@ -320,36 +320,101 @@ onMounted(async () => {
 
               <!-- Rows -->
               <div class="space-y-5">
-                <div v-for="(row, rowIdx) in heatmapData" :key="row.label">
+                <div v-for="row in heatmapData" :key="row.label">
                   <div class="text-xs font-medium text-muted mb-1.5">{{ row.label }}</div>
-                  <div
-                    class="grid gap-[3px]"
-                    :style="{
-                      gridTemplateRows: `repeat(7, ${CELL_SIZE}px)`,
-                      gridAutoFlow: 'column',
-                      gridAutoColumns: `${CELL_SIZE}px`,
-                      width: `${row.numWeeks * WEEK_PX}px`,
-                    }"
-                  >
+                  <div class="flex">
+                    <!-- Day-of-week labels -->
                     <div
-                      v-for="(cell, colIdx) in row.days"
-                      :key="colIdx"
-                      class="rounded-[3px] transition-all duration-150"
-                      :class="
-                        cell.empty
-                          ? 'invisible'
-                          : 'cursor-pointer hover:ring-2 hover:ring-primary-400/50 hover:scale-125'
-                      "
+                      class="flex flex-col shrink-0"
                       :style="{
-                        backgroundColor: cell.empty
-                          ? 'transparent'
-                          : getCompletionColor(cell.value),
-                        width: `${CELL_SIZE}px`,
-                        height: `${CELL_SIZE}px`,
+                        width: `${DAY_LABEL_WIDTH}px`,
+                        gap: `${CELL_GAP}px`,
                       }"
-                      @mouseenter="!cell.empty && onCellHover($event, rowIdx, colIdx, cell)"
-                      @mouseleave="onCellLeave"
-                    />
+                    >
+                      <span
+                        v-for="(day, i) in dayOfWeekLabels"
+                        :key="day"
+                        class="text-xs text-muted leading-none"
+                        :style="{ height: `${CELL_SIZE}px`, lineHeight: `${CELL_SIZE}px` }"
+                        :class="i % 2 === 1 ? 'visible' : 'invisible'"
+                      >
+                        {{ day }}
+                      </span>
+                    </div>
+                    <!-- Grid -->
+                    <div
+                      class="grid gap-[3px]"
+                      :style="{
+                        gridTemplateRows: `repeat(7, ${CELL_SIZE}px)`,
+                        gridAutoFlow: 'column',
+                        gridAutoColumns: `${CELL_SIZE}px`,
+                        width: `${row.numWeeks * WEEK_PX}px`,
+                      }"
+                    >
+                      <template v-for="(cell, colIdx) in row.days" :key="colIdx">
+                        <div
+                          v-if="cell.empty"
+                          class="invisible"
+                          :style="{ width: `${CELL_SIZE}px`, height: `${CELL_SIZE}px` }"
+                        />
+                        <UPopover
+                          v-else
+                          mode="hover"
+                          :open-delay="150"
+                          :close-delay="50"
+                          :content="{ side: 'top', align: 'center', sideOffset: 6 }"
+                        >
+                          <div
+                            class="rounded-[3px] cursor-pointer transition-all duration-150 hover:ring-2 hover:ring-primary-400/50 hover:scale-125"
+                            :style="{
+                              backgroundColor: getCompletionColor(cell.value),
+                              width: `${CELL_SIZE}px`,
+                              height: `${CELL_SIZE}px`,
+                            }"
+                          />
+                          <template #content>
+                            <div class="p-3 min-w-[180px] text-xs">
+                              <div class="font-semibold mb-2">
+                                {{
+                                  cell.date.toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                  })
+                                }}
+                              </div>
+                              <div class="space-y-1">
+                                <div
+                                  v-for="field in complianceFields"
+                                  :key="field.value"
+                                  class="flex items-center justify-between gap-4"
+                                >
+                                  <span class="text-muted">{{ field.label }}</span>
+                                  <span
+                                    class="font-medium tabular-nums"
+                                    :class="
+                                      cell.bucket && fieldPct(cell.bucket, field.value) >= 80
+                                        ? 'text-primary-500'
+                                        : ''
+                                    "
+                                  >
+                                    {{
+                                      cell.bucket
+                                        ? `${(cell.bucket[field.value as keyof typeof cell.bucket] as number)}/${cell.bucket.total}`
+                                        : '–'
+                                    }}
+                                  </span>
+                                </div>
+                              </div>
+                              <div class="mt-2 pt-2 border-t border-default text-muted">
+                                Total outages: {{ cell.total }}
+                              </div>
+                            </div>
+                          </template>
+                        </UPopover>
+                      </template>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -445,6 +510,32 @@ onMounted(async () => {
             </div>
           </div>
 
+          <!-- Dirty buckets card -->
+          <div class="rounded-xl border border-default bg-elevated p-5 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-semibold">Pending recomputation</span>
+            </div>
+            <div class="text-2xl font-bold tabular-nums">
+              {{ dirtyBucketTotal.toLocaleString() }}
+            </div>
+            <div class="text-xs text-muted mt-1">dirty buckets queued</div>
+            <div
+              v-if="dirtyBuckets?.counts.length"
+              class="mt-3 pt-3 border-t border-default space-y-1.5"
+            >
+              <div
+                v-for="c in dirtyBuckets.counts"
+                :key="c.granularity"
+                class="flex items-center justify-between"
+              >
+                <span class="text-sm text-muted capitalize">{{ c.granularity }}</span>
+                <span class="text-sm font-semibold tabular-nums">
+                  {{ c.count.toLocaleString() }}
+                </span>
+              </div>
+            </div>
+          </div>
+
           <!-- Sidebar filters (duplicate for mobile convenience) -->
           <div class="rounded-xl border border-default bg-elevated p-5 shadow-sm space-y-3">
             <div>
@@ -495,39 +586,5 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Tooltip -->
-    <Teleport to="body">
-      <Transition name="fade">
-        <div
-          v-if="hoveredCell"
-          class="fixed z-50 pointer-events-none -translate-x-1/2 rounded-lg border border-default bg-elevated px-3 py-1.5 text-xs shadow-lg"
-          :style="tooltipStyle"
-        >
-          <div class="font-medium">
-            {{
-              hoveredCell.date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })
-            }}
-          </div>
-          <div class="text-muted">
-            {{ hoveredCell.present }}/{{ hoveredCell.total }} ({{ hoveredCell.value }}%)
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
   </div>
 </template>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.15s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-</style>

@@ -208,7 +208,19 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     }, MARKER_RENDER_DEBOUNCE_MS)
   }
 
+  const popupApps = new WeakMap<L.Popup, ReturnType<typeof createApp>>()
+
+  const unmountPopupApp = (popup: L.Popup) => {
+    const prev = popupApps.get(popup)
+    if (prev) {
+      prev.unmount()
+      popupApps.delete(popup)
+    }
+  }
+
   const mountPopupContent = (popup: L.Popup, popupData: PopupData | null | undefined) => {
+    unmountPopupApp(popup)
+
     if (!popupData) {
       popup.setContent('<div class="map-popup__empty">No details available</div>')
       return
@@ -220,6 +232,7 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
       onZoom: (bounds: BoundsLiteral) => onZoomToBounds(bounds),
     })
     app.mount(container)
+    popupApps.set(popup, app)
     popup.setContent(container)
     if (typeof popup.update === 'function') {
       setTimeout(() => popup.update(), 0)
@@ -277,16 +290,19 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
       // Use lazy popup building if builder is provided and marker has outageGroup
       if (popupBuilder && marker.outageGroup) {
         // Bind empty popup initially - content will be set on open
-        m.bindPopup('', popupOptions).on('popupopen', (e) => {
-          // Build popup content lazily on open
-          const popupData = popupBuilder(marker.outageGroup!, marker.blockTs ?? null)
-          mountPopupContent(e.popup, popupData)
-        })
+        m.bindPopup('', popupOptions)
+          .on('popupopen', (e) => {
+            const popupData = popupBuilder(marker.outageGroup!, marker.blockTs ?? null)
+            mountPopupContent(e.popup, popupData)
+          })
+          .on('popupclose', (e) => unmountPopupApp(e.popup))
       } else {
         // Use pre-computed popup data (legacy path)
-        m.bindPopup('', popupOptions).on('popupopen', (e) => {
-          mountPopupContent(e.popup, marker.popupData ?? null)
-        })
+        m.bindPopup('', popupOptions)
+          .on('popupopen', (e) => {
+            mountPopupContent(e.popup, marker.popupData ?? null)
+          })
+          .on('popupclose', (e) => unmountPopupApp(e.popup))
       }
 
       markerLayer.value!.addLayer(m)

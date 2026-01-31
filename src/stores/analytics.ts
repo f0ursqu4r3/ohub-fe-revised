@@ -6,6 +6,7 @@ import type {
   ProviderSummary,
   ProvidersResponse,
   WorkerRun,
+  DirtyBucketsResponse,
   Granularity,
 } from '@/types/analytics'
 
@@ -18,6 +19,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
   const allSummary = ref<ComplianceSummary | null>(null)
   const series = ref<ComplianceBucket[]>([])
   const workerRun = ref<WorkerRun | null>(null)
+  const dirtyBuckets = ref<DirtyBucketsResponse | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
@@ -100,6 +102,17 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     }
   }
 
+  const fetchDirtyBuckets = async () => {
+    try {
+      const response = await fetch(`${baseUrl}/v1/norm-compliance/dirty`)
+      if (!response.ok) throw new Error('Failed to fetch dirty buckets')
+      const data: DirtyBucketsResponse = await response.json()
+      dirtyBuckets.value = data
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Unknown error'
+    }
+  }
+
   return {
     // State
     summaries,
@@ -107,6 +120,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     allSummary,
     series,
     workerRun,
+    dirtyBuckets,
     isLoading,
     error,
 
@@ -119,5 +133,6 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     fetchProviders,
     fetchSeries,
     fetchWorkerHealth,
+    fetchDirtyBuckets,
   }
 })

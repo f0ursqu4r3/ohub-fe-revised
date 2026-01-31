@@ -51,4 +51,23 @@ export interface ProvidersResponse {
   allSummary: ComplianceSummary | null
 }
 
+export interface DirtyBucketCount {
+  granularity: string
+  count: number
+}
+
+export interface DirtyBucketSample {
+  provider: string
+  granularity: string
+  bucket_start_ts: number
+  bucket_end_ts: number
+  marked_at: string
+  reason: string
+}
+
+export interface DirtyBucketsResponse {
+  counts: DirtyBucketCount[]
+  sample: DirtyBucketSample[]
+}
+
 export type Granularity = 'day' | 'week' | 'month'
