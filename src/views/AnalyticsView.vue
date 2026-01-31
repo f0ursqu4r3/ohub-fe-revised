@@ -376,6 +376,175 @@ const loadingProgress = computed(() => {
   return { done, total }
 })
 
+// --- KPI cards ---
+const kpiProviderCount = computed(() => providers.value.length)
+
+const kpiTotalOutages = computed(() => {
+  let total = 0
+  for (const [key, buckets] of seriesByProvider.value) {
+    if (key === '__all__') continue
+    for (const b of buckets) total += b.total
+  }
+  return total
+})
+
+const kpiAvgCompleteness = computed(() => {
+  const scored = tiles.value.filter((t) => t.overallScore >= 0)
+  if (!scored.length) return null
+  return Math.round(scored.reduce((s, t) => s + t.overallScore, 0) / scored.length)
+})
+
+const kpiDataFreshness = computed(() => {
+  let maxTs = 0
+  for (const [, buckets] of seriesByProvider.value) {
+    for (const b of buckets) {
+      if (b.fetch_ts_max > maxTs) maxTs = b.fetch_ts_max
+    }
+  }
+  if (!maxTs) return null
+  const diff = Date.now() - maxTs * 1000
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+})
+
+// --- Field completeness breakdown ---
+const fieldBreakdown = computed(() => {
+  let grandTotal = 0
+  const fieldTotals: Record<string, number> = {}
+  for (const f of complianceFields) fieldTotals[f.value] = 0
+
+  for (const [key, buckets] of seriesByProvider.value) {
+    if (key === '__all__') continue
+    for (const b of buckets) {
+      grandTotal += b.total
+      for (const f of complianceFields) {
+        fieldTotals[f.value] += b[f.value as keyof ComplianceBucket] as number
+      }
+    }
+  }
+
+  if (!grandTotal) return null
+  return complianceFields.map((f) => ({
+    label: f.label,
+    key: f.value,
+    pct: Math.round(((fieldTotals[f.value] ?? 0) / grandTotal) * 100),
+  }))
+})
+
+// --- Completeness trend ---
+const completenessChartEl = ref<HTMLDivElement>()
+
+type TrendPoint = { date: Date; score: number }
+
+const completenessTrendPoints = computed<TrendPoint[] | null>(() => {
+  const byProvider = seriesByProvider.value
+  if (byProvider.size === 0) return null
+
+  // For each timestamp, compute weighted avg completeness across providers
+  const scoreMap = new Map<number, { weightedSum: number; totalWeight: number }>()
+
+  for (const [key, buckets] of byProvider) {
+    if (key === '__all__') continue
+    for (const b of buckets) {
+      if (b.total === 0) continue
+      const score = compositeScore(b)
+      const entry = scoreMap.get(b.bucket_start_ts) ?? { weightedSum: 0, totalWeight: 0 }
+      entry.weightedSum += score * b.total
+      entry.totalWeight += b.total
+      scoreMap.set(b.bucket_start_ts, entry)
+    }
+  }
+
+  const sorted = [...scoreMap.entries()].sort((a, b) => a[0] - b[0])
+  if (!sorted.length) return null
+
+  return sorted.map(([ts, { weightedSum, totalWeight }]) => ({
+    date: new Date(ts * 1000),
+    score: Math.round(weightedSum / totalWeight),
+  }))
+})
+
+function renderCompleteness() {
+  if (!completenessChartEl.value || !completenessTrendPoints.value) return
+
+  const container = completenessChartEl.value
+  const points = completenessTrendPoints.value
+
+  select(container).selectAll('*').remove()
+
+  const margin = { top: 8, right: 16, bottom: 24, left: 48 }
+  const width = container.clientWidth - margin.left - margin.right
+  const height = container.clientHeight - margin.top - margin.bottom
+
+  const svg = select(container)
+    .append('svg')
+    .attr('width', container.clientWidth)
+    .attr('height', container.clientHeight)
+    .append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`)
+
+  const x = scaleTime()
+    .domain(extent(points, (d) => d.date) as [Date, Date])
+    .range([0, width])
+
+  const y = scaleLinear().domain([0, 100]).range([height, 0])
+
+  svg
+    .append('g')
+    .attr('class', 'chart-grid')
+    .call(
+      axisLeft(y)
+        .ticks(5)
+        .tickSize(-width)
+        .tickFormat(() => ''),
+    )
+    .call((g) => g.select('.domain').remove())
+
+  svg
+    .append('g')
+    .attr('class', 'chart-axis-x')
+    .attr('transform', `translate(0,${height})`)
+    .call(
+      axisBottom(x)
+        .ticks(timeWeek.every(1))
+        .tickFormat((d) => timeFormat('%b %d')(d as Date))
+        .tickSizeOuter(0),
+    )
+    .call((g) => g.select('.domain').remove())
+
+  svg
+    .append('g')
+    .attr('class', 'chart-axis-y')
+    .call(
+      axisLeft(y)
+        .ticks(5)
+        .tickFormat((d) => `${d}%`)
+        .tickSizeOuter(0),
+    )
+    .call((g) => g.select('.domain').remove())
+
+  const areaGen = area<TrendPoint>()
+    .x((d) => x(d.date))
+    .y0(height)
+    .y1((d) => y(d.score))
+    .curve(curveMonotoneX)
+
+  svg.append('path').datum(points).attr('class', 'chart-area').attr('d', areaGen)
+
+  const lineGen = line<TrendPoint>()
+    .x((d) => x(d.date))
+    .y((d) => y(d.score))
+    .curve(curveMonotoneX)
+
+  svg.append('path').datum(points).attr('class', 'chart-line').attr('d', lineGen)
+}
+
+watch(completenessTrendPoints, () => nextTick(renderCompleteness), { flush: 'post' })
+
 // Fetch all series when granularity changes
 async function loadAllSeries() {
   await analyticsStore.fetchAllSeries(selectedGranularity.value)
@@ -496,6 +665,39 @@ onMounted(async () => {
         </div>
       </div>
 
+      <!-- KPI cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div class="rounded-lg border border-default bg-elevated p-4 shadow-sm">
+          <div class="text-xs text-muted mb-1">Providers tracked</div>
+          <div class="text-2xl font-semibold tabular-nums">
+            {{ kpiProviderCount }}
+          </div>
+        </div>
+        <div class="rounded-lg border border-default bg-elevated p-4 shadow-sm">
+          <div class="text-xs text-muted mb-1">Total outages</div>
+          <div class="text-2xl font-semibold tabular-nums">
+            {{ kpiTotalOutages.toLocaleString() }}
+          </div>
+        </div>
+        <div class="rounded-lg border border-default bg-elevated p-4 shadow-sm">
+          <div class="text-xs text-muted mb-1">Avg completeness</div>
+          <div class="text-2xl font-semibold tabular-nums">
+            <template v-if="kpiAvgCompleteness != null">
+              <span :class="kpiAvgCompleteness >= 80 ? 'text-primary-500' : ''">
+                {{ kpiAvgCompleteness }}%
+              </span>
+            </template>
+            <span v-else class="text-muted">–</span>
+          </div>
+        </div>
+        <div class="rounded-lg border border-default bg-elevated p-4 shadow-sm">
+          <div class="text-xs text-muted mb-1">Data freshness</div>
+          <div class="text-2xl font-semibold">
+            {{ kpiDataFreshness ?? '–' }}
+          </div>
+        </div>
+      </div>
+
       <!-- Outages over time chart -->
       <div
         v-if="outageChartPoints"
@@ -503,6 +705,45 @@ onMounted(async () => {
       >
         <h2 class="text-sm font-medium text-default mb-3">Outages over time</h2>
         <div ref="chartEl" class="outage-chart text-muted" style="height: 200px" />
+      </div>
+
+      <!-- Field breakdown + Completeness trend -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <!-- Field completeness breakdown -->
+        <div
+          v-if="fieldBreakdown"
+          class="rounded-lg border border-default bg-elevated p-4 shadow-sm"
+        >
+          <h2 class="text-sm font-medium text-default mb-3">Field completeness</h2>
+          <div class="space-y-2.5">
+            <div v-for="field in fieldBreakdown" :key="field.key">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-muted">{{ field.label }}</span>
+                <span
+                  class="text-xs font-medium tabular-nums"
+                  :class="field.pct >= 80 ? 'text-primary-500' : 'text-muted'"
+                >
+                  {{ field.pct }}%
+                </span>
+              </div>
+              <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  class="h-full rounded-full bg-primary-500 transition-all duration-500"
+                  :style="{ width: `${field.pct}%` }"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Completeness trend chart -->
+        <div
+          v-if="completenessTrendPoints"
+          class="rounded-lg border border-default bg-elevated p-4 shadow-sm"
+        >
+          <h2 class="text-sm font-medium text-default mb-3">Completeness over time</h2>
+          <div ref="completenessChartEl" class="outage-chart text-muted" style="height: 200px" />
+        </div>
       </div>
 
       <!-- Initial loading state -->
