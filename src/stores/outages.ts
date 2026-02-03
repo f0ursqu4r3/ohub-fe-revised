@@ -65,7 +65,23 @@ export const useOutageStore = defineStore('outages', () => {
       }))
       .sort((a, b) => a.ts - b.ts)
   })
-  const maxCount: ComputedRef<number> = computed(() => data.value?.maxCount ?? 0)
+  // Raw blocks from the API, with provider-filtered counts when applicable
+  const filteredBlocks: ComputedRef<OutageBlock[]> = computed(() => {
+    if (!selectedProvider.value) return blocks.value
+    const provider = selectedProvider.value
+    return blocks.value.map((block) => {
+      const count = block.indexes.filter((i) => outages.value[i]?.provider === provider).length
+      return { ...block, count }
+    })
+  })
+
+  const maxCount: ComputedRef<number> = computed(() => {
+    if (selectedProvider.value) {
+      return Math.max(0, ...filteredBlocks.value.map((b) => b.count ?? 0))
+    }
+    return data.value?.maxCount ?? 0
+  })
+
   const selectedBlockOutages: ComputedRef<Outage[]> = computed(() => {
     if (selectedOutageTs.value === null) return []
     const block = blocks.value.find((b) => b.ts === selectedOutageTs.value)
@@ -140,7 +156,7 @@ export const useOutageStore = defineStore('outages', () => {
     startTime,
     endTime,
     outages,
-    blocks,
+    blocks: filteredBlocks,
     maxCount,
     selectedOutageTs,
     selectedBlockOutages,
