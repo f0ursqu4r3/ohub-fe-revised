@@ -195,10 +195,10 @@ async function copyGeoJsonText(event: MouseEvent) {
       </UTooltip>
     </dl>
 
-    <div v-if="outageItem.bounds" class="flex gap-2 px-3.5 pb-1">
+    <div v-if="outageItem.bounds" class="grid grid-cols-2 gap-2 px-3.5 pb-1">
       <!-- Zoom button -->
       <button
-        class="mt-1 inline-flex w-fit cursor-pointer items-center gap-1 rounded-[7px] border border-default bg-elevated px-2 py-1 text-[13px] text-primary-600 shadow-sm transition duration-150 hover:bg-primary-500/10 hover:text-primary-700 active:scale-95 dark:text-primary-400 dark:hover:text-primary-300"
+        class="mt-1 inline-flex justify-center w-full cursor-pointer items-center gap-1 rounded-[7px] border border-default bg-elevated px-2 py-1 text-[13px] text-primary-600 shadow-sm transition duration-150 hover:bg-primary-500/10 hover:text-primary-700 active:scale-95 dark:text-primary-400 dark:hover:text-primary-300 whitespace-nowrap"
         :data-bounds="encodeBounds(outageItem.bounds)"
         title="Zoom to extent"
         @click.stop="onZoom(outageItem.bounds)"
@@ -208,7 +208,7 @@ async function copyGeoJsonText(event: MouseEvent) {
       </button>
       <!-- Copy GeoJSON button -->
       <button
-        class="mt-1 inline-flex w-fit cursor-pointer items-center gap-1 rounded-[7px] border border-default bg-elevated px-2 py-1 text-[13px] text-primary-600 shadow-sm transition duration-150 hover:bg-primary-500/10 hover:text-primary-700 active:scale-95 dark:text-primary-400 dark:hover:text-primary-300"
+        class="mt-1 inline-flex justify-center w-full cursor-pointer items-center gap-1 rounded-[7px] border border-default bg-elevated px-2 py-1 text-[13px] text-primary-600 shadow-sm transition duration-150 hover:bg-primary-500/10 hover:text-primary-700 active:scale-95 dark:text-primary-400 dark:hover:text-primary-300 whitespace-nowrap"
         title="Copy bounds as GeoJSON"
         @click.stop="copyGeoJsonText"
       >
