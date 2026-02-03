@@ -137,26 +137,23 @@ async function copyGeoJsonText(event: MouseEvent) {
   <div class="max-w-96 min-w-72 overflow-hidden p-0 pb-2.5 text-[15px] text-default">
     <div class="flex items-center gap-3 pb-2.5 pl-3.5 pr-4 pt-3">
       <div class="min-w-0 flex-1">
-        <h3 class="mb-px truncate text-[17px] font-bold leading-[1.2] text-default">
-          {{ popupData.title }}
-        </h3>
-        <time class="block text-[12.5px] text-primary-600 opacity-[0.85] dark:text-primary-400">
+        <time class="block text-primary-600 opacity-[0.85] dark:text-primary-400">
           {{ popupData.timeLabel }}
         </time>
       </div>
     </div>
     <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 px-3.5 pb-2 text-[13px]">
-      <dt class="text-muted">Type</dt>
-      <dd v-if="outageItem.outageType" class="text-amber-600 dark:text-amber-400">
-        {{ outageItem.outageType }}
+      <dt class="text-muted">Est. restore</dt>
+      <dd v-if="outageItem.etr" class="text-primary-600 dark:text-primary-400">
+        {{ outageItem.etr }}
       </dd>
       <UTooltip v-else :text="whyIsDataMissingHelpText">
         <dd class="cursor-help text-muted italic">Unknown</dd>
       </UTooltip>
 
-      <dt class="text-muted">Status</dt>
-      <dd v-if="outageItem.isPlanned != null" class="text-default">
-        {{ outageItem.isPlanned ? 'Planned' : 'Unplanned' }}
+      <dt class="text-muted">Cause</dt>
+      <dd v-if="outageItem.cause" class="text-rose-600 dark:text-rose-400">
+        {{ outageItem.cause }}
       </dd>
       <UTooltip v-else :text="whyIsDataMissingHelpText">
         <dd class="cursor-help text-muted italic">Unknown</dd>
@@ -170,23 +167,28 @@ async function copyGeoJsonText(event: MouseEvent) {
         <dd class="cursor-help text-muted italic">Unknown</dd>
       </UTooltip>
 
-      <dt v-if="outageItem.areaLabel" class="text-muted">Area</dt>
-      <dd v-if="outageItem.areaLabel" class="text-default">{{ outageItem.areaLabel }}</dd>
+      <dt v-if="durationString" class="text-muted">Duration</dt>
+      <dd v-if="durationString" class="text-default">{{ durationString }}</dd>
 
-      <dt class="text-muted">Cause</dt>
-      <dd v-if="outageItem.cause" class="text-rose-600 dark:text-rose-400">
-        {{ outageItem.cause }}
+      <dt class="text-muted">Status</dt>
+      <dd v-if="outageItem.isPlanned != null" class="text-default">
+        {{ outageItem.isPlanned ? 'Planned' : 'Unplanned' }}
       </dd>
       <UTooltip v-else :text="whyIsDataMissingHelpText">
         <dd class="cursor-help text-muted italic">Unknown</dd>
       </UTooltip>
 
-      <dt v-if="durationString" class="text-muted">Duration</dt>
-      <dd v-if="durationString" class="text-default">{{ durationString }}</dd>
+      <dt v-if="outageItem.areaLabel" class="text-muted">Area</dt>
+      <dd v-if="outageItem.areaLabel" class="text-default">{{ outageItem.areaLabel }}</dd>
 
-      <dt class="text-muted">Est. restore</dt>
-      <dd v-if="outageItem.etr" class="text-primary-600 dark:text-primary-400">
-        {{ outageItem.etr }}
+      <dt class="text-muted">Provider</dt>
+      <dd v-if="outageItem.provider" class="">
+        {{ outageItem.provider }}
+      </dd>
+
+      <dt class="text-muted">Type</dt>
+      <dd v-if="outageItem.outageType" class="text-amber-600 dark:text-amber-400">
+        {{ outageItem.outageType }}
       </dd>
       <UTooltip v-else :text="whyIsDataMissingHelpText">
         <dd class="cursor-help text-muted italic">Unknown</dd>
@@ -226,4 +228,3 @@ async function copyGeoJsonText(event: MouseEvent) {
     </p>
   </div>
 </template>
-import type { stringify } from 'querystring';import type { log } from 'console';
