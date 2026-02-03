@@ -78,6 +78,12 @@ const router = createRouter({
       component: () => import('../views/MapView.vue'),
       meta: { layout: 'empty' },
     },
+    {
+      path: '/embed/:slug',
+      name: 'embed-map',
+      component: () => import('../views/EmbedMapView.vue'),
+      meta: { layout: 'empty' },
+    },
     // catch-all route to main page for undefined routes
     {
       path: '/:pathMatch(.*)*',
