@@ -518,3 +518,15 @@ export const fallbackPointBounds = (lat: number, lon: number): BoundsLiteral => 
     [lat + delta, lon + delta],
   ]
 }
+
+export function providerToSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
+export function slugToProvider(slug: string, providers: string[]): string | null {
+  const normalized = providerToSlug(slug)
+  return providers.find((p) => providerToSlug(p) === normalized) ?? null
+}

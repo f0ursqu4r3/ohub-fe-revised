@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRoute } from 'vue-router'
 import { useOutageStore } from '@/stores/outages'
 import {
   clusterOutages,
   wktToGeoJSON,
+  slugToProvider,
   type GeoPolygon,
   type GroupedOutage,
   type BoundsLiteral,
@@ -39,8 +41,9 @@ type SearchLocation = {
   geometry: Polygon | MultiPolygon | null
 }
 
+const route = useRoute()
 const outageStore = useOutageStore()
-const { selectedBlockOutages, selectedOutageTs, blocks, loading, error } = storeToRefs(outageStore)
+const { selectedBlockOutages, selectedOutageTs, blocks, loading, error, providers } = storeToRefs(outageStore)
 
 const zoomLevel = ref(4)
 const focusBounds = ref<BoundsLiteral | null>(null)
@@ -188,12 +191,32 @@ const clearSearch = () => {
   searchPolygon.value = null
 }
 
+// Provider filtering
+const syncProviderFromRoute = () => {
+  if (route.name === 'provider-map') {
+    const slug = route.params.slug as string
+    const match = slugToProvider(slug, providers.value)
+    outageStore.selectedProvider = match
+  } else if (route.query.provider) {
+    outageStore.selectedProvider = route.query.provider as string
+  } else {
+    outageStore.selectedProvider = null
+  }
+}
+
+onMounted(async () => {
+  await outageStore.loadProviders()
+  syncProviderFromRoute()
+})
+
+watch(() => route.fullPath, syncProviderFromRoute)
+
 const { buildPopupData } = usePopupData()
 </script>
 
 <template>
   <div class="flex relative w-full h-full">
-    <!-- Developer Portal link in top-left -->
+    <!-- Nav links in top-right -->
     <div class="fixed top-4 right-4 z-40 flex items-center gap-2">
       <UButton
         to="/analytics"

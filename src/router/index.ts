@@ -72,6 +72,12 @@ const router = createRouter({
       meta: { layout: 'developer' },
       beforeEnter: [authGuard, subscriptionGuard],
     },
+    {
+      path: '/map/:slug',
+      name: 'provider-map',
+      component: () => import('../views/MapView.vue'),
+      meta: { layout: 'empty' },
+    },
     // catch-all route to main page for undefined routes
     {
       path: '/:pathMatch(.*)*',

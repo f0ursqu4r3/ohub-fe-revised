@@ -16,6 +16,8 @@ export const useOutageStore = defineStore('outages', () => {
   const startTime = ref<Date | null>(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)) // Default to the last 3 days
   const endTime = ref<Date | null>(new Date())
   const selectedOutageTs = ref<number | null>(null)
+  const selectedProvider = ref<string | null>(null)
+  const providers = ref<string[]>([])
 
   const url = computed(() => {
     const url = `${baseApiUrl}/outages`
@@ -27,6 +29,10 @@ export const useOutageStore = defineStore('outages', () => {
     if (endTime.value) {
       params.append('end', dateToEpochSeconds(endTime.value).toString())
     }
+    // TODO: uncomment when backend ?provider= is implemented
+    // if (selectedProvider.value) {
+    //   params.append('provider', selectedProvider.value)
+    // }
     return `${url}?${params.toString()}`
   })
 
@@ -64,10 +70,14 @@ export const useOutageStore = defineStore('outages', () => {
     if (selectedOutageTs.value === null) return []
     const block = blocks.value.find((b) => b.ts === selectedOutageTs.value)
     if (!block) return []
-    return block.indexes
+    let result = block.indexes
       .map((index) => outages.value[index])
       .filter((o): o is Outage => o !== undefined)
-      .sort((a, b) => a.startTs - b.startTs)
+    // Client-side provider filter until backend ?provider= is implemented
+    if (selectedProvider.value) {
+      result = result.filter((o) => o.provider === selectedProvider.value)
+    }
+    return result.sort((a, b) => a.startTs - b.startTs)
   })
 
   const fetchOutages = async (params: FetchOutageParams): Promise<Response> => {
@@ -92,6 +102,18 @@ export const useOutageStore = defineStore('outages', () => {
   const fetchProviders = async (): Promise<Response> => {
     const fetchUrl = new URL(`${baseApiUrl}/v1/providers`)
     return fetch(fetchUrl.toString())
+  }
+
+  const loadProviders = async () => {
+    try {
+      const res = await fetchProviders()
+      if (res.ok) {
+        const data = await res.json()
+        providers.value = (data.providers as string[]).sort((a, b) => a.localeCompare(b))
+      }
+    } catch {
+      // silently fail — provider list is non-critical
+    }
   }
 
   watch(
@@ -122,12 +144,15 @@ export const useOutageStore = defineStore('outages', () => {
     maxCount,
     selectedOutageTs,
     selectedBlockOutages,
+    selectedProvider,
+    providers,
     loading,
     error,
     refetch,
     fetchOutages,
     fetchOutage,
     fetchProviders,
+    loadProviders,
   }
 })
 
