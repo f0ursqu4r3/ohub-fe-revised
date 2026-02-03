@@ -134,15 +134,11 @@ async function copyGeoJsonText(event: MouseEvent) {
 </script>
 
 <template>
-  <div class="max-w-96 min-w-72 overflow-hidden p-0 pb-2.5 text-[15px] text-default">
-    <div class="flex items-center gap-3 pb-2.5 pl-3.5 pr-4 pt-3">
-      <div class="min-w-0 flex-1">
-        <time class="block text-primary-600 opacity-[0.85] dark:text-primary-400">
-          {{ popupData.timeLabel }}
-        </time>
-      </div>
-    </div>
-    <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 px-3.5 pb-2 text-[13px]">
+  <div class="max-w-96 min-w-72 overflow-hidden p-0 pb-2.5 text-[15px] text-default py-6">
+    <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 px-3.5 pt-3 pb-2 text-[13px]">
+      <dt class="text-muted">Started</dt>
+      <dd class="text-primary-600 dark:text-primary-400">{{ popupData.timeLabel }}</dd>
+
       <dt class="text-muted">Est. restore</dt>
       <dd v-if="outageItem.etr" class="text-primary-600 dark:text-primary-400">
         {{ outageItem.etr }}
