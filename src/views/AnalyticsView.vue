@@ -77,7 +77,7 @@ const {
             label="Get API Access"
           />
           <UButton
-            href="mailto:sales@ohub.ca"
+            href="mailto:hello@ohub.ca"
             icon="i-heroicons-building-office-2"
             color="neutral"
             variant="soft"
@@ -229,38 +229,23 @@ const {
             <h3 class="text-xl font-bold text-default mb-3">Build on reliable outage data</h3>
             <ul class="space-y-2 text-sm text-muted mb-6">
               <li class="flex items-start gap-2">
-                <UIcon
-                  name="i-heroicons-check"
-                  class="w-4 h-4 text-primary-500 shrink-0 mt-0.5"
-                />
+                <UIcon name="i-heroicons-check" class="w-4 h-4 text-primary-500 shrink-0 mt-0.5" />
                 <span>Normalized JSON from every Canadian utility</span>
               </li>
               <li class="flex items-start gap-2">
-                <UIcon
-                  name="i-heroicons-check"
-                  class="w-4 h-4 text-primary-500 shrink-0 mt-0.5"
-                />
+                <UIcon name="i-heroicons-check" class="w-4 h-4 text-primary-500 shrink-0 mt-0.5" />
                 <span>7 enriched fields per outage record</span>
               </li>
               <li class="flex items-start gap-2">
-                <UIcon
-                  name="i-heroicons-check"
-                  class="w-4 h-4 text-primary-500 shrink-0 mt-0.5"
-                />
+                <UIcon name="i-heroicons-check" class="w-4 h-4 text-primary-500 shrink-0 mt-0.5" />
                 <span>Geographic polygons for map integration</span>
               </li>
               <li class="flex items-start gap-2">
-                <UIcon
-                  name="i-heroicons-check"
-                  class="w-4 h-4 text-primary-500 shrink-0 mt-0.5"
-                />
+                <UIcon name="i-heroicons-check" class="w-4 h-4 text-primary-500 shrink-0 mt-0.5" />
                 <span>Historical and real-time access via REST API</span>
               </li>
               <li class="flex items-start gap-2">
-                <UIcon
-                  name="i-heroicons-check"
-                  class="w-4 h-4 text-primary-500 shrink-0 mt-0.5"
-                />
+                <UIcon name="i-heroicons-check" class="w-4 h-4 text-primary-500 shrink-0 mt-0.5" />
                 <span>Simple API key authentication</span>
               </li>
             </ul>
@@ -321,7 +306,7 @@ const {
               </li>
             </ul>
             <UButton
-              href="mailto:sales@ohub.ca"
+              href="mailto:hello@ohub.ca"
               color="neutral"
               variant="soft"
               label="Contact Sales"
@@ -352,7 +337,7 @@ const {
             label="Get API Access"
           />
           <UButton
-            href="mailto:sales@ohub.ca"
+            href="mailto:hello@ohub.ca"
             icon="i-heroicons-building-office-2"
             color="neutral"
             variant="soft"
