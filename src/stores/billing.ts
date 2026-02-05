@@ -44,7 +44,7 @@ export const useBillingStore = defineStore('billing', () => {
       if (!response.ok) throw new Error('Failed to fetch plans')
       const data = await response.json()
       plans.value = data.plans ?? []
-      isFreeMode.value = data.isFreeMode ?? false
+      isFreeMode.value = data.freeMode ?? false
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error'
     }
