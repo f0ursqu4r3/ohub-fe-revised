@@ -25,24 +25,24 @@ onMounted(async () => {
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
 
-  // Check for Auth0 error
-  if (auth0.error.value) {
-    error.value = auth0.error.value.name || 'Authentication Error'
-    errorDescription.value = auth0.error.value.message
-    return
-  }
+  // // Check for Auth0 error
+  // if (auth0.error.value) {
+  //   error.value = auth0.error.value.name || 'Authentication Error'
+  //   errorDescription.value = auth0.error.value.message
+  //   return
+  // }
 
-  // If not authenticated after processing, redirect to home
-  if (!auth0.isAuthenticated.value) {
-    router.push('/')
-    return
-  }
+  // // If not authenticated after processing, redirect to home
+  // if (!auth0.isAuthenticated.value) {
+  //   router.push('/')
+  //   return
+  // }
 
-  await authStore.fetchCustomer()
+  // await authStore.fetchCustomer()
 
-  const redirectTo = localStorage.getItem('auth_redirect') || '/subscribe'
-  localStorage.removeItem('auth_redirect')
-  router.push(redirectTo)
+  // const redirectTo = localStorage.getItem('auth_redirect') || '/subscribe'
+  // localStorage.removeItem('auth_redirect')
+  // router.push(redirectTo)
 })
 
 const goHome = () => router.push('/')
