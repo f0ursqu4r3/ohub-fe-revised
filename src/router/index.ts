@@ -22,18 +22,18 @@ const router = createRouter({
       name: 'callback',
       component: () => import('../views/CallbackView.vue'),
       meta: { layout: 'empty' },
-      // beforeEnter: (to) => {
-      //   // Store error in sessionStorage before Auth0 SDK can clear the URL
-      //   if (to.query.error) {
-      //     sessionStorage.setItem('auth_error', to.query.error as string)
-      //     sessionStorage.setItem(
-      //       'auth_error_description',
-      //       (to.query.error_description as string) || '',
-      //     )
-      //   }
-      //   console.log('Callback beforeEnter:', to.fullPath, to.query)
-      //   return true
-      // },
+      beforeEnter: (to) => {
+        // Store error in sessionStorage before Auth0 SDK can clear the URL
+        if (to.query.error) {
+          sessionStorage.setItem('auth_error', to.query.error as string)
+          sessionStorage.setItem(
+            'auth_error_description',
+            (to.query.error_description as string) || '',
+          )
+        }
+        console.log('Callback beforeEnter:', to.fullPath, to.query)
+        return true
+      },
     },
     {
       path: '/developers',
