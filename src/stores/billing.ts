@@ -83,7 +83,7 @@ export const useBillingStore = defineStore('billing', () => {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ price: priceId }),
+        body: JSON.stringify({ price: priceId, trialDays: 14 }),
       })
       if (!response.ok) throw new Error('Failed to create checkout session')
       const data: { url: string } = await response.json()

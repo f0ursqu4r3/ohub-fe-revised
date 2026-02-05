@@ -288,7 +288,7 @@ const handleLogout = () => authStore.logout()
               >
                 <UIcon name="i-heroicons-shield-check" class="w-6 h-6 text-primary-500" />
               </div>
-              <h4 class="font-semibold text-default">7-Day Free Trial</h4>
+              <h4 class="font-semibold text-default">14-Day Free Trial</h4>
               <p class="text-sm text-muted mt-1">Try risk-free, cancel anytime</p>
             </div>
             <div>
@@ -319,8 +319,9 @@ const handleLogout = () => authStore.logout()
             <a
               href="mailto:support@canadianpoweroutages.ca"
               class="text-primary-500 hover:underline"
-              >Contact our team</a
             >
+              Contact our team
+            </a>
           </p>
         </div>
       </div>
