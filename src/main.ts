@@ -11,6 +11,7 @@ import ui from '@nuxt/ui/vue-plugin'
 const app = createApp(App)
 
 app.use(createPinia())
+app.use(router)
 app.use(
   createAuth0({
     domain: import.meta.env.VITE_AUTH0_DOMAIN,
@@ -23,7 +24,6 @@ app.use(
     cacheLocation: 'localstorage',
   }),
 )
-app.use(router)
 app.use(ui)
 
 app.mount('#app')

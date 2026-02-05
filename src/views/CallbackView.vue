@@ -9,7 +9,10 @@ const authStore = useAuthStore()
 onMounted(async () => {
   await new Promise((resolve) => setTimeout(resolve, 1000))
   await authStore.fetchCustomer()
-  router.push('/developers/api-keys')
+
+  const redirectTo = localStorage.getItem('auth_redirect') || '/subscribe'
+  localStorage.removeItem('auth_redirect')
+  router.push(redirectTo)
 })
 </script>
 

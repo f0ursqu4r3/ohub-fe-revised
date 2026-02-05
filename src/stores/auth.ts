@@ -27,18 +27,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const login = () =>
-    auth0.loginWithRedirect({
-      appState: { target: '/subscribe' },
-    })
+  const login = (returnTo = '/subscribe') => {
+    localStorage.setItem('auth_redirect', returnTo)
+    return auth0.loginWithRedirect()
+  }
 
-  const signup = () =>
-    auth0.loginWithRedirect({
-      appState: { target: '/subscribe' },
+  const signup = (returnTo = '/subscribe') => {
+    localStorage.setItem('auth_redirect', returnTo)
+    return auth0.loginWithRedirect({
       authorizationParams: {
         screen_hint: 'signup',
       },
     })
+  }
 
   const logout = () => {
     customer.value = null
