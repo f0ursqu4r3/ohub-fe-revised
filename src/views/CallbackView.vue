@@ -33,16 +33,16 @@ onMounted(async () => {
   }
 
   // If not authenticated after processing, redirect to home
-  // if (!auth0.isAuthenticated.value) {
-  //   router.push('/')
-  //   return
-  // }
+  if (!auth0.isAuthenticated.value) {
+    router.push('/')
+    return
+  }
 
-  // await authStore.fetchCustomer()
+  await authStore.fetchCustomer()
 
-  // const redirectTo = localStorage.getItem('auth_redirect') || '/subscribe'
-  // localStorage.removeItem('auth_redirect')
-  // router.push(redirectTo)
+  const redirectTo = localStorage.getItem('auth_redirect') || '/subscribe'
+  localStorage.removeItem('auth_redirect')
+  router.push(redirectTo)
 })
 
 const goHome = () => router.push('/')
@@ -67,10 +67,6 @@ const goHome = () => router.push('/')
         </div>
         <h2 class="text-lg font-semibold text-red-600 mb-2">{{ error }}</h2>
         <p v-if="errorDescription" class="text-sm text-muted mb-4">{{ errorDescription }}</p>
-        <pre
-          class="text-left text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded mb-4 overflow-auto max-h-40"
-          >{{ JSON.stringify(route.query, null, 2) }}</pre
-        >
         <button
           @click="goHome"
           class="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
@@ -90,11 +86,6 @@ const goHome = () => router.push('/')
           </span>
         </div>
         <p class="text-sm font-medium text-muted">Completing authentication...</p>
-        <pre
-          v-if="Object.keys(route.query).length"
-          class="text-left text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded mt-4 overflow-auto max-h-40"
-          >{{ JSON.stringify(route.query, null, 2) }}</pre
-        >
       </template>
     </div>
   </div>
