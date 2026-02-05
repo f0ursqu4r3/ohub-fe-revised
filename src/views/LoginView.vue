@@ -87,7 +87,7 @@ const handleSignup = () => authStore.signup()
           <div class="space-y-3">
             <div class="flex items-start gap-3">
               <UIcon name="i-heroicons-check-circle" class="w-5 h-5 text-primary-500 mt-0.5" />
-              <p class="text-sm text-muted">7-day free trial on all plans</p>
+              <p class="text-sm text-muted">14-day free trial on all plans</p>
             </div>
             <div class="flex items-start gap-3">
               <UIcon name="i-heroicons-check-circle" class="w-5 h-5 text-primary-500 mt-0.5" />
