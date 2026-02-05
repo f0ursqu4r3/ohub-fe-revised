@@ -13,12 +13,22 @@ const { plans, subscription, isLoading, hasValidSubscription } = storeToRefs(bil
 
 const billingInterval = ref<'month' | 'year'>('year')
 
+const hasYearlyPlans = computed(() => {
+  if (!Array.isArray(plans.value)) return false
+  return plans.value.some((p) => p.interval === 'year')
+})
+
 onMounted(async () => {
   await Promise.all([billingStore.fetchPlans(), billingStore.fetchSubscription()])
 
   // If user already has valid subscription, redirect to developer portal
   if (hasValidSubscription.value) {
     router.push({ name: 'getting-started' })
+  }
+
+  // Default to monthly if no yearly plans exist
+  if (!hasYearlyPlans.value) {
+    billingInterval.value = 'month'
   }
 })
 
@@ -45,13 +55,14 @@ const getMonthlyEquivalent = (yearlyAmount: number | null) => {
   return Math.round(yearlyAmount / 12)
 }
 
-const formatPrice = (amount: number | null, currency: string | null) => {
+const formatPrice = (amount: number | null) => {
   if (amount === null || amount === 0) return 'Free'
-  const formatter = new Intl.NumberFormat(undefined, {
+  const formatter = new Intl.NumberFormat('en-CA', {
     style: 'currency',
-    currency: currency || 'USD',
+    currency: 'CAD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
+    currencyDisplay: 'narrowSymbol',
   })
   return formatter.format(amount / 100)
 }
@@ -102,7 +113,7 @@ const handleLogout = () => authStore.logout()
             </p>
 
             <!-- Billing Interval Toggle -->
-            <div class="flex items-center justify-center gap-2 mt-10">
+            <div v-if="hasYearlyPlans" class="flex items-center justify-center gap-2 mt-10">
               <div
                 class="inline-flex rounded-full bg-elevated border border-default p-1.5 shadow-sm"
               >
@@ -210,7 +221,7 @@ const handleLogout = () => authStore.logout()
               <div class="text-center py-4">
                 <div class="flex items-baseline justify-center gap-1">
                   <span class="text-5xl font-bold text-default">
-                    {{ formatPrice(plan.unitAmount, plan.currency) }}
+                    {{ formatPrice(plan.unitAmount) }}
                   </span>
                   <span class="text-muted text-lg">/{{ plan.interval }}</span>
                 </div>
@@ -219,7 +230,7 @@ const handleLogout = () => authStore.logout()
                   class="text-sm text-muted mt-2"
                 >
                   Just
-                  {{ formatPrice(getMonthlyEquivalent(plan.unitAmount), plan.currency) }}/month
+                  {{ formatPrice(getMonthlyEquivalent(plan.unitAmount)) }}/month
                 </p>
               </div>
 
