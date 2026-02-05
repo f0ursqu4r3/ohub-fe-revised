@@ -21,6 +21,17 @@ export const subscriptionGuard = async (
     return
   }
 
+  // Fetch plans to check isFreeMode
+  if (billingStore.plans.length === 0) {
+    await billingStore.fetchPlans()
+  }
+
+  // Allow access if in free mode
+  if (billingStore.isFreeMode) {
+    next()
+    return
+  }
+
   // Fetch subscription if not already loaded
   if (billingStore.subscription === null) {
     await billingStore.fetchSubscription()
@@ -53,6 +64,17 @@ export const subscribedUserGuard = async (
     return
   }
 
+  // Fetch plans to check isFreeMode
+  if (billingStore.plans.length === 0) {
+    await billingStore.fetchPlans()
+  }
+
+  // If in free mode, redirect to developer portal
+  if (billingStore.isFreeMode) {
+    next({ name: 'getting-started' })
+    return
+  }
+
   // Fetch subscription if not already loaded
   if (billingStore.subscription === null) {
     await billingStore.fetchSubscription()
@@ -72,6 +94,7 @@ export const guestOnlyGuard = async (
   next: NavigationGuardNext,
 ) => {
   const authStore = useAuthStore()
+  const billingStore = useBillingStore()
 
   // Wait for auth to be ready
   while (authStore.isLoading) {
@@ -79,7 +102,17 @@ export const guestOnlyGuard = async (
   }
 
   if (authStore.isAuthenticated) {
-    next({ name: 'subscribe' })
+    // Fetch plans to check isFreeMode
+    if (billingStore.plans.length === 0) {
+      await billingStore.fetchPlans()
+    }
+
+    // If in free mode, go directly to developer portal
+    if (billingStore.isFreeMode) {
+      next({ name: 'getting-started' })
+    } else {
+      next({ name: 'subscribe' })
+    }
   } else {
     next()
   }

@@ -11,6 +11,7 @@ export const useBillingStore = defineStore('billing', () => {
 
   const subscription = ref<SubscriptionResponse | null>(null)
   const plans = ref<BillingPlan[]>([])
+  const isFreeMode = ref(false)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
@@ -43,6 +44,7 @@ export const useBillingStore = defineStore('billing', () => {
       if (!response.ok) throw new Error('Failed to fetch plans')
       const data = await response.json()
       plans.value = data.plans ?? []
+      isFreeMode.value = data.isFreeMode ?? false
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error'
     }
@@ -98,6 +100,7 @@ export const useBillingStore = defineStore('billing', () => {
   return {
     subscription,
     plans,
+    isFreeMode,
     isLoading,
     error,
     hasValidSubscription,
