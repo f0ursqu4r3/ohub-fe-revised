@@ -13,10 +13,20 @@ const error = ref<string | null>(null)
 const errorDescription = ref<string | null>(null)
 
 onMounted(async () => {
-  // Check for error in URL params
-  if (route.query.error) {
-    error.value = route.query.error as string
-    errorDescription.value = (route.query.error_description as string) || null
+  console.log('CallbackView mounted', route.fullPath, route.query)
+
+  // Check for error in URL params or sessionStorage (in case Auth0 cleared the URL)
+  const urlError = route.query.error as string
+  const storedError = sessionStorage.getItem('auth_error')
+
+  if (urlError || storedError) {
+    error.value = urlError || storedError
+    errorDescription.value =
+      (route.query.error_description as string) || sessionStorage.getItem('auth_error_description') || null
+
+    // Clear stored error
+    sessionStorage.removeItem('auth_error')
+    sessionStorage.removeItem('auth_error_description')
     return
   }
 
@@ -25,24 +35,24 @@ onMounted(async () => {
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
 
-  // // Check for Auth0 error
-  // if (auth0.error.value) {
-  //   error.value = auth0.error.value.name || 'Authentication Error'
-  //   errorDescription.value = auth0.error.value.message
-  //   return
-  // }
+  // Check for Auth0 error
+  if (auth0.error.value) {
+    error.value = auth0.error.value.name || 'Authentication Error'
+    errorDescription.value = auth0.error.value.message
+    return
+  }
 
-  // // If not authenticated after processing, redirect to home
-  // if (!auth0.isAuthenticated.value) {
-  //   router.push('/')
-  //   return
-  // }
+  // If not authenticated after processing, redirect to home
+  if (!auth0.isAuthenticated.value) {
+    router.push('/')
+    return
+  }
 
-  // await authStore.fetchCustomer()
+  await authStore.fetchCustomer()
 
-  // const redirectTo = localStorage.getItem('auth_redirect') || '/subscribe'
-  // localStorage.removeItem('auth_redirect')
-  // router.push(redirectTo)
+  const redirectTo = localStorage.getItem('auth_redirect') || '/subscribe'
+  localStorage.removeItem('auth_redirect')
+  router.push(redirectTo)
 })
 
 const goHome = () => router.push('/')
@@ -50,7 +60,15 @@ const goHome = () => router.push('/')
 
 <template>
   <div class="flex h-screen items-center justify-center">
-    <div class="text-center max-w-md px-4">
+    <div class="text-center max-w-2xl px-4">
+      <!-- Always show debug info -->
+      <div class="mb-6 text-left">
+        <p class="text-xs text-muted mb-2">URL: {{ route.fullPath }}</p>
+        <pre class="text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded overflow-auto max-h-60">{{
+          JSON.stringify(route.query, null, 2)
+        }}</pre>
+      </div>
+
       <!-- Error state -->
       <template v-if="error">
         <div class="mb-4">
