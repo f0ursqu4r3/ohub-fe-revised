@@ -12,7 +12,7 @@ import {
 export const useOutageStore = defineStore('outages', () => {
   const baseApiUrl = import.meta.env.VITE_BASE_API_URL || ''
 
-  const timeInterval = ref<TimeInterval>(TimeInterval.FiveMinutes)
+  const interval = ref<TimeInterval>(TimeInterval.FifteenMinutes)
   const startTime = ref<Date | null>(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)) // Default to the last 3 days
   const endTime = ref<Date | null>(new Date())
   const selectedOutageTs = ref<number | null>(null)
@@ -22,7 +22,7 @@ export const useOutageStore = defineStore('outages', () => {
   const url = computed(() => {
     const url = `${baseApiUrl}/outages`
     const params = new URLSearchParams()
-    params.append('timeInterval', timeInterval.value)
+    params.append('interval', interval.value)
     if (startTime.value) {
       params.append('start', dateToEpochSeconds(startTime.value).toString())
     }
@@ -152,7 +152,7 @@ export const useOutageStore = defineStore('outages', () => {
 
   return {
     // State
-    timeInterval,
+    timeInterval: interval,
     startTime,
     endTime,
     outages,

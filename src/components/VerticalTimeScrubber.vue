@@ -14,7 +14,8 @@ const syncTimelineBodyClass = () => {
 }
 
 const outageStore = useOutageStore()
-const { selectedOutageTs, blocks, maxCount, timeInterval } = storeToRefs(outageStore)
+const { selectedOutageTs, blocks, maxCount, timeInterval, startTime, endTime } =
+  storeToRefs(outageStore)
 
 const emit = defineEmits<{
   (e: 'timeSelected', ts: number): void
@@ -25,14 +26,22 @@ const selectedRatio = ref(1)
 const scrubber = ref<HTMLElement | null>(null)
 const isDragging = ref(false)
 
-const totalTicks = computed(() => blocks.value.length)
-const histogramHeight = computed(() => (totalTicks.value > 0 ? 100 / totalTicks.value : 0))
+const filteredBlocks = computed(() => {
+  const start = startTime.value
+  const end = endTime.value
+  if (start === null || end === null) return blocks.value
+  const startTs = Math.floor(start.getTime() / 1000)
+  const endTs = Math.floor(end.getTime() / 1000)
+  return blocks.value.filter((block) => block.ts >= startTs && block.ts <= endTs)
+})
+
+const totalTicks = computed(() => filteredBlocks.value.length)
 
 const selectedBlock = computed(() => {
   const total = totalTicks.value
   if (!total) return null
   const index = Math.round(selectedRatio.value * (total - 1))
-  const block = blocks.value[index]
+  const block = filteredBlocks.value[index]
   return block ?? null
 })
 
@@ -180,7 +189,7 @@ const getTickInfo = (date: Date, interval: TimeInterval): { type: TickType; labe
 
 const ticks = computed(() => {
   const tickArray: Array<{ position: number; label: string; type: TickType }> = []
-  const blocksArr = blocks.value
+  const blocksArr = filteredBlocks.value
   const total = blocksArr.length
   const interval = timeInterval.value
 
@@ -210,7 +219,7 @@ const tickClass = (type: TickType) => {
 }
 
 const histogramData = computed(() => {
-  const blocksArr = blocks.value
+  const blocksArr = filteredBlocks.value
   const total = blocksArr.length
 
   return blocksArr.map((block, i) => {
@@ -373,7 +382,7 @@ watch(
   () => selectedOutageTs.value,
   (ts) => {
     if (ts === null) return
-    const blockList = blocks.value
+    const blockList = filteredBlocks.value
     if (!blockList.length) return
     if (blockList.length === 1) {
       selectedRatio.value = 0
@@ -537,3 +546,4 @@ onBeforeUnmount(() => {
   opacity: 1;
 }
 </style>
+import type ts from 'typescript'
