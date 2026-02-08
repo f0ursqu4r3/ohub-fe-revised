@@ -4,7 +4,9 @@ import { storeToRefs } from 'pinia'
 import { useToast } from '@nuxt/ui/composables'
 import { CalendarDate, Time } from '@internationalized/date'
 import { useProviderStore } from '@/stores/provider'
+import { parsePolygonWKT } from '@/lib/utils'
 import type { ProviderOutageCreateRequest, ProviderOutagePatchRequest } from '@/types/provider'
+import PolygonDrawMap from '@/components/PolygonDrawMap.vue'
 
 const props = defineProps<{
   outageId: number | null
@@ -35,6 +37,16 @@ const form = ref({
   isPlanned: false,
   notes: '',
 })
+
+const polygonCoords = ref<[number, number][] | null>(null)
+
+const showPolygonMap = computed(() => {
+  const lat = Number(form.value.latitude)
+  const lng = Number(form.value.longitude)
+  return Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0
+})
+
+const initialPolygonWkt = computed(() => currentOutage.value?.polygon ?? null)
 
 const outageStartDate = shallowRef<CalendarDate | undefined>()
 const outageStartTime = shallowRef<Time | undefined>()
@@ -242,6 +254,7 @@ function resetForm() {
   etrTime.value = undefined
   addressQuery.value = ''
   addressResults.value = []
+  polygonCoords.value = null
 }
 
 async function loadOutage(id: number) {
@@ -273,6 +286,17 @@ async function loadOutage(id: number) {
       }
     }
     form.value.etrTz = o.etrTz ?? defaultTimezone.value
+
+    // Parse existing polygon WKT so it's included in updates even without map interaction
+    if (o.polygon) {
+      const parsed = parsePolygonWKT(o.polygon)
+      if (parsed.length > 0 && parsed[0]?.[0]) {
+        // parsePolygonWKT returns [lat, lon]; API needs [lng, lat]
+        polygonCoords.value = parsed[0][0].map(([lat, lon]) => [lon, lat] as [number, number])
+      }
+    } else {
+      polygonCoords.value = null
+    }
   }
   isFormLoading.value = false
 }
@@ -325,6 +349,9 @@ async function handleSubmit(asDraft: boolean) {
         isPlanned: form.value.isPlanned || null,
         notes: form.value.notes || null,
         isDraft: asDraft,
+        polygon: polygonCoords.value && polygonCoords.value.length >= 3
+          ? polygonCoords.value
+          : null,
       }
       if (etrLocal && form.value.etrTz) {
         patch.etrLocal = etrLocal
@@ -353,6 +380,9 @@ async function handleSubmit(asDraft: boolean) {
       if (form.value.outageType) request.outageType = form.value.outageType
       if (form.value.isPlanned) request.isPlanned = form.value.isPlanned
       if (form.value.notes) request.notes = form.value.notes
+      if (polygonCoords.value && polygonCoords.value.length >= 3) {
+        request.polygon = polygonCoords.value
+      }
       await providerStore.createOutage(request)
       toast.add({ title: 'Outage created', color: 'success', icon: 'i-heroicons-check-circle' })
     }
@@ -477,6 +507,16 @@ async function handleMarkEnded() {
                 size="sm"
               />
             </div>
+          </div>
+
+          <!-- Polygon drawing map -->
+          <div v-if="showPolygonMap" class="mt-3">
+            <PolygonDrawMap
+              :center-lat="Number(form.latitude)"
+              :center-lng="Number(form.longitude)"
+              :initial-polygon-wkt="isEditMode ? initialPolygonWkt : null"
+              @update:polygon="polygonCoords = $event"
+            />
           </div>
         </fieldset>
 
