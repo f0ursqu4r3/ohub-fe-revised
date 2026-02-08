@@ -1,12 +1,22 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
+import { useProviderStore } from '@/stores/provider'
 import { useRouter } from 'vue-router'
 
 const authStore = useAuthStore()
 const { isAuthenticated, user, isLoading } = storeToRefs(authStore)
 const router = useRouter()
+
+const providerStore = useProviderStore()
+const { isProviderMember } = storeToRefs(providerStore)
+
+watch(isAuthenticated, (authed) => {
+  if (authed && !providerStore.isMembershipsLoaded) {
+    providerStore.fetchMemberships()
+  }
+}, { immediate: true })
 
 const userInitials = computed(() => {
   if (!user.value?.name) return user.value?.email?.[0]?.toUpperCase() || 'U'
@@ -24,6 +34,15 @@ const menuItems = computed(() => [
     },
   ],
   [
+    ...(isProviderMember.value
+      ? [
+          {
+            label: 'Provider Portal',
+            icon: 'i-heroicons-building-office',
+            onSelect: () => router.push('/provider'),
+          },
+        ]
+      : []),
     {
       label: 'API Keys',
       icon: 'i-heroicons-key',

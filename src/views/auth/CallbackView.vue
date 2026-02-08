@@ -64,9 +64,9 @@ const goHome = () => router.push('/')
       <!-- Debug info -->
       <div class="mb-6 text-left">
         <p class="text-xs text-muted mb-2">URL: {{ route.fullPath }}</p>
-        <pre class="text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded overflow-auto max-h-40">{{
-          JSON.stringify(route.query, null, 2)
-        }}</pre>
+        <pre class="text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded overflow-auto max-h-40">
+          {{ JSON.stringify(route.query, null, 2) }}
+        </pre>
       </div>
 
       <!-- Error state -->

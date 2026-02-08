@@ -1,6 +1,7 @@
 import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useBillingStore } from '@/stores/billing'
+import { useProviderStore } from '@/stores/provider'
 
 export const subscriptionGuard = async (
   _to: RouteLocationNormalized,
@@ -115,5 +116,36 @@ export const guestOnlyGuard = async (
     }
   } else {
     next()
+  }
+}
+
+export const providerGuard = async (
+  _to: RouteLocationNormalized,
+  _from: RouteLocationNormalized,
+  next: NavigationGuardNext,
+) => {
+  const authStore = useAuthStore()
+  const providerStore = useProviderStore()
+
+  // Wait for auth to be ready
+  while (authStore.isLoading) {
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+
+  // If not authenticated, let authGuard handle it
+  if (!authStore.isAuthenticated) {
+    next()
+    return
+  }
+
+  // Fetch memberships if not already loaded
+  if (!providerStore.isMembershipsLoaded) {
+    await providerStore.fetchMemberships()
+  }
+
+  if (providerStore.isProviderMember) {
+    next()
+  } else {
+    next({ name: 'map' })
   }
 }

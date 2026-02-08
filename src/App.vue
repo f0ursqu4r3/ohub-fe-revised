@@ -6,6 +6,7 @@ import { useRoute } from 'vue-router'
 import EmptyLayout from '@/layouts/EmptyLayout.vue'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import DeveloperLayout from '@/layouts/DeveloperLayout.vue'
+import ProviderLayout from '@/layouts/ProviderLayout.vue'
 
 const darkModeStore = useDarkModeStore()
 const { isDark } = storeToRefs(darkModeStore)
@@ -25,6 +26,7 @@ const layouts = {
   empty: EmptyLayout,
   default: DefaultLayout,
   developer: DeveloperLayout,
+  provider: ProviderLayout,
 }
 
 // Get the current layout component based on route meta
