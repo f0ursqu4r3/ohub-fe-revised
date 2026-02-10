@@ -59,6 +59,14 @@ const statusLabel: Record<OutageStatus, string> = {
   ended: 'Ended',
 }
 
+const statusCounts = computed(() => {
+  const counts: Record<OutageStatus, number> = { draft: 0, active: 0, hidden: 0, ended: 0 }
+  for (const o of outages.value) {
+    counts[getOutageStatus(o)]++
+  }
+  return counts
+})
+
 const filteredOutages = computed(() => {
   if (statusFilter.value === 'all') return outages.value
   return outages.value.filter((o) => getOutageStatus(o) === statusFilter.value)
@@ -182,6 +190,24 @@ async function handleDelete() {
           class="w-48"
         />
         <USelect v-model="statusFilter" :items="statusFilterOptions" size="sm" class="w-36" />
+      </div>
+
+      <!-- Status stat cards -->
+      <div v-if="outages.length" class="grid grid-cols-4 gap-3 mb-4">
+        <button
+          v-for="status in (['active', 'draft', 'hidden', 'ended'] as OutageStatus[])"
+          :key="status"
+          class="rounded-lg border px-4 py-3 text-left transition-colors"
+          :class="statusFilter === status
+            ? 'border-primary bg-primary/5'
+            : 'border-default bg-elevated hover:bg-elevated/80'"
+          @click="statusFilter = statusFilter === status ? 'all' : status"
+        >
+          <div class="text-2xl font-bold tabular-nums text-default">
+            {{ statusCounts[status] }}
+          </div>
+          <div class="text-xs text-muted">{{ statusLabel[status] }}</div>
+        </button>
       </div>
 
       <!-- Error state -->
