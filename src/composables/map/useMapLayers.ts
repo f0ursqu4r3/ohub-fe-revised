@@ -1,12 +1,14 @@
 import { createApp } from 'vue'
-// Static import for popup Vue component (wrapper provides UApp context for tooltips)
+// Static imports for popup Vue components (wrappers provide UApp context for tooltips)
 import MapPopupComp from '../../components/map/MapPopupWrapper.vue'
+import ReportPopupComp from '../../components/map/ReportPopupWrapper.vue'
 import L from 'leaflet'
 import type { Ref, ShallowRef } from 'vue'
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
 import type {
   MarkerData,
   PolygonData,
+  ReportMarkerData,
   BoundsLiteral,
   PopupData,
   PopupDataBuilder,
@@ -21,6 +23,8 @@ import {
   BRAND_OUTAGE_FILL,
   SEARCH_COLOR,
   SEARCH_FILL,
+  USER_REPORT_COLOR,
+  USER_REPORT_CLUSTER_COLOR,
   logDevError,
 } from '../../config/map'
 
@@ -33,6 +37,8 @@ export {
   BRAND_OUTAGE_FILL,
   SEARCH_COLOR,
   SEARCH_FILL,
+  USER_REPORT_COLOR,
+  USER_REPORT_CLUSTER_COLOR,
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -116,6 +122,69 @@ export const createClusterLabelIcon = (count: number): L.DivIcon => {
 }
 
 // ─────────────────────────────────────────────────────────────
+// User Report Icon Factories (violet theme)
+// ─────────────────────────────────────────────────────────────
+export const createReportMarkerIcon = (): L.DivIcon => {
+  return L.divIcon({
+    html: `
+      <div class="report-marker-pulse"></div>
+      <div class="report-marker-dot"></div>
+    `,
+    className: 'map-report-marker',
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -12],
+  })
+}
+
+export const createReportClusterIcon = (count: number): L.DivIcon => {
+  const size = count >= 100 ? 52 : count >= 20 ? 44 : count >= 5 ? 36 : 28
+  const sizeClass = count >= 100 ? 'xl' : count >= 20 ? 'lg' : count >= 5 ? 'md' : 'sm'
+  return L.divIcon({
+    html: `
+      <div class="report-cluster-ring"></div>
+      <div class="report-cluster-core">
+        <span class="cluster-count">${count}</span>
+      </div>
+    `,
+    className: `map-report-cluster map-report-cluster--${sizeClass}`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
+  })
+}
+
+export const createReportCircleMarkerOptions = (count: number): L.CircleMarkerOptions => {
+  const isCluster = count > 1
+  return {
+    radius: getCircleMarkerRadius(count),
+    color: isCluster ? USER_REPORT_CLUSTER_COLOR : USER_REPORT_COLOR,
+    fillColor: isCluster ? USER_REPORT_CLUSTER_COLOR : USER_REPORT_COLOR,
+    fillOpacity: 0.8,
+    weight: 2,
+    opacity: 1,
+    className: 'map-circle-marker',
+  }
+}
+
+const escapeHtml = (str: string): string =>
+  str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+const buildReportTooltipContent = (marker: ReportMarkerData): string => {
+  const count = marker.count
+  const title = count === 1 ? 'User Report' : `${count} user reports`
+  const providers = [...new Set(marker.reports.map((r) => r.provider).filter(Boolean))]
+  const subtitle = providers.length ? providers.join(', ') : 'Click for details'
+  return `
+    <div class="map-tooltip">
+      <strong>${title}</strong>
+      <span>${escapeHtml(subtitle)}</span>
+    </div>
+  `
+}
+
+
+// ─────────────────────────────────────────────────────────────
 // Tooltip & Popup Builders
 // ─────────────────────────────────────────────────────────────
 export const buildTooltipContent = (data: MarkerData): string => {
@@ -154,6 +223,7 @@ export interface UseMapLayersOptions {
   showMarkers: Ref<boolean>
   showPolygons: Ref<boolean>
   showHeatmap: Ref<boolean>
+  showReportMarkers: Ref<boolean>
   isZooming: Ref<boolean>
   onZoomToBounds: (bounds: BoundsLiteral) => void
   /** Optional lazy popup data builder - if provided, popups compute on open */
@@ -176,6 +246,9 @@ export interface MapLayerRefs {
   /** L.GeoJSON for search result polygon */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   searchPolygonLayer: Ref<any>
+  /** L.LayerGroup for user report markers */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  reportMarkerLayer: Ref<any>
   polygonsVisible: Ref<boolean>
   renderPending: Ref<boolean>
   heatmapPending: Ref<boolean>
@@ -185,14 +258,23 @@ export interface MapLayerRefs {
 // Composable
 // ─────────────────────────────────────────────────────────────
 export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
-  const { map, showMarkers, showPolygons, showHeatmap, isZooming, onZoomToBounds, popupBuilder } =
-    options
+  const {
+    map,
+    showMarkers,
+    showPolygons,
+    showHeatmap,
+    showReportMarkers,
+    isZooming,
+    onZoomToBounds,
+    popupBuilder,
+  } = options
   const {
     markerLayer,
     geoJsonLayer,
     heatmapLayer,
     searchMarkerLayer,
     searchPolygonLayer,
+    reportMarkerLayer,
     polygonsVisible,
     renderPending,
     heatmapPending,
@@ -231,6 +313,22 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
       popupData,
       onZoom: (bounds: BoundsLiteral) => onZoomToBounds(bounds),
     })
+    app.mount(container)
+    popupApps.set(popup, app)
+    popup.setContent(container)
+    if (typeof popup.update === 'function') {
+      setTimeout(() => popup.update(), 0)
+    }
+  }
+
+  const mountReportPopupContent = (
+    popup: L.Popup,
+    reports: import('@/types/userOutage').UserOutageReport[],
+  ) => {
+    unmountPopupApp(popup)
+
+    const container = document.createElement('div')
+    const app = createApp(ReportPopupComp, { reports })
     app.mount(container)
     popupApps.set(popup, app)
     popup.setContent(container)
@@ -490,8 +588,80 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     searchPolygonLayer.value = layer
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // User Report Markers (violet, separate layer)
+  // ─────────────────────────────────────────────────────────────
+  let reportDebounceTimer: number | null = null
+
+  const queueReportMarkerRender = (markers: ReportMarkerData[]) => {
+    if (reportDebounceTimer) clearTimeout(reportDebounceTimer)
+    reportDebounceTimer = window.setTimeout(() => {
+      reportDebounceTimer = null
+      renderReportMarkers(markers)
+    }, MARKER_RENDER_DEBOUNCE_MS)
+  }
+
+  const renderReportMarkers = (markers: ReportMarkerData[]) => {
+    const activeMap = map.value
+    if (!activeMap || !activeMap.getContainer()) return
+
+    if (isZooming.value) {
+      renderPending.value = true
+      return
+    }
+
+    if (!reportMarkerLayer.value) {
+      const layer = L.layerGroup()
+      layer.addTo(activeMap)
+      reportMarkerLayer.value = layer
+    }
+    reportMarkerLayer.value.clearLayers()
+
+    if (!showReportMarkers.value || !markers.length) return
+
+    const useCircleMarkers = markers.length > CIRCLE_MARKER_THRESHOLD
+
+    for (const marker of markers) {
+      const count = marker.count
+
+      const m = useCircleMarkers
+        ? L.circleMarker([marker.lat, marker.lng], createReportCircleMarkerOptions(count))
+        : L.marker([marker.lat, marker.lng], {
+            icon: count > 1 ? createReportClusterIcon(count) : createReportMarkerIcon(),
+          })
+
+      m.bindTooltip(buildReportTooltipContent(marker), {
+        className: 'map-tooltip-container',
+        direction: 'top',
+        offset: useCircleMarkers ? [0, -8] : [0, -10],
+        opacity: 1,
+      })
+
+      m.bindPopup('', {
+        className: 'map-popup-container',
+        maxWidth: 380,
+        minWidth: 200,
+      })
+        .on('popupopen', (e: L.PopupEvent) => {
+          mountReportPopupContent(e.popup, marker.reports)
+        })
+        .on('popupclose', (e: L.PopupEvent) => unmountPopupApp(e.popup))
+
+      reportMarkerLayer.value!.addLayer(m)
+
+      if (useCircleMarkers && count > 1) {
+        const label = L.marker([marker.lat, marker.lng], {
+          icon: createClusterLabelIcon(count),
+          interactive: false,
+        })
+        reportMarkerLayer.value!.addLayer(label)
+      }
+    }
+  }
+
   const cleanup = () => {
     if (debounceTimer) clearTimeout(debounceTimer)
+    if (reportDebounceTimer) clearTimeout(reportDebounceTimer)
 
     if (heatmapLayer.value) {
       try {
@@ -510,6 +680,8 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     renderHeatmap,
     renderSearchMarker,
     renderSearchPolygon,
+    queueReportMarkerRender,
+    renderReportMarkers,
     cleanup,
   }
 }

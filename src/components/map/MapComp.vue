@@ -19,7 +19,7 @@ import {
 } from 'vue-use-leaflet'
 import { storeToRefs } from 'pinia'
 import { useDarkModeStore } from '@/stores/darkMode'
-import type { MarkerData, PolygonData, BoundsLiteral, PopupDataBuilder } from './types'
+import type { MarkerData, PolygonData, ReportMarkerData, BoundsLiteral, PopupDataBuilder } from './types'
 import MapControls from './MapControls.vue'
 import {
   useMapLayers,
@@ -57,6 +57,7 @@ const props = withDefaults(
   defineProps<{
     markers: MarkerData[]
     polygons?: PolygonData[]
+    reportMarkers?: ReportMarkerData[]
     zoomLevel?: number
     focusBounds?: BoundsLiteral | null
     searchMarker?: { lat: number; lng: number } | null
@@ -67,6 +68,7 @@ const props = withDefaults(
   {
     zoomLevel: 4,
     polygons: () => [],
+    reportMarkers: () => [],
     focusBounds: null,
     searchMarker: null,
     searchPolygon: null,
@@ -104,6 +106,7 @@ const pendingFocusBounds = ref<BoundsLiteral | null>(null)
 const showMarkers = ref(true)
 const showPolygons = ref(true)
 const showHeatmap = ref(false)
+const showReportMarkers = ref(true)
 const showPlaybackControls = ref(false)
 
 // Tile style - synced with global dark mode
@@ -115,6 +118,7 @@ const geoJsonLayer = ref<L.GeoJSON | null>(null)
 const heatmapLayer = ref<L.Layer | null>(null)
 const searchMarkerLayer = ref<L.Marker | null>(null)
 const searchPolygonLayer = ref<L.GeoJSON | null>(null)
+const reportMarkerLayer = ref<L.LayerGroup | null>(null)
 const activeTileLayer = ref<L.TileLayer | null>(null)
 
 // Minimap
@@ -179,6 +183,8 @@ const {
   renderHeatmap,
   renderSearchMarker,
   renderSearchPolygon,
+  queueReportMarkerRender,
+  renderReportMarkers,
   cleanup: cleanupLayers,
 } = useMapLayers(
   {
@@ -186,6 +192,7 @@ const {
     showMarkers,
     showPolygons,
     showHeatmap,
+    showReportMarkers,
     isZooming,
     onZoomToBounds: zoomToBounds,
     popupBuilder: props.popupBuilder,
@@ -196,6 +203,7 @@ const {
     heatmapLayer,
     searchMarkerLayer,
     searchPolygonLayer,
+    reportMarkerLayer,
     polygonsVisible,
     renderPending,
     heatmapPending,
@@ -324,6 +332,7 @@ useLeafletEvent(map as any, 'zoomend', (event: LeafletEvent) => {
       renderPending.value = false
       renderMarkers(props.markers)
       renderPolygons(props.polygons)
+      renderReportMarkers(props.reportMarkers)
       return
     }
 
@@ -408,6 +417,11 @@ watch(
   () => renderSearchPolygon(props.searchPolygon),
 )
 
+watch(
+  () => props.reportMarkers,
+  () => queueReportMarkerRender(props.reportMarkers),
+)
+
 // Handle pending focus after map init
 watch(map, (mapInstance) => {
   if (mapInstance && pendingFocusBounds.value) {
@@ -420,6 +434,7 @@ watch(map, (mapInstance) => {
 watch(showMarkers, () => renderMarkers(props.markers))
 watch(showPolygons, () => renderPolygons(props.polygons))
 watch(showHeatmap, () => renderHeatmap(props.markers))
+watch(showReportMarkers, () => renderReportMarkers(props.reportMarkers))
 watch(showPlaybackControls, (val) => emit('update:showPlaybackControls', val))
 
 // ─────────────────────────────────────────────────────────────
@@ -489,6 +504,7 @@ defineExpose({
       :show-markers="showMarkers"
       :show-polygons="showPolygons"
       :show-heatmap="showHeatmap"
+      :show-report-markers="showReportMarkers"
       :show-playback-controls="showPlaybackControls"
       @zoomIn="zoomIn"
       @zoomOut="zoomOut"
@@ -499,6 +515,7 @@ defineExpose({
       @toggleMarkers="showMarkers = !showMarkers"
       @togglePolygons="showPolygons = !showPolygons"
       @toggleHeatmap="showHeatmap = !showHeatmap"
+      @toggleReportMarkers="showReportMarkers = !showReportMarkers"
       @togglePlaybackControls="showPlaybackControls = !showPlaybackControls"
     />
 
@@ -943,5 +960,72 @@ body.timeline-open .map-badge {
 
 .map-minimap .leaflet-tile-pane {
   opacity: 0.7;
+}
+
+/* ─── User Report Markers (violet) ─── */
+.map-report-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.map-report-marker .report-marker-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(145deg, #8b5cf6, #7c3aed);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow:
+    0 2px 8px rgba(139, 92, 246, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.map-report-marker .report-marker-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 50%;
+  animation: marker-pulse 2s ease-out infinite;
+}
+
+.map-report-cluster {
+  background: transparent !important;
+  border: none !important;
+}
+
+.map-report-cluster .report-cluster-ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(139, 92, 246, 0.4);
+  border-radius: 50%;
+  animation: cluster-ring-pulse 3s ease-in-out infinite;
+}
+
+.map-report-cluster .report-cluster-core {
+  position: absolute;
+  inset: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #8b5cf6, #7c3aed);
+  border-radius: 50%;
+  box-shadow:
+    0 3px 12px rgba(139, 92, 246, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.map-report-cluster .cluster-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 </style>

@@ -50,3 +50,7 @@ export const BRAND_OUTAGE_COLOR = '#ff9c1a'
 export const BRAND_OUTAGE_FILL = 'rgba(255, 212, 138, 0.3)'
 export const SEARCH_COLOR = '#6366f1'
 export const SEARCH_FILL = 'rgba(99, 102, 241, 0.15)'
+
+// User Reports (violet — distinct from outage orange and cluster teal)
+export const USER_REPORT_COLOR = '#8b5cf6'
+export const USER_REPORT_CLUSTER_COLOR = '#7c3aed'

@@ -1,5 +1,6 @@
 import type { Polygon, MultiPolygon } from 'geojson'
 import type { BoundsLiteral, GroupedOutage } from '@/lib/utils'
+import type { UserOutageReport } from '@/types/userOutage'
 
 // Re-export for convenience
 export type { BoundsLiteral }
@@ -48,4 +49,11 @@ export type MarkerData = {
 export type PolygonData = {
   geometry: Polygon | MultiPolygon
   isCluster: boolean
+}
+
+export type ReportMarkerData = {
+  lat: number
+  lng: number
+  count: number
+  reports: UserOutageReport[]
 }

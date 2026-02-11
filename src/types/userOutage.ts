@@ -19,3 +19,23 @@ export interface CreateUserOutageResponse {
   id: number
   status: string
 }
+
+export interface UserOutageReport {
+  id: number
+  createdAt: number
+  status: string
+  latitude: number
+  longitude: number
+  addressText: string | null
+  provider: string | null
+  observedTs: number | null
+  outageStartTs: number | null
+  customerCount: number | null
+  isPlanned: boolean | null
+  cause: string | null
+  notes: string | null
+}
+
+export interface UserOutageReportsResponse {
+  reports: UserOutageReport[]
+}

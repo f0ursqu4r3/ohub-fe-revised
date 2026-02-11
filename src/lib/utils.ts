@@ -1,12 +1,13 @@
 import Supercluster, { type ClusterFeature, type PointFeature } from 'supercluster'
 import type { MultiPolygon, Polygon } from 'geojson'
 import type { Outage } from '@/types/outage'
+import type { UserOutageReport } from '@/types/userOutage'
 
 export type BoundsLiteral = [[number, number], [number, number]]
 
 const EARTH_RADIUS_KM = 6371
 const KM_PER_DEGREE = 111.32
-const CANADA_BOUNDS_BBOX: [number, number, number, number] = [-170, 10, -40, 90]
+export const CANADA_BOUNDS_BBOX: [number, number, number, number] = [-170, 10, -40, 90]
 const CLUSTER_ZOOM_RANGE: [number, number] = [4, 16] // start easing clustering at 4, end right before singletons
 const CLUSTER_RADIUS_PX_RANGE: [number, number] = [64, 18] // heavy grouping at low zoom, light at high zoom
 const CLUSTER_CACHE_LIMIT = 8
@@ -86,7 +87,7 @@ export const clusterOutages = (outages: Outage[], zoomLevel: number): GroupedOut
  * Returns a pixel radius for clustering that eases down as you zoom in, so
  * clusters break apart earlier at mid/high zoom levels.
  */
-const clusterRadiusForZoom = (zoom: number): number => {
+export const clusterRadiusForZoom = (zoom: number): number => {
   const [zMin, zMax] = CLUSTER_ZOOM_RANGE
   const [rMax, rMin] = CLUSTER_RADIUS_PX_RANGE
   const t = clamp((zoom - zMin) / (zMax - zMin), 0, 1)
@@ -529,4 +530,85 @@ export function providerToSlug(name: string): string {
 export function slugToProvider(slug: string, providers: string[]): string | null {
   const normalized = providerToSlug(slug)
   return providers.find((p) => providerToSlug(p) === normalized) ?? null
+}
+
+// ─────────────────────────────────────────────────────────────
+// User Report Clustering
+// ─────────────────────────────────────────────────────────────
+
+export type GroupedUserReport = {
+  reports: UserOutageReport[]
+  center: Point
+  providers: string[]
+}
+
+type UserReportFeatureProps = {
+  report: UserOutageReport
+}
+
+export const clusterUserReports = (
+  reports: UserOutageReport[],
+  zoomLevel: number,
+): GroupedUserReport[] => {
+  const valid = reports.filter(
+    (r) =>
+      Number.isFinite(r.latitude) &&
+      Number.isFinite(r.longitude) &&
+      Math.abs(r.latitude) <= 90 &&
+      Math.abs(r.longitude) <= 180,
+  )
+  if (!valid.length) return []
+
+  const radiusPx = clusterRadiusForZoom(zoomLevel)
+  const index = new Supercluster<UserReportFeatureProps, ClusterProperties>({
+    radius: radiusPx,
+    minZoom: 0,
+    maxZoom: 19,
+  })
+
+  const features: PointFeature<UserReportFeatureProps>[] = valid.map((report, idx) => ({
+    type: 'Feature' as const,
+    id: idx,
+    properties: { report },
+    geometry: {
+      type: 'Point' as const,
+      coordinates: [report.longitude, report.latitude],
+    },
+  }))
+
+  index.load(features)
+  const clusters = index.getClusters(CANADA_BOUNDS_BBOX, Math.round(zoomLevel))
+
+  return clusters
+    .map((feature) => {
+      if ('cluster' in feature.properties && feature.properties.cluster) {
+        const leaves = index.getLeaves(
+          (feature.properties as ClusterProperties).cluster_id,
+          valid.length,
+        )
+        const clusterReports = leaves
+          .map((leaf) => (leaf.properties as UserReportFeatureProps)?.report)
+          .filter((r): r is UserOutageReport => Boolean(r))
+        if (!clusterReports.length) return null
+        return summarizeReportCluster(clusterReports)
+      }
+      const report = (feature.properties as UserReportFeatureProps)?.report
+      if (!report) return null
+      return summarizeReportCluster([report])
+    })
+    .filter((g): g is GroupedUserReport => Boolean(g))
+}
+
+const summarizeReportCluster = (reports: UserOutageReport[]): GroupedUserReport => {
+  let sumLat = 0
+  let sumLon = 0
+  for (const r of reports) {
+    sumLat += r.latitude
+    sumLon += r.longitude
+  }
+  const center: Point = [sumLat / reports.length, sumLon / reports.length]
+  const providers = Array.from(
+    new Set(reports.map((r) => r.provider).filter((p): p is string => Boolean(p))),
+  )
+  return { reports, center, providers }
 }

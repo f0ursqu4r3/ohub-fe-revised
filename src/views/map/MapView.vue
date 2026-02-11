@@ -3,8 +3,10 @@ import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { useOutageStore } from '@/stores/outages'
+import { useUserOutageStore } from '@/stores/userOutages'
 import {
   clusterOutages,
+  clusterUserReports,
   wktToGeoJSON,
   slugToProvider,
   type GeoPolygon,
@@ -16,7 +18,7 @@ import FloatingSearchBar from '@/components/FloatingSearchBar.vue'
 import VerticalTimeScrubber from '@/components/VerticalTimeScrubber.vue'
 import MapComp from '@/components/map/MapComp.vue'
 import ReportOutageModal from '@/components/ReportOutageModal.vue'
-import type { PopupData } from '@/components/map/types'
+import type { PopupData, ReportMarkerData } from '@/components/map/types'
 import { PLAYBACK_BASE_INTERVAL_MS } from '@/config/map'
 import type { MultiPolygon, Polygon } from 'geojson'
 
@@ -45,6 +47,8 @@ type SearchLocation = {
 const route = useRoute()
 const outageStore = useOutageStore()
 const { selectedBlockOutages, selectedOutageTs, blocks, loading, error, providers } = storeToRefs(outageStore)
+const userOutageStore = useUserOutageStore()
+const { reports: userReports } = storeToRefs(userOutageStore)
 
 const zoomLevel = ref(4)
 const focusBounds = ref<BoundsLiteral | null>(null)
@@ -88,6 +92,16 @@ const mapPolygons = computed<MapPolygon[]>(() =>
     ]
   }),
 )
+
+const reportMapMarkers = computed<ReportMarkerData[]>(() => {
+  if (!userReports.value.length) return []
+  return clusterUserReports(userReports.value, zoomLevel.value).map((group) => ({
+    lat: group.center[0],
+    lng: group.center[1],
+    count: group.reports.length,
+    reports: group.reports,
+  }))
+})
 
 // Time playback functions
 const currentBlockIndex = computed(() => {
@@ -208,6 +222,7 @@ const syncProviderFromRoute = () => {
 onMounted(async () => {
   await outageStore.loadProviders()
   syncProviderFromRoute()
+  userOutageStore.fetchReports()
 })
 
 watch(() => route.fullPath, syncProviderFromRoute)
@@ -248,11 +263,12 @@ const reportModalOpen = ref(false)
       />
     </div>
 
-    <ReportOutageModal v-model:open="reportModalOpen" />
+    <ReportOutageModal v-model:open="reportModalOpen" @submitted="userOutageStore.fetchReports()" />
 
     <MapComp
       :markers="mapMarkers"
       :polygons="mapPolygons"
+      :report-markers="reportMapMarkers"
       :zoom-level="zoomLevel"
       :focus-bounds="focusBounds"
       :search-marker="searchMarker"

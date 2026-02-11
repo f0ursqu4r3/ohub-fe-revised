@@ -1,14 +1,25 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
-import type { CreateUserOutageRequest, CreateUserOutageResponse } from '@/types/userOutage'
+import type {
+  CreateUserOutageRequest,
+  CreateUserOutageResponse,
+  UserOutageReport,
+  UserOutageReportsResponse,
+} from '@/types/userOutage'
 
 export const useUserOutageStore = defineStore('userOutages', () => {
   const authStore = useAuthStore()
   const baseUrl = import.meta.env.VITE_BASE_API_URL
 
+  // Submit state
   const submitting = ref(false)
   const lastSubmission = ref<CreateUserOutageResponse | null>(null)
+
+  // Read state
+  const reports = ref<UserOutageReport[]>([])
+  const reportsLoading = ref(false)
+  const reportsError = ref<string | null>(null)
 
   const submitReport = async (req: CreateUserOutageRequest): Promise<CreateUserOutageResponse> => {
     submitting.value = true
@@ -50,9 +61,37 @@ export const useUserOutageStore = defineStore('userOutages', () => {
     }
   }
 
+  const fetchReports = async () => {
+    reportsLoading.value = true
+    reportsError.value = null
+    try {
+      const now = Math.floor(Date.now() / 1000)
+      const since = now - 7 * 24 * 60 * 60 // last 7 days
+      const params = new URLSearchParams({
+        since: String(since),
+        until: String(now),
+        limit: '500',
+      })
+      const response = await fetch(`${baseUrl}/v1/outage-reports?${params}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch user reports')
+      }
+      const data: UserOutageReportsResponse = await response.json()
+      reports.value = data.reports
+    } catch (err) {
+      reportsError.value = err instanceof Error ? err.message : 'Unknown error'
+    } finally {
+      reportsLoading.value = false
+    }
+  }
+
   return {
     submitting,
     lastSubmission,
     submitReport,
+    reports,
+    reportsLoading,
+    reportsError,
+    fetchReports,
   }
 })
