@@ -15,6 +15,7 @@ import { usePopupData } from '@/composables/map/usePopupData'
 import FloatingSearchBar from '@/components/FloatingSearchBar.vue'
 import VerticalTimeScrubber from '@/components/VerticalTimeScrubber.vue'
 import MapComp from '@/components/map/MapComp.vue'
+import ReportOutageModal from '@/components/ReportOutageModal.vue'
 import type { PopupData } from '@/components/map/types'
 import { PLAYBACK_BASE_INTERVAL_MS } from '@/config/map'
 import type { MultiPolygon, Polygon } from 'geojson'
@@ -212,12 +213,23 @@ onMounted(async () => {
 watch(() => route.fullPath, syncProviderFromRoute)
 
 const { buildPopupData } = usePopupData()
+
+// Report outage modal
+const reportModalOpen = ref(false)
 </script>
 
 <template>
   <div class="flex relative w-full h-full">
     <!-- Nav links in top-right -->
     <div class="fixed top-4 right-4 z-40 flex items-center gap-2">
+      <UButton
+        icon="i-heroicons-exclamation-triangle"
+        color="primary"
+        variant="soft"
+        label="Report Outage"
+        class="shadow-md"
+        @click="reportModalOpen = true"
+      />
       <UButton
         to="/analytics"
         icon="i-heroicons-chart-bar"
@@ -235,6 +247,8 @@ const { buildPopupData } = usePopupData()
         class="shadow-md"
       />
     </div>
+
+    <ReportOutageModal v-model:open="reportModalOpen" />
 
     <MapComp
       :markers="mapMarkers"
