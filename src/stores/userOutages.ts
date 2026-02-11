@@ -38,7 +38,7 @@ export const useUserOutageStore = defineStore('userOutages', () => {
         }
       }
 
-      const response = await fetch(`${baseUrl}/v1/outage-reports`, {
+      const response = await fetch(`${baseUrl}/v1/user-outages`, {
         method: 'POST',
         headers,
         body: JSON.stringify(req),
@@ -72,7 +72,7 @@ export const useUserOutageStore = defineStore('userOutages', () => {
         until: String(now),
         limit: '500',
       })
-      const response = await fetch(`${baseUrl}/v1/outage-reports?${params}`)
+      const response = await fetch(`${baseUrl}/v1/user-outages?${params}`)
       if (!response.ok) {
         throw new Error('Failed to fetch user reports')
       }
