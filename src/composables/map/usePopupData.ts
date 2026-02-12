@@ -1,4 +1,3 @@
-import { POPUP_MAX_ITEMS } from '@/config/map'
 import {
   computeBoundsAndArea,
   fallbackPointBounds,
@@ -54,7 +53,7 @@ export const usePopupData = () => {
       return `Outage ${letter}${suffix}`
     }
 
-    const items = sortedOutages.slice(0, POPUP_MAX_ITEMS).map((entry, idx) => {
+    const items = sortedOutages.map((entry, idx) => {
       const { outage, areaKm2 } = entry
       const nickname = nicknameForIndex(idx)
       const areaLabel = areaKm2 > 0.1 ? `${Math.round(areaKm2)} km²` : null
@@ -74,14 +73,13 @@ export const usePopupData = () => {
         etr: formatDate(outage.etrLocal || outage.etrUtc || outage.etrTz || null),
       }
     })
-    const extraCount = Math.max(0, outages.length - POPUP_MAX_ITEMS)
 
     return {
       title,
       timeLabel,
       startTs,
       items,
-      extraCount,
+      extraCount: 0,
       geoJsonText: geometry ? JSON.stringify(geometry) : null,
       coordsText: group.polygon ?? null,
     }

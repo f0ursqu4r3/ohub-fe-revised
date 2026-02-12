@@ -5,6 +5,8 @@ import ReportPopupComp from '../../components/map/ReportPopupWrapper.vue'
 import L from 'leaflet'
 import type { Ref, ShallowRef } from 'vue'
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
+import { wktToGeoJSON } from '@/lib/utils'
+import type { Outage } from '@/types/outage'
 import type {
   MarkerData,
   PolygonData,
@@ -228,6 +230,8 @@ export interface UseMapLayersOptions {
   onZoomToBounds: (bounds: BoundsLiteral) => void
   /** Optional lazy popup data builder - if provided, popups compute on open */
   popupBuilder?: PopupDataBuilder
+  /** When provided, marker clicks fire this callback instead of opening a popup */
+  onMarkerClick?: (marker: MarkerData) => void
 }
 
 export interface MapLayerRefs {
@@ -267,6 +271,7 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     isZooming,
     onZoomToBounds,
     popupBuilder,
+    onMarkerClick,
   } = options
   const {
     markerLayer,
@@ -281,6 +286,17 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
   } = refs
 
   let debounceTimer: number | null = null
+
+  // ── Highlight tracking ──
+  // Maps outage ID → the Leaflet marker layer that contains it
+  const outageMarkerMap = new Map<string | number, L.Layer>()
+  // Maps outage ID → the raw outage (for polygon WKT)
+  const outageDataMap = new Map<string | number, Outage>()
+  // Whether we're using circle markers (affects how we highlight)
+  let usingCircleMarkers = false
+  // Currently active highlight state
+  let activeHighlightId: string | number | null = null
+  let highlightPolygonLayer: L.GeoJSON | null = null
 
   const queueMarkerRender = (markers: MarkerData[]) => {
     if (debounceTimer) clearTimeout(debounceTimer)
@@ -353,12 +369,16 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
       markerLayer.value = layer
     }
     markerLayer.value.clearLayers()
+    outageMarkerMap.clear()
+    outageDataMap.clear()
+    unhighlightOutage()
 
     // Skip if markers are hidden
     if (!showMarkers.value) return
 
     // Use CircleMarkers for large datasets (better performance)
     const useCircleMarkers = markers.length > CIRCLE_MARKER_THRESHOLD
+    usingCircleMarkers = useCircleMarkers
 
     // Add markers with tooltips
     for (const marker of markers) {
@@ -379,31 +399,42 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
         opacity: 1,
       })
 
-      const popupOptions = {
-        className: 'map-popup-container',
-        maxWidth: 280,
-        minWidth: 200,
-      }
-
-      // Use lazy popup building if builder is provided and marker has outageGroup
-      if (popupBuilder && marker.outageGroup) {
-        // Bind empty popup initially - content will be set on open
-        m.bindPopup('', popupOptions)
-          .on('popupopen', (e) => {
-            const popupData = popupBuilder(marker.outageGroup!, marker.blockTs ?? null)
-            mountPopupContent(e.popup, popupData)
-          })
-          .on('popupclose', (e) => unmountPopupApp(e.popup))
+      // When onMarkerClick is provided, fire callback instead of opening a popup
+      if (onMarkerClick) {
+        m.on('click', () => onMarkerClick(marker))
       } else {
-        // Use pre-computed popup data (legacy path)
-        m.bindPopup('', popupOptions)
-          .on('popupopen', (e) => {
-            mountPopupContent(e.popup, marker.popupData ?? null)
-          })
-          .on('popupclose', (e) => unmountPopupApp(e.popup))
+        const popupOptions = {
+          className: 'map-popup-container',
+          maxWidth: 280,
+          minWidth: 200,
+        }
+
+        // Use lazy popup building if builder is provided and marker has outageGroup
+        if (popupBuilder && marker.outageGroup) {
+          m.bindPopup('', popupOptions)
+            .on('popupopen', (e) => {
+              const popupData = popupBuilder(marker.outageGroup!, marker.blockTs ?? null)
+              mountPopupContent(e.popup, popupData)
+            })
+            .on('popupclose', (e) => unmountPopupApp(e.popup))
+        } else {
+          m.bindPopup('', popupOptions)
+            .on('popupopen', (e) => {
+              mountPopupContent(e.popup, marker.popupData ?? null)
+            })
+            .on('popupclose', (e) => unmountPopupApp(e.popup))
+        }
       }
 
       markerLayer.value!.addLayer(m)
+
+      // Index outage IDs → this marker layer for highlighting
+      if (marker.outageGroup) {
+        for (const outage of marker.outageGroup.outages) {
+          outageMarkerMap.set(outage.id, m)
+          outageDataMap.set(outage.id, outage)
+        }
+      }
 
       // Add count label for CircleMarker clusters
       if (useCircleMarkers && count > 1) {
@@ -659,6 +690,86 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     }
   }
 
+  // ── Outage Highlighting ──
+  const highlightOutage = (id: string | number) => {
+    if (activeHighlightId === id) return
+    unhighlightOutage()
+    activeHighlightId = id
+
+    const activeMap = map.value
+    if (!activeMap) return
+
+    // Highlight the marker
+    const markerLeaflet = outageMarkerMap.get(id)
+    if (markerLeaflet) {
+      if (usingCircleMarkers && 'setStyle' in markerLeaflet) {
+        ;(markerLeaflet as L.CircleMarker).setStyle({
+          color: '#f59e0b',
+          fillColor: '#f59e0b',
+          fillOpacity: 1,
+          weight: 3,
+        })
+      } else if ('getElement' in markerLeaflet) {
+        const el = (markerLeaflet as L.Marker).getElement()
+        el?.classList.add('map-marker--highlight')
+      }
+    }
+
+    // Show the individual outage polygon as a highlight overlay
+    const outage = outageDataMap.get(id)
+    if (outage?.polygon) {
+      const geometry = wktToGeoJSON(outage.polygon)
+      if (geometry) {
+        const feature: Feature<Polygon | MultiPolygon> = {
+          type: 'Feature',
+          geometry,
+          properties: {},
+        }
+        highlightPolygonLayer = L.geoJSON(feature, {
+          style: {
+            color: '#f59e0b',
+            fillColor: '#fbbf24',
+            weight: 3,
+            opacity: 1,
+            fillOpacity: 0.35,
+          },
+        })
+        highlightPolygonLayer.addTo(activeMap)
+      }
+    }
+  }
+
+  const unhighlightOutage = () => {
+    if (activeHighlightId === null) return
+    const activeMap = map.value
+
+    // Restore marker style
+    const markerLeaflet = outageMarkerMap.get(activeHighlightId)
+    if (markerLeaflet) {
+      if (usingCircleMarkers && 'setStyle' in markerLeaflet) {
+        const outage = outageDataMap.get(activeHighlightId)
+        const isCluster = outage ? false : true // single outages aren't clusters
+        ;(markerLeaflet as L.CircleMarker).setStyle({
+          color: isCluster ? BRAND_CLUSTER_COLOR : BRAND_OUTAGE_COLOR,
+          fillColor: isCluster ? BRAND_CLUSTER_COLOR : BRAND_OUTAGE_COLOR,
+          fillOpacity: 0.8,
+          weight: 2,
+        })
+      } else if ('getElement' in markerLeaflet) {
+        const el = (markerLeaflet as L.Marker).getElement()
+        el?.classList.remove('map-marker--highlight')
+      }
+    }
+
+    // Remove highlight polygon
+    if (highlightPolygonLayer && activeMap) {
+      activeMap.removeLayer(highlightPolygonLayer)
+      highlightPolygonLayer = null
+    }
+
+    activeHighlightId = null
+  }
+
   const cleanup = () => {
     if (debounceTimer) clearTimeout(debounceTimer)
     if (reportDebounceTimer) clearTimeout(reportDebounceTimer)
@@ -682,6 +793,8 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     renderSearchPolygon,
     queueReportMarkerRender,
     renderReportMarkers,
+    highlightOutage,
+    unhighlightOutage,
     cleanup,
   }
 }

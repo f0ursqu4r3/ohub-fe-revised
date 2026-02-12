@@ -8,7 +8,6 @@ const props = defineProps<{
   showPolygons: boolean
   showHeatmap: boolean
   showReportMarkers: boolean
-  showPlaybackControls: boolean
 }>()
 
 const emit = defineEmits<{
@@ -22,7 +21,6 @@ const emit = defineEmits<{
   togglePolygons: []
   toggleHeatmap: []
   toggleReportMarkers: []
-  togglePlaybackControls: []
 }>()
 
 const layerItems = computed(() => [
@@ -49,12 +47,6 @@ const layerItems = computed(() => [
     icon: 'i-heroicons-fire',
     onClick: () => emit('toggleHeatmap'),
     active: props.showHeatmap,
-  },
-  {
-    label: 'Playback',
-    icon: 'i-heroicons-play-circle',
-    onClick: () => emit('togglePlaybackControls'),
-    active: props.showPlaybackControls,
   },
 ])
 </script>

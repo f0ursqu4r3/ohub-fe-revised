@@ -19,8 +19,15 @@ import {
 } from 'vue-use-leaflet'
 import { storeToRefs } from 'pinia'
 import { useDarkModeStore } from '@/stores/darkMode'
-import type { MarkerData, PolygonData, ReportMarkerData, BoundsLiteral, PopupDataBuilder } from './types'
+import type {
+  MarkerData,
+  PolygonData,
+  ReportMarkerData,
+  BoundsLiteral,
+  PopupDataBuilder,
+} from './types'
 import MapControls from './MapControls.vue'
+import TimelineBar from '@/components/TimelineBar.vue'
 import {
   useMapLayers,
   useMapControls,
@@ -64,6 +71,8 @@ const props = withDefaults(
     searchPolygon?: Polygon | MultiPolygon | null
     /** Optional lazy popup builder - if provided, popups compute on open instead of up-front */
     popupBuilder?: PopupDataBuilder
+    /** Outage ID to highlight on the map (marker + polygon) */
+    highlightedOutageId?: string | number | null
   }>(),
   {
     zoomLevel: 4,
@@ -73,12 +82,13 @@ const props = withDefaults(
     searchMarker: null,
     searchPolygon: null,
     popupBuilder: undefined,
+    highlightedOutageId: null,
   },
 )
 
 const emit = defineEmits<{
   (e: 'setZoom', level: number): void
-  (e: 'update:showPlaybackControls', value: boolean): void
+  (e: 'markerClick', marker: MarkerData): void
 }>()
 
 // ─────────────────────────────────────────────────────────────
@@ -107,7 +117,6 @@ const showMarkers = ref(true)
 const showPolygons = ref(true)
 const showHeatmap = ref(false)
 const showReportMarkers = ref(true)
-const showPlaybackControls = ref(false)
 
 // Tile style - synced with global dark mode
 const tileStyle = computed<TileStyle>(() => (globalDarkMode.value ? 'dark' : 'light'))
@@ -185,6 +194,8 @@ const {
   renderSearchPolygon,
   queueReportMarkerRender,
   renderReportMarkers,
+  highlightOutage,
+  unhighlightOutage,
   cleanup: cleanupLayers,
 } = useMapLayers(
   {
@@ -196,6 +207,7 @@ const {
     isZooming,
     onZoomToBounds: zoomToBounds,
     popupBuilder: props.popupBuilder,
+    onMarkerClick: (marker) => emit('markerClick', marker),
   },
   {
     markerLayer,
@@ -435,7 +447,15 @@ watch(showMarkers, () => renderMarkers(props.markers))
 watch(showPolygons, () => renderPolygons(props.polygons))
 watch(showHeatmap, () => renderHeatmap(props.markers))
 watch(showReportMarkers, () => renderReportMarkers(props.reportMarkers))
-watch(showPlaybackControls, (val) => emit('update:showPlaybackControls', val))
+
+// Highlight outage on map when detail panel item is hovered
+watch(
+  () => props.highlightedOutageId,
+  (id) => {
+    if (id != null) highlightOutage(id)
+    else unhighlightOutage()
+  },
+)
 
 // ─────────────────────────────────────────────────────────────
 // Lifecycle
@@ -505,7 +525,6 @@ defineExpose({
       :show-polygons="showPolygons"
       :show-heatmap="showHeatmap"
       :show-report-markers="showReportMarkers"
-      :show-playback-controls="showPlaybackControls"
       @zoomIn="zoomIn"
       @zoomOut="zoomOut"
       @resetView="resetView"
@@ -516,25 +535,24 @@ defineExpose({
       @togglePolygons="showPolygons = !showPolygons"
       @toggleHeatmap="showHeatmap = !showHeatmap"
       @toggleReportMarkers="showReportMarkers = !showReportMarkers"
-      @togglePlaybackControls="showPlaybackControls = !showPlaybackControls"
     />
 
     <!-- Minimap -->
     <div
       ref="minimapEl"
-      class="map-minimap map-control-panel absolute bottom-[50px] right-4 z-999 w-[150px] h-[100px] bg-white/92 dark:bg-slate-800/92 backdrop-blur-xl rounded-[14px] border border-primary-300/30 dark:border-primary-600/30 overflow-hidden"
+      class="map-minimap map-control-panel absolute bottom-24 right-4 z-999 w-48 h-32 bg-white/92 dark:bg-slate-800/92 backdrop-blur-xl rounded-[14px] border border-primary-300/30 dark:border-primary-600/30 overflow-hidden"
     ></div>
-
-    <!-- Slot for content that should be visible in fullscreen -->
-    <slot name="fullscreen-content" :is-fullscreen="isFullscreen"></slot>
 
     <!-- Attribution badge -->
     <div
-      class="map-badge absolute bottom-4 left-4 z-1000 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-primary-900 dark:text-primary-300 bg-primary-100/25 dark:bg-primary-500/20 backdrop-blur-lg border border-primary-500/30 dark:border-primary-400/40 rounded-full transition-[left] duration-200"
+      class="map-badge absolute bottom-24 left-4 z-1000 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-primary-900 dark:text-primary-300 bg-primary-100/25 dark:bg-primary-500/20 backdrop-blur-lg border border-primary-500/30 dark:border-primary-400/40 rounded-full transition-[left] duration-200"
     >
       <span class="badge-dot w-1.5 h-1.5 bg-primary-500 rounded-full animate-pulse-dot"></span>
       Live Data
     </div>
+
+    <!-- Timeline Bar -->
+    <TimelineBar />
   </div>
 </template>
 
@@ -590,11 +608,6 @@ defineExpose({
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
-/* Timeline open state - adjusts badge position when sidebar is open */
-body.timeline-open .map-badge {
-  left: calc(32px + 7rem);
-}
-
 /* Global marker styles (applied to dynamically created Leaflet elements) */
 .map-marker {
   background: transparent !important;
@@ -626,6 +639,35 @@ body.timeline-open .map-badge {
   background: rgba(255, 156, 26, 0.3);
   border-radius: 50%;
   animation: marker-pulse 2s ease-out infinite;
+}
+
+/* Highlighted marker (from detail panel hover) */
+.map-marker--highlight .marker-dot {
+  background: linear-gradient(145deg, #fbbf24, #f59e0b);
+  box-shadow:
+    0 0 0 4px rgba(245, 158, 11, 0.3),
+    0 0 12px rgba(245, 158, 11, 0.5),
+    0 2px 8px rgba(245, 158, 11, 0.4);
+  transform: translate(-50%, -50%) scale(1.3);
+  transition: all 0.2s ease;
+}
+
+.map-marker--highlight .marker-pulse {
+  background: rgba(245, 158, 11, 0.4);
+  animation: marker-pulse 1s ease-out infinite;
+}
+
+.map-cluster.map-marker--highlight .cluster-core {
+  box-shadow:
+    0 0 0 4px rgba(245, 158, 11, 0.3),
+    0 0 12px rgba(245, 158, 11, 0.5),
+    0 3px 12px rgba(24, 184, 166, 0.4);
+  transition: box-shadow 0.2s ease;
+}
+
+.map-cluster.map-marker--highlight .cluster-ring {
+  border-color: rgba(245, 158, 11, 0.6);
+  animation: cluster-ring-pulse 1.5s ease-in-out infinite;
 }
 
 /* CircleMarker styles (lightweight SVG markers for large datasets) */
@@ -939,6 +981,11 @@ body.timeline-open .map-badge {
 /* Leaflet control overrides */
 .leaflet-container {
   font-family: 'Space Grotesk', 'Manrope', system-ui, sans-serif;
+  background: #fff;
+}
+
+.dark .leaflet-container {
+  background: #000;
 }
 
 .leaflet-control-attribution {
