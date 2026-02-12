@@ -232,6 +232,8 @@ export interface UseMapLayersOptions {
   popupBuilder?: PopupDataBuilder
   /** When provided, marker clicks fire this callback instead of opening a popup */
   onMarkerClick?: (marker: MarkerData) => void
+  /** When provided, report marker clicks fire this callback instead of opening a popup */
+  onReportMarkerClick?: (marker: ReportMarkerData) => void
 }
 
 export interface MapLayerRefs {
@@ -272,6 +274,7 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     onZoomToBounds,
     popupBuilder,
     onMarkerClick,
+    onReportMarkerClick,
   } = options
   const {
     markerLayer,
@@ -668,15 +671,19 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
         opacity: 1,
       })
 
-      m.bindPopup('', {
-        className: 'map-popup-container',
-        maxWidth: 380,
-        minWidth: 200,
-      })
-        .on('popupopen', (e: L.PopupEvent) => {
-          mountReportPopupContent(e.popup, marker.reports)
+      if (onReportMarkerClick) {
+        m.on('click', () => onReportMarkerClick(marker))
+      } else {
+        m.bindPopup('', {
+          className: 'map-popup-container',
+          maxWidth: 380,
+          minWidth: 200,
         })
-        .on('popupclose', (e: L.PopupEvent) => unmountPopupApp(e.popup))
+          .on('popupopen', (e: L.PopupEvent) => {
+            mountReportPopupContent(e.popup, marker.reports)
+          })
+          .on('popupclose', (e: L.PopupEvent) => unmountPopupApp(e.popup))
+      }
 
       reportMarkerLayer.value!.addLayer(m)
 

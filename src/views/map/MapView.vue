@@ -19,6 +19,7 @@ import OutageDetailPanel from '@/components/OutageDetailPanel.vue'
 import MapComp from '@/components/map/MapComp.vue'
 import ReportOutageModal from '@/components/ReportOutageModal.vue'
 import type { PopupData, PopupItem, MarkerData, ReportMarkerData } from '@/components/map/types'
+import type { UserOutageReport } from '@/types/userOutage'
 import type { MultiPolygon, Polygon } from 'geojson'
 
 type MapMarker = {
@@ -142,6 +143,44 @@ const reportModalOpen = ref(false)
 // Detail panel
 const detailPanelData = ref<PopupData | null>(null)
 
+const formatReportTime = (ts: number | null): string | null => {
+  if (!ts) return null
+  const d = new Date(ts * 1000)
+  return d.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+const buildReportPopupData = (reports: UserOutageReport[]): PopupData => {
+  const count = reports.length
+  const title = count === 1 ? 'User Report' : `${count} User Reports`
+  const providers = [...new Set(reports.map((r) => r.provider).filter(Boolean))]
+  const timeLabel = providers.length ? providers.join(', ') : 'User-submitted reports'
+
+  const items: PopupItem[] = reports.map((r) => ({
+    id: r.id,
+    provider: r.provider ?? 'Unknown Provider',
+    nickname: '',
+    bounds: null,
+    areaLabel: r.addressText ?? undefined,
+    cause: r.cause,
+    customerCount: r.customerCount,
+    isPlanned: r.isPlanned,
+    notes: r.notes,
+    reportedAt: formatReportTime(r.createdAt),
+    targetType: 'userOutage' as const,
+  }))
+
+  return { title, timeLabel, items, extraCount: 0 }
+}
+
+const onReportMarkerClick = (marker: ReportMarkerData) => {
+  detailPanelData.value = buildReportPopupData(marker.reports)
+}
+
 const onMarkerClick = (marker: MarkerData) => {
   if (marker.outageGroup) {
     const data = buildPopupData(marker.outageGroup, marker.blockTs ?? null)
@@ -196,6 +235,7 @@ const highlightedOutageId = ref<string | number | null>(null)
       class="z-0"
       @setZoom="setZoomLevel"
       @markerClick="onMarkerClick"
+      @reportMarkerClick="onReportMarkerClick"
     />
 
     <!-- Detail Panel -->

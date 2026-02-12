@@ -15,8 +15,13 @@ watch(
   () => props.data,
   (d) => {
     if (!d?.items.length) return
-    const ids = d.items.map((item) => item.id)
-    feedbackStore.fetchSummaries(ids)
+    const outageIds: (number | string)[] = []
+    const userOutageIds: (number | string)[] = []
+    for (const item of d.items) {
+      if (item.targetType === 'userOutage') userOutageIds.push(item.id)
+      else outageIds.push(item.id)
+    }
+    feedbackStore.fetchSummaries(outageIds, userOutageIds)
   },
   { immediate: true },
 )
@@ -111,7 +116,13 @@ const combinedBounds = computed<BoundsLiteral | null>(() => {
               <div class="flex items-center gap-2 min-w-0">
                 <span class="text-sm font-semibold text-default truncate">{{ item.provider }}</span>
                 <span
-                  v-if="item.isPlanned"
+                  v-if="item.targetType === 'userOutage'"
+                  class="shrink-0 text-[10px] font-bold uppercase tracking-wider text-violet-500 bg-violet-500/10 px-1.5 py-0.5 rounded"
+                >
+                  Report
+                </span>
+                <span
+                  v-else-if="item.isPlanned"
                   class="shrink-0 text-[10px] font-bold uppercase tracking-wider text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded"
                 >
                   Planned
@@ -155,10 +166,20 @@ const combinedBounds = computed<BoundsLiteral | null>(() => {
                 <span class="text-muted">ETR</span>
                 <span class="text-default font-medium">{{ item.etr }}</span>
               </template>
+
+              <template v-if="item.reportedAt">
+                <span class="text-muted">Reported</span>
+                <span class="text-default font-medium">{{ item.reportedAt }}</span>
+              </template>
             </div>
 
+            <!-- Notes (user reports) -->
+            <p v-if="item.notes" class="text-xs text-muted italic leading-snug">
+              {{ item.notes }}
+            </p>
+
             <!-- Feedback -->
-            <OutageFeedback :target-type="'outage'" :target-id="item.id" />
+            <OutageFeedback :target-type="item.targetType ?? 'outage'" :target-id="item.id" />
           </div>
         </div>
       </div>

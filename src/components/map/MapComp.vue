@@ -89,6 +89,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: 'setZoom', level: number): void
   (e: 'markerClick', marker: MarkerData): void
+  (e: 'reportMarkerClick', marker: ReportMarkerData): void
 }>()
 
 // ─────────────────────────────────────────────────────────────
@@ -208,6 +209,7 @@ const {
     onZoomToBounds: zoomToBounds,
     popupBuilder: props.popupBuilder,
     onMarkerClick: (marker) => emit('markerClick', marker),
+    onReportMarkerClick: (marker) => emit('reportMarkerClick', marker),
   },
   {
     markerLayer,

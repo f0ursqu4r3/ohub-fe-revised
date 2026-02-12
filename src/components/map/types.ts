@@ -16,6 +16,11 @@ export type PopupItem = {
   customerCount?: number | null
   isPlanned?: boolean | null
   etr?: string | null
+  /** User report fields */
+  notes?: string | null
+  reportedAt?: string | null
+  /** 'outage' (default) or 'userOutage' — used for feedback targetType */
+  targetType?: 'outage' | 'userOutage'
 }
 
 export type PopupData = {
