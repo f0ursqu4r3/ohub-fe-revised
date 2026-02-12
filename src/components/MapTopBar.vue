@@ -103,7 +103,7 @@ defineProps<{
 <template>
   <div class="fixed top-0 inset-x-0 z-40 pointer-events-none">
     <div
-      class="pointer-events-auto flex items-center gap-3 px-4 py-3 bg-(--ui-bg-elevated)/85 backdrop-blur-lg border-b border-accented/50 shadow-sm h-16"
+      class="topbar pointer-events-auto flex items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3 bg-(--ui-bg-elevated)/85 backdrop-blur-lg border-b border-accented/50 shadow-sm h-14 sm:h-16"
     >
       <!-- Left: Logo / brand -->
       <div class="flex items-center gap-2 shrink-0">
@@ -124,8 +124,8 @@ defineProps<{
           v-model="query"
           type="search"
           icon="i-heroicons-magnifying-glass"
-          placeholder="Search Canadian addresses..."
-          size="lg"
+          placeholder="Search addresses..."
+          size="sm"
           class="w-full transition-shadow duration-200 focus-within:ring-2 focus-within:ring-primary-300/50 rounded-full"
           :loading="isLoading"
           :ui="{ trailing: 'pe-1', base: 'rounded-full' }"
@@ -185,7 +185,7 @@ defineProps<{
         <!-- Inline status badges -->
         <div
           v-if="loading"
-          class="flex items-center gap-1.5 rounded-full bg-primary-500/10 px-2.5 py-1 text-xs font-medium text-primary-600 dark:text-primary-400"
+          class="hidden sm:flex items-center gap-1.5 rounded-full bg-primary-500/10 px-2.5 py-1 text-xs font-medium text-primary-600 dark:text-primary-400"
         >
           <span class="relative flex h-1.5 w-1.5">
             <span
@@ -197,25 +197,37 @@ defineProps<{
         </div>
         <div
           v-else-if="loadError"
-          class="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600 dark:text-amber-400"
+          class="hidden sm:flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600 dark:text-amber-400"
         >
           <UIcon name="i-heroicons-exclamation-triangle" class="h-3 w-3" />
           Error
         </div>
         <div
           v-else-if="noOutages"
-          class="flex items-center gap-1.5 rounded-full bg-muted/10 px-2.5 py-1 text-xs font-medium text-muted"
+          class="hidden sm:flex items-center gap-1.5 rounded-full bg-muted/10 px-2.5 py-1 text-xs font-medium text-muted"
         >
           <UIcon name="i-heroicons-map" class="h-3 w-3" />
           No outages
         </div>
 
+        <!-- Report: icon-only on mobile, with label on desktop -->
+        <UButton
+          icon="i-heroicons-exclamation-triangle"
+          color="primary"
+          variant="soft"
+          size="xs"
+          square
+          class="sm:hidden"
+          aria-label="Report outage"
+          @click="emit('reportOutage')"
+        />
         <UButton
           icon="i-heroicons-exclamation-triangle"
           color="primary"
           variant="soft"
           label="Report"
           size="xs"
+          class="hidden sm:inline-flex"
           @click="emit('reportOutage')"
         />
 
@@ -269,5 +281,14 @@ defineProps<{
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+/* Short viewport (landscape mobile) */
+@media (max-height: 500px) {
+  .topbar {
+    height: 2.75rem; /* 44px */
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
 }
 </style>

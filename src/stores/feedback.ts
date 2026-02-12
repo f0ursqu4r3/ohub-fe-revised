@@ -1,4 +1,4 @@
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
 import type {
@@ -17,6 +17,7 @@ export const useFeedbackStore = defineStore('feedback', () => {
 
   // ── State ──
   const summaries = reactive(new Map<string, FeedbackSummaryItem>())
+  const loading = ref(false)
 
   // ── Helpers ──
   const buildHeaders = async (): Promise<Record<string, string>> => {
@@ -42,13 +43,18 @@ export const useFeedbackStore = defineStore('feedback', () => {
     if (userOutageIds?.length) params.set('userOutageIds', userOutageIds.join(','))
     if (!params.toString()) return
 
-    const headers = await buildHeaders()
-    const response = await fetch(`${baseUrl}/v1/feedback/summary?${params}`, { headers })
-    if (!response.ok) return
+    loading.value = true
+    try {
+      const headers = await buildHeaders()
+      const response = await fetch(`${baseUrl}/v1/feedback/summary?${params}`, { headers })
+      if (!response.ok) return
 
-    const data: FeedbackSummaryResponse = await response.json()
-    for (const item of data.items) {
-      summaries.set(summaryKey(item.targetType, item.targetId), item)
+      const data: FeedbackSummaryResponse = await response.json()
+      for (const item of data.items) {
+        summaries.set(summaryKey(item.targetType, item.targetId), item)
+      }
+    } finally {
+      loading.value = false
     }
   }
 
@@ -164,6 +170,7 @@ export const useFeedbackStore = defineStore('feedback', () => {
 
   return {
     summaries,
+    loading,
     getSummary,
     fetchSummaries,
     submitVote,

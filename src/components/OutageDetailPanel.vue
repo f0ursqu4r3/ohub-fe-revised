@@ -37,7 +37,10 @@ const formatCustomerCount = (count: number | null | undefined) => {
 const combinedBounds = computed<BoundsLiteral | null>(() => {
   const items = props.data?.items
   if (!items || items.length < 2) return null
-  let minLat = Infinity, minLng = Infinity, maxLat = -Infinity, maxLng = -Infinity
+  let minLat = Infinity,
+    minLng = Infinity,
+    maxLat = -Infinity,
+    maxLng = -Infinity
   for (const item of items) {
     if (!item.bounds) continue
     const [[s, w], [n, e]] = item.bounds
@@ -47,15 +50,18 @@ const combinedBounds = computed<BoundsLiteral | null>(() => {
     if (e > maxLng) maxLng = e
   }
   if (!isFinite(minLat)) return null
-  return [[minLat, minLng], [maxLat, maxLng]]
+  return [
+    [minLat, minLng],
+    [maxLat, maxLng],
+  ]
 })
 </script>
 
 <template>
-  <Transition name="slide-right">
+  <Transition name="detail-panel">
     <div
       v-if="data"
-      class="fixed top-0 right-0 bottom-0 z-40 w-80 flex flex-col bg-(--ui-bg-elevated)/95 backdrop-blur-xl border-l border-accented shadow-2xl"
+      class="fixed z-40 flex flex-col bg-(--ui-bg-elevated)/95 backdrop-blur-xl shadow-2xl inset-x-0 bottom-0 max-h-[60vh] border-t border-accented sm:inset-x-auto sm:top-0 sm:right-0 sm:bottom-0 sm:max-h-none sm:w-80 sm:border-t-0 sm:border-l"
     >
       <!-- Header -->
       <div class="flex items-center justify-between gap-2 px-4 py-3 border-b border-accented h-16">
@@ -155,25 +161,36 @@ const combinedBounds = computed<BoundsLiteral | null>(() => {
             <OutageFeedback :target-type="'outage'" :target-id="item.id" />
           </div>
         </div>
-
       </div>
     </div>
   </Transition>
 </template>
 
 <style scoped>
-.slide-right-enter-active,
-.slide-right-leave-active {
+.detail-panel-enter-active,
+.detail-panel-leave-active {
   transition:
     transform 0.25s ease,
     opacity 0.2s ease;
 }
-.slide-right-enter-from {
-  transform: translateX(100%);
+/* Mobile: slide up from bottom */
+.detail-panel-enter-from {
+  transform: translateY(100%);
   opacity: 0;
 }
-.slide-right-leave-to {
-  transform: translateX(100%);
+.detail-panel-leave-to {
+  transform: translateY(100%);
   opacity: 0;
+}
+/* Desktop: slide in from right */
+@media (min-width: 640px) {
+  .detail-panel-enter-from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  .detail-panel-leave-to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 }
 </style>

@@ -53,7 +53,7 @@ const layerItems = computed(() => [
 
 <template>
   <div
-    class="map-control-panel absolute top-1/2 -translate-y-1/2 right-4 z-1000 flex flex-col gap-1 p-1.5 rounded-[14px] bg-white/92 dark:bg-slate-800/92 backdrop-blur-xl"
+    class="map-control-panel absolute top-20 right-2 z-1000 flex flex-row gap-0.5 p-1 rounded-[10px] bg-white/92 dark:bg-slate-800/92 backdrop-blur-xl sm:top-1/2 sm:-translate-y-1/2 sm:right-4 sm:flex-col sm:gap-1 sm:p-1.5 sm:rounded-[14px]"
   >
     <UButton
       icon="i-heroicons-plus"
@@ -73,13 +73,14 @@ const layerItems = computed(() => [
       aria-label="Zoom out"
       @click="() => emit('zoomOut')"
     />
-    <USeparator />
+    <USeparator class="hidden sm:block" />
     <UButton
       icon="i-heroicons-arrow-path"
       size="sm"
       color="neutral"
       variant="ghost"
       square
+      class="hidden sm:inline-flex"
       aria-label="Reset view"
       @click="() => emit('resetView')"
     />
@@ -98,10 +99,11 @@ const layerItems = computed(() => [
       color="neutral"
       variant="ghost"
       square
+      class="hidden sm:inline-flex"
       :aria-label="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
       @click="() => emit('toggleFullscreen')"
     />
-    <USeparator />
+    <USeparator class="hidden sm:block" />
     <UButton
       :icon="isDarkMode ? 'i-heroicons-sun' : 'i-heroicons-moon'"
       size="sm"
@@ -139,3 +141,12 @@ const layerItems = computed(() => [
     </UPopover>
   </div>
 </template>
+
+<style scoped>
+/* Short viewport (landscape mobile): tighter position below shorter top bar */
+@media (max-height: 500px) {
+  .map-control-panel {
+    top: 3rem;
+  }
+}
+</style>

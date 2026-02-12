@@ -387,7 +387,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="absolute bottom-0 inset-x-0 z-30 pointer-events-none flex justify-center px-4 pb-4">
+  <div class="absolute bottom-0 inset-x-0 z-30 pointer-events-none flex justify-center px-2 pb-2 sm:px-4 sm:pb-4">
     <Transition name="tl-swap" mode="out-in">
       <!-- Expanded bar -->
       <div
@@ -395,7 +395,7 @@ onBeforeUnmount(() => {
         key="expanded"
         class="pointer-events-auto w-full max-w-5xl rounded-2xl border border-accented bg-(--ui-bg-elevated)/95 shadow-xl shadow-primary-900/10 backdrop-blur-sm"
       >
-        <div class="flex items-center gap-3 px-4 py-3">
+        <div class="tl-row flex items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3">
           <!-- Playback controls -->
           <div class="flex items-center gap-1 shrink-0">
             <button
@@ -408,7 +408,7 @@ onBeforeUnmount(() => {
             </button>
 
             <button
-              class="flex h-9 w-9 items-center justify-center rounded-full bg-primary-500 text-white shadow-md transition-all hover:bg-primary-600 hover:scale-105 active:scale-95"
+              class="tl-play flex h-9 w-9 items-center justify-center rounded-full bg-primary-500 text-white shadow-md transition-all hover:bg-primary-600 hover:scale-105 active:scale-95"
               :title="isPlaying ? 'Pause' : 'Play'"
               @click="togglePlayback"
             >
@@ -426,7 +426,7 @@ onBeforeUnmount(() => {
             </button>
 
             <button
-              class="flex h-6 items-center rounded-full px-1.5 text-[10px] font-bold text-muted transition-all hover:bg-primary-500/10 hover:text-primary-500"
+              class="hidden sm:flex h-6 items-center rounded-full px-1.5 text-[10px] font-bold text-muted transition-all hover:bg-primary-500/10 hover:text-primary-500"
               title="Change playback speed"
               @click="cycleSpeed"
             >
@@ -434,12 +434,12 @@ onBeforeUnmount(() => {
             </button>
           </div>
 
-          <div class="h-8 w-px bg-border shrink-0"></div>
+          <div class="hidden sm:block h-8 w-px bg-border shrink-0"></div>
 
           <!-- Horizontal scrubber -->
           <div
             ref="scrubber"
-            class="relative flex-1 h-12 cursor-pointer select-none touch-none"
+            class="tl-scrubber relative flex-1 h-12 cursor-pointer select-none touch-none"
             @pointerdown="onPointerDown"
             @wheel.passive="onWheel"
           >
@@ -525,24 +525,24 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <div class="h-8 w-px bg-border shrink-0"></div>
+          <div class="hidden sm:block h-8 w-px bg-border shrink-0"></div>
 
           <!-- Time display & info -->
-          <div class="shrink-0 text-right min-w-[100px]">
-            <p class="text-lg font-semibold leading-tight text-default">{{ selectedLabel }}</p>
-            <p class="text-xs text-muted">{{ selectedDateLabel }}</p>
+          <div class="shrink-0 text-right">
+            <p class="text-sm sm:text-lg font-semibold leading-tight text-default">{{ selectedLabel }}</p>
+            <p class="hidden sm:block text-xs text-muted">{{ selectedDateLabel }}</p>
             <p
               v-if="selectedBlock"
-              class="text-xs font-semibold text-secondary-500 dark:text-secondary-400"
+              class="hidden sm:block text-xs font-semibold text-secondary-500 dark:text-secondary-400"
             >
               {{ selectedCountLabel }} events
             </p>
           </div>
 
-          <div class="h-8 w-px bg-border shrink-0"></div>
+          <div class="hidden sm:block h-8 w-px bg-border shrink-0"></div>
 
           <!-- Provider filter -->
-          <div class="shrink-0 w-36">
+          <div class="hidden sm:block shrink-0 w-36">
             <USelectMenu
               v-model="providerModel"
               :items="providerOptions"
@@ -593,5 +593,20 @@ onBeforeUnmount(() => {
 .tl-swap-leave-to {
   transform: translateY(20px);
   opacity: 0;
+}
+
+/* Short viewport (landscape mobile) */
+@media (max-height: 500px) {
+  .tl-row {
+    padding: 0.25rem 0.5rem;
+    gap: 0.375rem;
+  }
+  .tl-scrubber {
+    height: 2rem; /* 32px instead of 48px */
+  }
+  .tl-play {
+    height: 1.75rem;
+    width: 1.75rem;
+  }
 }
 </style>

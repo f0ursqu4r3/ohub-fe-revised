@@ -11,6 +11,7 @@ const props = defineProps<{
 const feedbackStore = useFeedbackStore()
 
 const summary = computed(() => feedbackStore.getSummary(props.targetType, props.targetId))
+const loading = computed(() => feedbackStore.loading && !summary.value)
 
 const myVote = computed(() => summary.value?.myVote ?? null)
 const upvotes = computed(() => summary.value?.upvotes ?? 0)
@@ -27,7 +28,15 @@ const toggleFlag = async () => {
 </script>
 
 <template>
-  <div v-if="summary" class="flex items-center gap-1">
+  <!-- Skeleton -->
+  <div v-if="loading" class="flex items-center gap-1">
+    <span class="h-5 w-8 rounded-md bg-accented/50 animate-pulse" />
+    <span class="h-5 w-8 rounded-md bg-accented/50 animate-pulse" />
+    <span class="h-5 w-5 rounded-md bg-accented/50 animate-pulse ml-auto" />
+  </div>
+
+  <!-- Loaded -->
+  <div v-else-if="summary" class="flex items-center gap-1">
     <!-- Upvote -->
     <button
       class="flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-xs transition-colors"
