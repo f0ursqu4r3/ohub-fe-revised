@@ -33,12 +33,6 @@ export type PopupData = {
   coordsText?: string | null
 }
 
-/** Function signature for lazy popup data builders */
-export type PopupDataBuilder = (
-  group: GroupedOutage,
-  blockTs: number | null,
-) => PopupData | undefined
-
 export type MarkerData = {
   lat: number
   lng: number

@@ -1,7 +1,3 @@
-import { createApp } from 'vue'
-// Static imports for popup Vue components (wrappers provide UApp context for tooltips)
-import MapPopupComp from '../../components/map/MapPopupWrapper.vue'
-import ReportPopupComp from '../../components/map/ReportPopupWrapper.vue'
 import L from 'leaflet'
 import type { Ref, ShallowRef } from 'vue'
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson'
@@ -11,9 +7,6 @@ import type {
   MarkerData,
   PolygonData,
   ReportMarkerData,
-  BoundsLiteral,
-  PopupData,
-  PopupDataBuilder,
 } from '../../components/map/types'
 import {
   POLYGON_VISIBLE_ZOOM,
@@ -227,9 +220,6 @@ export interface UseMapLayersOptions {
   showHeatmap: Ref<boolean>
   showReportMarkers: Ref<boolean>
   isZooming: Ref<boolean>
-  onZoomToBounds: (bounds: BoundsLiteral) => void
-  /** Optional lazy popup data builder - if provided, popups compute on open */
-  popupBuilder?: PopupDataBuilder
   /** When provided, marker clicks fire this callback instead of opening a popup */
   onMarkerClick?: (marker: MarkerData) => void
   /** When provided, report marker clicks fire this callback instead of opening a popup */
@@ -271,8 +261,6 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     showHeatmap,
     showReportMarkers,
     isZooming,
-    onZoomToBounds,
-    popupBuilder,
     onMarkerClick,
     onReportMarkerClick,
   } = options
@@ -307,53 +295,6 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
       debounceTimer = null
       renderMarkers(markers)
     }, MARKER_RENDER_DEBOUNCE_MS)
-  }
-
-  const popupApps = new WeakMap<L.Popup, ReturnType<typeof createApp>>()
-
-  const unmountPopupApp = (popup: L.Popup) => {
-    const prev = popupApps.get(popup)
-    if (prev) {
-      prev.unmount()
-      popupApps.delete(popup)
-    }
-  }
-
-  const mountPopupContent = (popup: L.Popup, popupData: PopupData | null | undefined) => {
-    unmountPopupApp(popup)
-
-    if (!popupData) {
-      popup.setContent('<div class="map-popup__empty">No details available</div>')
-      return
-    }
-
-    const container = document.createElement('div')
-    const app = createApp(MapPopupComp, {
-      popupData,
-      onZoom: (bounds: BoundsLiteral) => onZoomToBounds(bounds),
-    })
-    app.mount(container)
-    popupApps.set(popup, app)
-    popup.setContent(container)
-    if (typeof popup.update === 'function') {
-      setTimeout(() => popup.update(), 0)
-    }
-  }
-
-  const mountReportPopupContent = (
-    popup: L.Popup,
-    reports: import('@/types/userOutage').UserOutageReport[],
-  ) => {
-    unmountPopupApp(popup)
-
-    const container = document.createElement('div')
-    const app = createApp(ReportPopupComp, { reports })
-    app.mount(container)
-    popupApps.set(popup, app)
-    popup.setContent(container)
-    if (typeof popup.update === 'function') {
-      setTimeout(() => popup.update(), 0)
-    }
   }
 
   const renderMarkers = (markers: MarkerData[]) => {
@@ -402,31 +343,8 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
         opacity: 1,
       })
 
-      // When onMarkerClick is provided, fire callback instead of opening a popup
       if (onMarkerClick) {
         m.on('click', () => onMarkerClick(marker))
-      } else {
-        const popupOptions = {
-          className: 'map-popup-container',
-          maxWidth: 280,
-          minWidth: 200,
-        }
-
-        // Use lazy popup building if builder is provided and marker has outageGroup
-        if (popupBuilder && marker.outageGroup) {
-          m.bindPopup('', popupOptions)
-            .on('popupopen', (e) => {
-              const popupData = popupBuilder(marker.outageGroup!, marker.blockTs ?? null)
-              mountPopupContent(e.popup, popupData)
-            })
-            .on('popupclose', (e) => unmountPopupApp(e.popup))
-        } else {
-          m.bindPopup('', popupOptions)
-            .on('popupopen', (e) => {
-              mountPopupContent(e.popup, marker.popupData ?? null)
-            })
-            .on('popupclose', (e) => unmountPopupApp(e.popup))
-        }
       }
 
       markerLayer.value!.addLayer(m)
@@ -673,16 +591,6 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
 
       if (onReportMarkerClick) {
         m.on('click', () => onReportMarkerClick(marker))
-      } else {
-        m.bindPopup('', {
-          className: 'map-popup-container',
-          maxWidth: 380,
-          minWidth: 200,
-        })
-          .on('popupopen', (e: L.PopupEvent) => {
-            mountReportPopupContent(e.popup, marker.reports)
-          })
-          .on('popupclose', (e: L.PopupEvent) => unmountPopupApp(e.popup))
       }
 
       reportMarkerLayer.value!.addLayer(m)

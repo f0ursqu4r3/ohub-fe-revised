@@ -10,14 +10,11 @@ import {
   type GeoPolygon,
   type GroupedOutage,
 } from '@/lib/utils'
-import { usePopupData } from '@/composables/map/usePopupData'
 import MapComp from '@/components/map/MapComp.vue'
-import type { PopupData } from '@/components/map/types'
 
 type MapMarker = {
   lat: number
   lng: number
-  popupData?: PopupData
   outageGroup?: GroupedOutage
   blockTs?: number | null
   count: number
@@ -82,7 +79,6 @@ const setZoomLevel = (level: number) => {
   zoomLevel.value = level
 }
 
-const { buildPopupData } = usePopupData()
 </script>
 
 <template>
@@ -91,7 +87,6 @@ const { buildPopupData } = usePopupData()
       :markers="mapMarkers"
       :polygons="mapPolygons"
       :zoom-level="zoomLevel"
-      :popup-builder="buildPopupData"
       class="z-0"
       @setZoom="setZoomLevel"
     />

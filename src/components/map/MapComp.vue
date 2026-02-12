@@ -24,7 +24,6 @@ import type {
   PolygonData,
   ReportMarkerData,
   BoundsLiteral,
-  PopupDataBuilder,
 } from './types'
 import MapControls from './MapControls.vue'
 import TimelineBar from '@/components/TimelineBar.vue'
@@ -69,8 +68,6 @@ const props = withDefaults(
     focusBounds?: BoundsLiteral | null
     searchMarker?: { lat: number; lng: number } | null
     searchPolygon?: Polygon | MultiPolygon | null
-    /** Optional lazy popup builder - if provided, popups compute on open instead of up-front */
-    popupBuilder?: PopupDataBuilder
     /** Outage ID to highlight on the map (marker + polygon) */
     highlightedOutageId?: string | number | null
   }>(),
@@ -81,7 +78,6 @@ const props = withDefaults(
     focusBounds: null,
     searchMarker: null,
     searchPolygon: null,
-    popupBuilder: undefined,
     highlightedOutageId: null,
   },
 )
@@ -206,8 +202,6 @@ const {
     showHeatmap,
     showReportMarkers,
     isZooming,
-    onZoomToBounds: zoomToBounds,
-    popupBuilder: props.popupBuilder,
     onMarkerClick: (marker) => emit('markerClick', marker),
     onReportMarkerClick: (marker) => emit('reportMarkerClick', marker),
   },

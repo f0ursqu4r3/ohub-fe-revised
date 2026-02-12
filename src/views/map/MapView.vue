@@ -230,7 +230,6 @@ const highlightedOutageId = ref<string | number | null>(null)
       :focus-bounds="focusBounds"
       :search-marker="searchMarker"
       :search-polygon="searchPolygon"
-      :popup-builder="buildPopupData"
       :highlighted-outage-id="highlightedOutageId"
       class="z-0"
       @setZoom="setZoomLevel"
