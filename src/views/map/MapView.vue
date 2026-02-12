@@ -88,7 +88,7 @@ const mapPolygons = computed<MapPolygon[]>(() =>
 )
 
 const reportMapMarkers = computed<ReportMarkerData[]>(() => {
-  if (!userReports.value.length) return []
+  if (loading.value || !userReports.value.length) return []
   return clusterUserReports(userReports.value, zoomLevel.value).map((group) => ({
     lat: group.center[0],
     lng: group.center[1],
