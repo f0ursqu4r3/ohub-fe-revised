@@ -42,15 +42,16 @@ export const POPUP_MAX_ITEMS = 6
 export const PLAYBACK_BASE_INTERVAL_MS = 500
 
 // ─────────────────────────────────────────────────────────────
-// Colors
+// Colors (matches theme.css brand palette)
 // ─────────────────────────────────────────────────────────────
-export const BRAND_CLUSTER_COLOR = '#18b8a6'
-export const BRAND_CLUSTER_FILL = 'rgba(110, 233, 215, 0.25)'
-export const BRAND_OUTAGE_COLOR = '#ff9c1a'
-export const BRAND_OUTAGE_FILL = 'rgba(255, 212, 138, 0.3)'
+export const BRAND_COLOR = '#1ec968'
+export const BRAND_COLOR_DARK = '#0fa757'
+export const BRAND_FILL = 'rgba(30, 201, 104, 0.2)'
+export const BRAND_HIGHLIGHT = '#ffc020'
+export const BRAND_HIGHLIGHT_FILL = 'rgba(255, 192, 32, 0.3)'
 export const SEARCH_COLOR = '#6366f1'
 export const SEARCH_FILL = 'rgba(99, 102, 241, 0.15)'
 
-// User Reports (violet — distinct from outage orange and cluster teal)
-export const USER_REPORT_COLOR = '#8b5cf6'
-export const USER_REPORT_CLUSTER_COLOR = '#7c3aed'
+// User Reports (secondary amber — distinct from primary green)
+export const USER_REPORT_COLOR = '#f0a500'
+export const USER_REPORT_CLUSTER_COLOR = '#cc7f02'

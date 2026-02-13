@@ -12,10 +12,11 @@ import {
   POLYGON_VISIBLE_ZOOM,
   CIRCLE_MARKER_THRESHOLD,
   MARKER_RENDER_DEBOUNCE_MS,
-  BRAND_CLUSTER_COLOR,
-  BRAND_CLUSTER_FILL,
-  BRAND_OUTAGE_COLOR,
-  BRAND_OUTAGE_FILL,
+  BRAND_COLOR,
+  BRAND_COLOR_DARK,
+  BRAND_FILL,
+  BRAND_HIGHLIGHT,
+  BRAND_HIGHLIGHT_FILL,
   SEARCH_COLOR,
   SEARCH_FILL,
   USER_REPORT_COLOR,
@@ -26,10 +27,9 @@ import {
 // Re-export constants for consumers
 export {
   POLYGON_VISIBLE_ZOOM,
-  BRAND_CLUSTER_COLOR,
-  BRAND_CLUSTER_FILL,
-  BRAND_OUTAGE_COLOR,
-  BRAND_OUTAGE_FILL,
+  BRAND_COLOR,
+  BRAND_COLOR_DARK,
+  BRAND_FILL,
   SEARCH_COLOR,
   SEARCH_FILL,
   USER_REPORT_COLOR,
@@ -93,11 +93,10 @@ export const getCircleMarkerRadius = (count: number): number => {
 }
 
 export const createCircleMarkerOptions = (count: number): L.CircleMarkerOptions => {
-  const isCluster = count > 1
   return {
     radius: getCircleMarkerRadius(count),
-    color: isCluster ? BRAND_CLUSTER_COLOR : BRAND_OUTAGE_COLOR,
-    fillColor: isCluster ? BRAND_CLUSTER_COLOR : BRAND_OUTAGE_COLOR,
+    color: BRAND_COLOR,
+    fillColor: BRAND_COLOR,
     fillOpacity: 0.8,
     weight: 2,
     opacity: 1,
@@ -396,16 +395,13 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     }
 
     const layer = L.geoJSON(featureCollection, {
-      style: (feature) => {
-        const isCluster = feature?.properties?.isCluster
-        return {
-          color: isCluster ? BRAND_CLUSTER_COLOR : BRAND_OUTAGE_COLOR,
-          fillColor: isCluster ? BRAND_CLUSTER_FILL : BRAND_OUTAGE_FILL,
-          weight: 2,
-          opacity: 0.9,
-          fillOpacity: 0.4,
-        }
-      },
+      style: () => ({
+        color: BRAND_COLOR,
+        fillColor: BRAND_FILL,
+        weight: 2,
+        opacity: 0.9,
+        fillOpacity: 0.4,
+      }),
     })
     layer.addTo(activeMap)
     geoJsonLayer.value = layer
@@ -469,7 +465,7 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
       return [marker.lat, marker.lng, intensity]
     })
 
-    // Create heatmap with high visibility colors
+    // Create heatmap with brand-aligned gradient
     const heat = L.heatLayer(heatData, {
       radius: 35,
       blur: 10,
@@ -477,9 +473,9 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
       max: 1.0,
       minOpacity: 0.4,
       gradient: {
-        0.0: 'rgba(0, 150, 136, 0.2)',
-        0.3: 'rgba(24, 184, 166, 0.7)',
-        0.5: 'rgba(255, 193, 7, 0.85)',
+        0.0: 'rgba(30, 201, 104, 0.15)',
+        0.3: 'rgba(30, 201, 104, 0.6)',
+        0.5: 'rgba(240, 165, 0, 0.8)',
         0.7: 'rgba(255, 120, 0, 0.95)',
         0.85: 'rgba(244, 67, 54, 1)',
         1.0: 'rgba(183, 28, 28, 1)',
@@ -619,8 +615,8 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     if (markerLeaflet) {
       if (usingCircleMarkers && 'setStyle' in markerLeaflet) {
         ;(markerLeaflet as L.CircleMarker).setStyle({
-          color: '#f59e0b',
-          fillColor: '#f59e0b',
+          color: BRAND_HIGHLIGHT,
+          fillColor: BRAND_HIGHLIGHT,
           fillOpacity: 1,
           weight: 3,
         })
@@ -642,8 +638,8 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
         }
         highlightPolygonLayer = L.geoJSON(feature, {
           style: {
-            color: '#f59e0b',
-            fillColor: '#fbbf24',
+            color: BRAND_HIGHLIGHT,
+            fillColor: BRAND_HIGHLIGHT_FILL,
             weight: 3,
             opacity: 1,
             fillOpacity: 0.35,
@@ -662,11 +658,9 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     const markerLeaflet = outageMarkerMap.get(activeHighlightId)
     if (markerLeaflet) {
       if (usingCircleMarkers && 'setStyle' in markerLeaflet) {
-        const outage = outageDataMap.get(activeHighlightId)
-        const isCluster = outage ? false : true // single outages aren't clusters
         ;(markerLeaflet as L.CircleMarker).setStyle({
-          color: isCluster ? BRAND_CLUSTER_COLOR : BRAND_OUTAGE_COLOR,
-          fillColor: isCluster ? BRAND_CLUSTER_COLOR : BRAND_OUTAGE_COLOR,
+          color: BRAND_COLOR,
+          fillColor: BRAND_COLOR,
           fillOpacity: 0.8,
           weight: 2,
         })

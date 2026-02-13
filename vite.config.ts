@@ -21,28 +21,28 @@ export default defineConfig({
         },
         button: {
           slots: {
-            base: 'font-semibold transition-all duration-150',
+            base: 'font-medium tracking-tight transition-colors duration-100',
           },
         },
         card: {
           slots: {
-            root: 'shadow-sm ring-1 ring-[var(--ui-border)]',
+            root: 'shadow-xs ring-1 ring-[var(--ui-border)]',
           },
         },
         input: {
           slots: {
-            base: 'transition-colors duration-150',
+            base: 'transition-colors duration-100',
           },
         },
         modal: {
           slots: {
-            overlay: 'bg-neutral-950/50',
-            content: 'shadow-xl ring-1 ring-[var(--ui-border)]',
+            overlay: 'bg-neutral-950/60 backdrop-blur-xs',
+            content: 'shadow-2xl ring-1 ring-[var(--ui-border)]',
           },
         },
         badge: {
           slots: {
-            base: 'font-medium',
+            base: 'font-medium tracking-tight',
           },
         },
       },

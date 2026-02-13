@@ -452,10 +452,10 @@ onBeforeUnmount(() => {
             >
               <defs>
                 <linearGradient :id="gradientId" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stop-color="var(--ui-primary, #18b8a6)" stop-opacity="0.9" />
+                  <stop offset="0%" stop-color="var(--color-primary-500)" stop-opacity="0.9" />
                   <stop
                     offset="100%"
-                    stop-color="var(--ui-secondary, #6ee9d7)"
+                    stop-color="var(--color-primary-300)"
                     stop-opacity="0.8"
                   />
                 </linearGradient>

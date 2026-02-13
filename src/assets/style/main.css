@@ -9,8 +9,8 @@
     font-family: var(--font-sans);
     background-color: var(--ui-bg);
     transition:
-      background-color 0.3s ease,
-      color 0.3s ease;
+      background-color 0.2s ease,
+      color 0.2s ease;
   }
 
   body {
@@ -25,24 +25,22 @@
     background: var(--brand-surface);
     border: 1px solid var(--ui-border-muted);
     box-shadow:
-      0 1px 3px rgba(26, 26, 23, 0.06),
-      0 1px 2px rgba(26, 26, 23, 0.04);
+      0 1px 2px rgba(12, 15, 23, 0.05),
+      0 0 0 1px rgba(12, 15, 23, 0.02);
     transition:
-      background 0.3s ease,
-      box-shadow 0.3s ease;
+      background 0.2s ease,
+      box-shadow 0.2s ease;
   }
 
   .dark #app {
     background: var(--brand-surface);
     border-color: var(--ui-border);
-    box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.2),
-      0 1px 2px rgba(0, 0, 0, 0.12);
+    box-shadow: none;
   }
 
   ::selection {
     background: var(--color-primary-200);
-    color: var(--ui-text-highlighted);
+    color: var(--color-primary-950);
   }
 
   .dark ::selection {
@@ -52,14 +50,14 @@
 
   .map-control-panel {
     box-shadow:
-      0 4px 16px rgba(26, 26, 23, 0.08),
-      0 1px 2px rgba(26, 26, 23, 0.04);
+      0 4px 12px rgba(12, 15, 23, 0.06),
+      0 1px 2px rgba(12, 15, 23, 0.04);
   }
 
   .dark .map-control-panel {
     box-shadow:
-      0 4px 16px rgba(0, 0, 0, 0.25),
-      0 1px 2px rgba(0, 0, 0, 0.1);
+      0 4px 12px rgba(0, 0, 0, 0.3),
+      0 1px 2px rgba(0, 0, 0, 0.15);
   }
 }
 
@@ -74,7 +72,7 @@
 .hljs-built_in,
 .hljs-name,
 .hljs-tag {
-  color: #0aa352;
+  color: #0fa757;
 }
 
 .hljs-string,
@@ -101,7 +99,7 @@
 .hljs-variable,
 .hljs-bullet,
 .hljs-link {
-  color: #098343;
+  color: #0d8544;
 }
 
 .hljs-meta,
@@ -119,8 +117,8 @@
 }
 
 .hljs-addition {
-  color: #0aa352;
-  background-color: rgba(21, 196, 102, 0.1);
+  color: #0fa757;
+  background-color: rgba(30, 201, 104, 0.08);
 }
 
 /* Highlight.js — dark mode */
@@ -129,7 +127,7 @@
 .dark .hljs-built_in,
 .dark .hljs-name,
 .dark .hljs-tag {
-  color: #3adb88;
+  color: #44de89;
 }
 
 .dark .hljs-string,
@@ -156,7 +154,7 @@
 .dark .hljs-variable,
 .dark .hljs-bullet,
 .dark .hljs-link {
-  color: #72ebaa;
+  color: #7decad;
 }
 
 .dark .hljs-meta,
@@ -166,6 +164,6 @@
 }
 
 .dark .hljs-addition {
-  color: #3adb88;
-  background-color: rgba(21, 196, 102, 0.15);
+  color: #44de89;
+  background-color: rgba(30, 201, 104, 0.12);
 }

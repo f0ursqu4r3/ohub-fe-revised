@@ -38,9 +38,9 @@ const mode = ref<Mode>('idle')
 const drawHandler = shallowRef<L.Draw.Polygon | null>(null)
 
 const POLYGON_STYLE: L.PathOptions = {
-  color: '#18b8a6',
+  color: '#1ec968',
   weight: 2,
-  fillColor: '#18b8a6',
+  fillColor: '#1ec968',
   fillOpacity: 0.15,
 }
 
@@ -139,7 +139,7 @@ onMounted(() => {
 
   marker.value = L.circleMarker([props.centerLat, props.centerLng], {
     radius: 7,
-    color: '#18b8a6',
+    color: '#1ec968',
     weight: 2,
     fillColor: 'white',
     fillOpacity: 1,
@@ -295,14 +295,14 @@ onBeforeUnmount(() => {
   margin-left: -5px !important;
   margin-top: -5px !important;
   border-radius: 9999px;
-  border: 2px solid #18b8a6;
+  border: 2px solid #1ec968;
   background: white;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
   cursor: grab;
 }
 
 :deep(.leaflet-editing-icon:hover) {
-  background: #18b8a6;
+  background: #1ec968;
   transform: scale(1.3);
   transition:
     transform 0.1s,
@@ -329,7 +329,7 @@ onBeforeUnmount(() => {
   margin-left: -5px !important;
   margin-top: -5px !important;
   border-radius: 9999px;
-  border: 2px solid #18b8a6;
+  border: 2px solid #1ec968;
   background: white;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
 }
@@ -341,7 +341,7 @@ onBeforeUnmount(() => {
 
 /* Guide dashed line while drawing */
 :deep(.leaflet-draw-guide-dash) {
-  background: #18b8a6;
+  background: #1ec968;
   opacity: 0.6;
 }
 

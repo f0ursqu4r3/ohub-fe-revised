@@ -604,11 +604,11 @@ defineExpose({
   width: 12px;
   height: 12px;
   transform: translate(-50%, -50%);
-  background: linear-gradient(145deg, #ff9c1a, #ff7c00);
+  background: linear-gradient(145deg, #1ec968, #0fa757);
   border: 2px solid #fff;
   border-radius: 50%;
   box-shadow:
-    0 2px 8px rgba(255, 156, 26, 0.5),
+    0 2px 8px rgba(30, 201, 104, 0.5),
     0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
@@ -619,37 +619,37 @@ defineExpose({
   width: 20px;
   height: 20px;
   transform: translate(-50%, -50%);
-  background: rgba(255, 156, 26, 0.3);
+  background: rgba(30, 201, 104, 0.3);
   border-radius: 50%;
   animation: marker-pulse 2s ease-out infinite;
 }
 
 /* Highlighted marker (from detail panel hover) */
 .map-marker--highlight .marker-dot {
-  background: linear-gradient(145deg, #fbbf24, #f59e0b);
+  background: linear-gradient(145deg, #ffc020, #f0a500);
   box-shadow:
-    0 0 0 4px rgba(245, 158, 11, 0.3),
-    0 0 12px rgba(245, 158, 11, 0.5),
-    0 2px 8px rgba(245, 158, 11, 0.4);
+    0 0 0 4px rgba(255, 192, 32, 0.3),
+    0 0 12px rgba(255, 192, 32, 0.5),
+    0 2px 8px rgba(255, 192, 32, 0.4);
   transform: translate(-50%, -50%) scale(1.3);
   transition: all 0.2s ease;
 }
 
 .map-marker--highlight .marker-pulse {
-  background: rgba(245, 158, 11, 0.4);
+  background: rgba(255, 192, 32, 0.4);
   animation: marker-pulse 1s ease-out infinite;
 }
 
 .map-cluster.map-marker--highlight .cluster-core {
   box-shadow:
-    0 0 0 4px rgba(245, 158, 11, 0.3),
-    0 0 12px rgba(245, 158, 11, 0.5),
-    0 3px 12px rgba(24, 184, 166, 0.4);
+    0 0 0 4px rgba(255, 192, 32, 0.3),
+    0 0 12px rgba(255, 192, 32, 0.5),
+    0 3px 12px rgba(30, 201, 104, 0.4);
   transition: box-shadow 0.2s ease;
 }
 
 .map-cluster.map-marker--highlight .cluster-ring {
-  border-color: rgba(245, 158, 11, 0.6);
+  border-color: rgba(255, 192, 32, 0.6);
   animation: cluster-ring-pulse 1.5s ease-in-out infinite;
 }
 
@@ -692,7 +692,7 @@ defineExpose({
 .map-cluster .cluster-ring {
   position: absolute;
   inset: 0;
-  border: 2px solid rgba(24, 184, 166, 0.4);
+  border: 2px solid rgba(30, 201, 104, 0.4);
   border-radius: 50%;
   animation: cluster-ring-pulse 3s ease-in-out infinite;
 }
@@ -703,10 +703,10 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(145deg, #18b8a6, #0f9c8d);
+  background: linear-gradient(145deg, #1ec968, #0fa757);
   border-radius: 50%;
   box-shadow:
-    0 3px 12px rgba(24, 184, 166, 0.4),
+    0 3px 12px rgba(30, 201, 104, 0.4),
     0 1px 3px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
@@ -765,19 +765,19 @@ defineExpose({
 /* Popup styles */
 .map-popup-container .leaflet-popup-content-wrapper {
   padding: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(12px);
   box-shadow:
-    0 8px 32px rgba(5, 15, 29, 0.15),
-    0 2px 8px rgba(5, 15, 29, 0.08);
+    0 8px 32px rgba(12, 15, 23, 0.12),
+    0 2px 8px rgba(12, 15, 23, 0.06);
   overflow: hidden;
 }
 
 .dark .map-popup-container .leaflet-popup-content-wrapper {
-  background: rgba(15, 23, 42, 0.94);
+  background: rgba(24, 27, 38, 0.96);
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 8px 32px rgba(0, 0, 0, 0.4),
     0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
@@ -788,11 +788,11 @@ defineExpose({
 
 .map-popup-container .leaflet-popup-tip {
   background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 2px 4px rgba(5, 15, 29, 0.1);
+  box-shadow: 0 2px 4px rgba(12, 15, 23, 0.08);
 }
 
 .dark .map-popup-container .leaflet-popup-tip {
-  background: rgba(15, 23, 42, 0.94);
+  background: rgba(24, 27, 38, 0.96);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
@@ -804,25 +804,25 @@ defineExpose({
   padding: 0;
   font-size: 16px;
   font-weight: 500;
-  color: #4b5567;
-  background: rgba(5, 15, 29, 0.05);
+  color: var(--ui-text-muted);
+  background: rgba(12, 15, 23, 0.05);
   border-radius: 6px;
   transition: all 0.15s ease;
 }
 
 .dark .map-popup-container .leaflet-popup-close-button {
-  color: #94a3b8;
-  background: rgba(148, 163, 184, 0.18);
+  color: #9ba1af;
+  background: rgba(155, 161, 175, 0.15);
 }
 
 .map-popup-container .leaflet-popup-close-button:hover {
-  color: #ff9c1a;
-  background: rgba(255, 156, 26, 0.1);
+  color: var(--ui-text-highlighted);
+  background: rgba(12, 15, 23, 0.08);
 }
 
 .dark .map-popup-container .leaflet-popup-close-button:hover {
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.18);
+  color: #e3e5eb;
+  background: rgba(155, 161, 175, 0.2);
 }
 
 .map-popup {
@@ -833,14 +833,14 @@ defineExpose({
   margin: 0 0 4px;
   font-size: 15px;
   font-weight: 600;
-  color: #0b1628;
+  color: var(--ui-text-highlighted);
 }
 
 .map-popup__time {
   display: block;
   margin-bottom: 12px;
   font-size: 12px;
-  color: #4b5567;
+  color: var(--ui-text-muted);
 }
 
 .map-popup__items {
@@ -855,7 +855,7 @@ defineExpose({
   justify-content: space-between;
   gap: 12px;
   padding: 8px 10px;
-  background: rgba(5, 15, 29, 0.03);
+  background: rgba(12, 15, 23, 0.03);
   border-radius: 8px;
 }
 
@@ -877,16 +877,16 @@ defineExpose({
   padding: 0;
   border: none;
   border-radius: 6px;
-  background: rgba(24, 184, 166, 0.1);
-  color: #18b8a6;
+  background: rgba(30, 201, 104, 0.1);
+  color: #1ec968;
   cursor: pointer;
   flex-shrink: 0;
   transition: all 0.15s ease;
 }
 
 .map-popup__zoom-btn:hover {
-  background: rgba(24, 184, 166, 0.2);
-  color: #14a897;
+  background: rgba(30, 201, 104, 0.18);
+  color: #0fa757;
   transform: scale(1.05);
 }
 
@@ -897,14 +897,14 @@ defineExpose({
 .map-popup__provider {
   font-size: 13px;
   font-weight: 500;
-  color: #1e2b44;
+  color: var(--ui-text-highlighted);
 }
 
 .map-popup__size {
   font-size: 11px;
   font-weight: 500;
-  color: #18b8a6;
-  background: rgba(24, 184, 166, 0.1);
+  color: #1ec968;
+  background: rgba(30, 201, 104, 0.1);
   padding: 2px 8px;
   border-radius: 10px;
 }
@@ -912,24 +912,20 @@ defineExpose({
 .map-popup__extra {
   margin: 8px 0 0;
   font-size: 12px;
-  color: #4b5567;
+  color: var(--ui-text-muted);
   text-align: center;
 }
 
 .map-popup__empty {
   margin: 0;
   font-size: 13px;
-  color: #4b5567;
+  color: var(--ui-text-muted);
   text-align: center;
-}
-
-.dark .map-popup__empty {
-  color: #94a3b8;
 }
 
 /* Tooltip styles */
 .map-tooltip-container {
-  background: rgba(11, 22, 40, 0.95) !important;
+  background: rgba(12, 15, 23, 0.94) !important;
   backdrop-filter: blur(8px);
   border: none !important;
   border-radius: 8px !important;
@@ -940,7 +936,7 @@ defineExpose({
 }
 
 .map-tooltip-container::before {
-  border-top-color: rgba(11, 22, 40, 0.95) !important;
+  border-top-color: rgba(12, 15, 23, 0.94) !important;
 }
 
 .map-tooltip {
@@ -958,7 +954,7 @@ defineExpose({
 
 .map-tooltip span {
   font-size: 11px;
-  color: #94a3b8;
+  color: #9ba1af;
 }
 
 /* Leaflet control overrides */
@@ -968,7 +964,7 @@ defineExpose({
 }
 
 .dark .leaflet-container {
-  background: #000;
+  background: #0c0f17;
 }
 
 .leaflet-control-attribution {
@@ -980,7 +976,7 @@ defineExpose({
 }
 
 .leaflet-control-attribution a {
-  color: #4b5567 !important;
+  color: var(--ui-text-muted) !important;
 }
 
 /* Minimap overrides */
@@ -992,7 +988,7 @@ defineExpose({
   opacity: 0.7;
 }
 
-/* ─── User Report Markers (violet) ─── */
+/* ─── User Report Markers (amber — secondary) ─── */
 .map-report-marker {
   background: transparent !important;
   border: none !important;
@@ -1005,11 +1001,11 @@ defineExpose({
   width: 12px;
   height: 12px;
   transform: translate(-50%, -50%);
-  background: linear-gradient(145deg, #8b5cf6, #7c3aed);
+  background: linear-gradient(145deg, #f0a500, #cc7f02);
   border: 2px solid #fff;
   border-radius: 50%;
   box-shadow:
-    0 2px 8px rgba(139, 92, 246, 0.5),
+    0 2px 8px rgba(240, 165, 0, 0.5),
     0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
@@ -1020,7 +1016,7 @@ defineExpose({
   width: 20px;
   height: 20px;
   transform: translate(-50%, -50%);
-  background: rgba(139, 92, 246, 0.3);
+  background: rgba(240, 165, 0, 0.3);
   border-radius: 50%;
   animation: marker-pulse 2s ease-out infinite;
 }
@@ -1033,7 +1029,7 @@ defineExpose({
 .map-report-cluster .report-cluster-ring {
   position: absolute;
   inset: 0;
-  border: 2px solid rgba(139, 92, 246, 0.4);
+  border: 2px solid rgba(240, 165, 0, 0.4);
   border-radius: 50%;
   animation: cluster-ring-pulse 3s ease-in-out infinite;
 }
@@ -1044,10 +1040,10 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(145deg, #8b5cf6, #7c3aed);
+  background: linear-gradient(145deg, #f0a500, #cc7f02);
   border-radius: 50%;
   box-shadow:
-    0 3px 12px rgba(139, 92, 246, 0.4),
+    0 3px 12px rgba(240, 165, 0, 0.4),
     0 1px 3px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }

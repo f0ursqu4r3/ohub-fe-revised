@@ -78,10 +78,10 @@ export function useMinimap(options: UseMinimapOptions, refs: MinimapRefs) {
         [70, -50],
       ],
       {
-        color: '#18b8a6',
+        color: '#1ec968',
         weight: 2,
         fill: true,
-        fillColor: '#18b8a6',
+        fillColor: '#1ec968',
         fillOpacity: 0.25,
         interactive: false,
       },
