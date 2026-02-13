@@ -53,7 +53,7 @@ const layerItems = computed(() => [
 
 <template>
   <div
-    class="map-control-panel absolute top-20 right-2 z-1000 flex flex-row gap-0.5 p-1 rounded-[10px] bg-white/92 dark:bg-slate-800/92 backdrop-blur-xl sm:top-1/2 sm:-translate-y-1/2 sm:right-4 sm:flex-col sm:gap-1 sm:p-1.5 sm:rounded-[14px]"
+    class="map-control-panel absolute top-20 right-2 z-1000 flex flex-row gap-0.5 p-1 rounded-full bg-white/92 dark:bg-slate-800/92 backdrop-blur-xl sm:top-1/2 sm:-translate-y-1/2 sm:right-4 sm:flex-col sm:gap-1 sm:p-1.5 sm:rounded-[14px]"
   >
     <UButton
       icon="i-heroicons-plus"
