@@ -19,12 +19,7 @@ import {
 } from 'vue-use-leaflet'
 import { storeToRefs } from 'pinia'
 import { useDarkModeStore } from '@/stores/darkMode'
-import type {
-  MarkerData,
-  PolygonData,
-  ReportMarkerData,
-  BoundsLiteral,
-} from './types'
+import type { MarkerData, PolygonData, ReportMarkerData, BoundsLiteral } from './types'
 import MapControls from './MapControls.vue'
 import TimelineBar from '@/components/TimelineBar.vue'
 import {
@@ -513,6 +508,12 @@ defineExpose({
     <!-- Map Container -->
     <div ref="el" class="w-full h-full z-1"></div>
 
+    <!-- Minimap -->
+    <div
+      ref="minimapEl"
+      class="map-minimap map-control-panel absolute top-20 left-4 z-999 w-48 h-32 bg-white/92 dark:bg-slate-800/92 backdrop-blur-xl rounded-[14px] border border-primary-300/30 dark:border-primary-600/30 overflow-hidden hidden sm:block"
+    ></div>
+
     <!-- Controls -->
     <MapControls
       :is-dark-mode="isDarkMode"
@@ -532,12 +533,6 @@ defineExpose({
       @toggleHeatmap="showHeatmap = !showHeatmap"
       @toggleReportMarkers="showReportMarkers = !showReportMarkers"
     />
-
-    <!-- Minimap -->
-    <div
-      ref="minimapEl"
-      class="map-minimap map-control-panel absolute bottom-24 right-4 z-999 w-48 h-32 bg-white/92 dark:bg-slate-800/92 backdrop-blur-xl rounded-[14px] border border-primary-300/30 dark:border-primary-600/30 overflow-hidden hidden sm:block"
-    ></div>
 
     <!-- Attribution badge -->
     <div

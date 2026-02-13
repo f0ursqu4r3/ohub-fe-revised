@@ -125,7 +125,7 @@ defineProps<{
           type="search"
           icon="i-heroicons-magnifying-glass"
           placeholder="Search addresses..."
-          size="sm"
+          size="lg"
           class="w-full transition-shadow duration-200 focus-within:ring-2 focus-within:ring-primary-300/50 rounded-full"
           :loading="isLoading"
           :ui="{ trailing: 'pe-1', base: 'rounded-full' }"
@@ -215,7 +215,7 @@ defineProps<{
           icon="i-heroicons-exclamation-triangle"
           color="primary"
           variant="soft"
-          size="xs"
+          size="lg"
           square
           class="sm:hidden"
           aria-label="Report outage"
@@ -226,7 +226,7 @@ defineProps<{
           color="primary"
           variant="soft"
           label="Report"
-          size="xs"
+          size="lg"
           class="hidden sm:inline-flex"
           @click="emit('reportOutage')"
         />
@@ -236,7 +236,7 @@ defineProps<{
             icon="i-heroicons-bars-3"
             color="neutral"
             variant="ghost"
-            size="xs"
+            size="lg"
             square
             aria-label="Menu"
           />
@@ -248,7 +248,7 @@ defineProps<{
                 color="neutral"
                 variant="ghost"
                 label="Analytics"
-                size="sm"
+                size="lg"
                 block
                 class="justify-start"
               />
@@ -258,7 +258,7 @@ defineProps<{
                 color="neutral"
                 variant="ghost"
                 label="API Docs"
-                size="sm"
+                size="lg"
                 block
                 class="justify-start"
               />
