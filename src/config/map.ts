@@ -42,16 +42,45 @@ export const POPUP_MAX_ITEMS = 6
 export const PLAYBACK_BASE_INTERVAL_MS = 500
 
 // ─────────────────────────────────────────────────────────────
-// Colors (matches theme.css brand palette)
+// Colors — resolved at runtime from CSS custom properties
 // ─────────────────────────────────────────────────────────────
-export const BRAND_COLOR = '#1ec968'
-export const BRAND_COLOR_DARK = '#0fa757'
-export const BRAND_FILL = 'rgba(30, 201, 104, 0.2)'
-export const BRAND_HIGHLIGHT = '#ffc020'
-export const BRAND_HIGHLIGHT_FILL = 'rgba(255, 192, 32, 0.3)'
+const cssVar = (name: string): string =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+
+const hexToRgba = (hex: string, alpha: number): string => {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/** Read theme colors once the DOM is available. Call this early in app init. */
+let _colors: ReturnType<typeof resolveColors> | null = null
+
+function resolveColors() {
+  return {
+    brand: cssVar('--color-primary-500'),
+    brandDark: cssVar('--color-primary-600'),
+    brandFill: hexToRgba(cssVar('--color-primary-500'), 0.18),
+    highlight: cssVar('--color-secondary-400'),
+    highlightFill: hexToRgba(cssVar('--color-secondary-400'), 0.25),
+    search: '#6366f1',
+    searchFill: 'rgba(99, 102, 241, 0.15)',
+    report: cssVar('--color-secondary-500'),
+    reportCluster: cssVar('--color-secondary-600'),
+  }
+}
+
+export function getMapColors() {
+  if (!_colors) _colors = resolveColors()
+  return _colors
+}
+
+/** Force re-resolve (e.g. after theme switch) */
+export function refreshMapColors() {
+  _colors = resolveColors()
+}
+
+// Legacy named exports for consumers that import individual constants
 export const SEARCH_COLOR = '#6366f1'
 export const SEARCH_FILL = 'rgba(99, 102, 241, 0.15)'
-
-// User Reports (secondary amber — distinct from primary green)
-export const USER_REPORT_COLOR = '#f0a500'
-export const USER_REPORT_CLUSTER_COLOR = '#cc7f02'

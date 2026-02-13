@@ -12,29 +12,14 @@ import {
   POLYGON_VISIBLE_ZOOM,
   CIRCLE_MARKER_THRESHOLD,
   MARKER_RENDER_DEBOUNCE_MS,
-  BRAND_COLOR,
-  BRAND_COLOR_DARK,
-  BRAND_FILL,
-  BRAND_HIGHLIGHT,
-  BRAND_HIGHLIGHT_FILL,
+  getMapColors,
   SEARCH_COLOR,
   SEARCH_FILL,
-  USER_REPORT_COLOR,
-  USER_REPORT_CLUSTER_COLOR,
   logDevError,
 } from '../../config/map'
 
 // Re-export constants for consumers
-export {
-  POLYGON_VISIBLE_ZOOM,
-  BRAND_COLOR,
-  BRAND_COLOR_DARK,
-  BRAND_FILL,
-  SEARCH_COLOR,
-  SEARCH_FILL,
-  USER_REPORT_COLOR,
-  USER_REPORT_CLUSTER_COLOR,
-}
+export { POLYGON_VISIBLE_ZOOM, SEARCH_COLOR, SEARCH_FILL, getMapColors }
 
 // ─────────────────────────────────────────────────────────────
 // Icon Factories
@@ -93,10 +78,11 @@ export const getCircleMarkerRadius = (count: number): number => {
 }
 
 export const createCircleMarkerOptions = (count: number): L.CircleMarkerOptions => {
+  const c = getMapColors()
   return {
     radius: getCircleMarkerRadius(count),
-    color: BRAND_COLOR,
-    fillColor: BRAND_COLOR,
+    color: c.brand,
+    fillColor: c.brand,
     fillOpacity: 0.8,
     weight: 2,
     opacity: 1,
@@ -149,11 +135,12 @@ export const createReportClusterIcon = (count: number): L.DivIcon => {
 }
 
 export const createReportCircleMarkerOptions = (count: number): L.CircleMarkerOptions => {
-  const isCluster = count > 1
+  const c = getMapColors()
+  const color = count > 1 ? c.reportCluster : c.report
   return {
     radius: getCircleMarkerRadius(count),
-    color: isCluster ? USER_REPORT_CLUSTER_COLOR : USER_REPORT_COLOR,
-    fillColor: isCluster ? USER_REPORT_CLUSTER_COLOR : USER_REPORT_COLOR,
+    color,
+    fillColor: color,
     fillOpacity: 0.8,
     weight: 2,
     opacity: 1,
@@ -394,10 +381,11 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
       features,
     }
 
+    const c = getMapColors()
     const layer = L.geoJSON(featureCollection, {
       style: () => ({
-        color: BRAND_COLOR,
-        fillColor: BRAND_FILL,
+        color: c.brand,
+        fillColor: c.brandFill,
         weight: 2,
         opacity: 0.9,
         fillOpacity: 0.4,
@@ -466,6 +454,7 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     })
 
     // Create heatmap with brand-aligned gradient
+    const c = getMapColors()
     const heat = L.heatLayer(heatData, {
       radius: 35,
       blur: 10,
@@ -473,9 +462,9 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
       max: 1.0,
       minOpacity: 0.4,
       gradient: {
-        0.0: 'rgba(30, 201, 104, 0.15)',
-        0.3: 'rgba(30, 201, 104, 0.6)',
-        0.5: 'rgba(240, 165, 0, 0.8)',
+        0.0: c.brandFill,
+        0.3: c.brand,
+        0.5: c.highlight,
         0.7: 'rgba(255, 120, 0, 0.95)',
         0.85: 'rgba(244, 67, 54, 1)',
         1.0: 'rgba(183, 28, 28, 1)',
@@ -611,12 +600,13 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     if (!activeMap) return
 
     // Highlight the marker
+    const c = getMapColors()
     const markerLeaflet = outageMarkerMap.get(id)
     if (markerLeaflet) {
       if (usingCircleMarkers && 'setStyle' in markerLeaflet) {
         ;(markerLeaflet as L.CircleMarker).setStyle({
-          color: BRAND_HIGHLIGHT,
-          fillColor: BRAND_HIGHLIGHT,
+          color: c.highlight,
+          fillColor: c.highlight,
           fillOpacity: 1,
           weight: 3,
         })
@@ -638,8 +628,8 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
         }
         highlightPolygonLayer = L.geoJSON(feature, {
           style: {
-            color: BRAND_HIGHLIGHT,
-            fillColor: BRAND_HIGHLIGHT_FILL,
+            color: c.highlight,
+            fillColor: c.highlightFill,
             weight: 3,
             opacity: 1,
             fillOpacity: 0.35,
@@ -658,9 +648,10 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     const markerLeaflet = outageMarkerMap.get(activeHighlightId)
     if (markerLeaflet) {
       if (usingCircleMarkers && 'setStyle' in markerLeaflet) {
+        const colors = getMapColors()
         ;(markerLeaflet as L.CircleMarker).setStyle({
-          color: BRAND_COLOR,
-          fillColor: BRAND_COLOR,
+          color: colors.brand,
+          fillColor: colors.brand,
           fillOpacity: 0.8,
           weight: 2,
         })

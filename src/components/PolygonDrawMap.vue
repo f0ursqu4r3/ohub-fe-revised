@@ -8,6 +8,7 @@ import 'leaflet-draw/dist/leaflet.draw.css'
 import { useDarkModeStore } from '@/stores/darkMode'
 import { TILE_LAYERS } from '@/composables/map/useMinimap'
 import { parsePolygonWKT } from '@/lib/utils'
+import { getMapColors } from '@/config/map'
 
 const props = withDefaults(
   defineProps<{
@@ -37,11 +38,9 @@ const mode = ref<Mode>('idle')
 
 const drawHandler = shallowRef<L.Draw.Polygon | null>(null)
 
-const POLYGON_STYLE: L.PathOptions = {
-  color: '#1ec968',
-  weight: 2,
-  fillColor: '#1ec968',
-  fillOpacity: 0.15,
+const getPolygonStyle = (): L.PathOptions => {
+  const c = getMapColors()
+  return { color: c.brand, weight: 2, fillColor: c.brand, fillOpacity: 0.15 }
 }
 
 function emitPolygonCoords() {
@@ -73,7 +72,7 @@ function startDrawing() {
   const handler = new L.Draw.Polygon(map.value as any, {
     allowIntersection: false,
     drawError: { color: '#e1453c', message: 'Edges cannot cross!' },
-    shapeOptions: POLYGON_STYLE,
+    shapeOptions: getPolygonStyle(),
   })
   drawHandler.value = handler
   handler.enable()
@@ -137,9 +136,10 @@ onMounted(() => {
   }).addTo(m)
   tileLayer.value = tile
 
+  const mc = getMapColors()
   marker.value = L.circleMarker([props.centerLat, props.centerLng], {
     radius: 7,
-    color: '#1ec968',
+    color: mc.brand,
     weight: 2,
     fillColor: 'white',
     fillOpacity: 1,
@@ -153,7 +153,7 @@ onMounted(() => {
     const parsed = parsePolygonWKT(props.initialPolygonWkt)
     if (parsed.length > 0 && parsed[0] && parsed[0][0]) {
       const ring = parsed[0][0] as [number, number][]
-      const polygon = L.polygon(ring, POLYGON_STYLE)
+      const polygon = L.polygon(ring, getPolygonStyle())
       fg.addLayer(polygon)
       m.fitBounds(polygon.getBounds(), { padding: [30, 30] })
       hasPolygon.value = true
@@ -295,14 +295,14 @@ onBeforeUnmount(() => {
   margin-left: -5px !important;
   margin-top: -5px !important;
   border-radius: 9999px;
-  border: 2px solid #1ec968;
+  border: 2px solid var(--color-primary-500);
   background: white;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
   cursor: grab;
 }
 
 :deep(.leaflet-editing-icon:hover) {
-  background: #1ec968;
+  background: var(--color-primary-500);
   transform: scale(1.3);
   transition:
     transform 0.1s,
@@ -329,7 +329,7 @@ onBeforeUnmount(() => {
   margin-left: -5px !important;
   margin-top: -5px !important;
   border-radius: 9999px;
-  border: 2px solid #1ec968;
+  border: 2px solid var(--color-primary-500);
   background: white;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
 }
@@ -341,7 +341,7 @@ onBeforeUnmount(() => {
 
 /* Guide dashed line while drawing */
 :deep(.leaflet-draw-guide-dash) {
-  background: #1ec968;
+  background: var(--color-primary-500);
   opacity: 0.6;
 }
 

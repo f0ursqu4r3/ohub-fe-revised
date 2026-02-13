@@ -604,11 +604,11 @@ defineExpose({
   width: 12px;
   height: 12px;
   transform: translate(-50%, -50%);
-  background: linear-gradient(145deg, #1ec968, #0fa757);
+  background: linear-gradient(145deg, var(--color-primary-400), var(--color-primary-500));
   border: 2px solid #fff;
   border-radius: 50%;
   box-shadow:
-    0 2px 8px rgba(30, 201, 104, 0.5),
+    0 2px 8px color-mix(in srgb, var(--color-primary-500) 40%, transparent),
     0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
@@ -619,37 +619,37 @@ defineExpose({
   width: 20px;
   height: 20px;
   transform: translate(-50%, -50%);
-  background: rgba(30, 201, 104, 0.3);
+  background: color-mix(in srgb, var(--color-primary-500) 25%, transparent);
   border-radius: 50%;
   animation: marker-pulse 2s ease-out infinite;
 }
 
 /* Highlighted marker (from detail panel hover) */
 .map-marker--highlight .marker-dot {
-  background: linear-gradient(145deg, #ffc020, #f0a500);
+  background: linear-gradient(145deg, var(--color-secondary-400), var(--color-secondary-500));
   box-shadow:
-    0 0 0 4px rgba(255, 192, 32, 0.3),
-    0 0 12px rgba(255, 192, 32, 0.5),
-    0 2px 8px rgba(255, 192, 32, 0.4);
+    0 0 0 4px color-mix(in srgb, var(--color-secondary-400) 25%, transparent),
+    0 0 12px color-mix(in srgb, var(--color-secondary-400) 40%, transparent),
+    0 2px 8px color-mix(in srgb, var(--color-secondary-400) 30%, transparent);
   transform: translate(-50%, -50%) scale(1.3);
   transition: all 0.2s ease;
 }
 
 .map-marker--highlight .marker-pulse {
-  background: rgba(255, 192, 32, 0.4);
+  background: color-mix(in srgb, var(--color-secondary-400) 30%, transparent);
   animation: marker-pulse 1s ease-out infinite;
 }
 
 .map-cluster.map-marker--highlight .cluster-core {
   box-shadow:
-    0 0 0 4px rgba(255, 192, 32, 0.3),
-    0 0 12px rgba(255, 192, 32, 0.5),
-    0 3px 12px rgba(30, 201, 104, 0.4);
+    0 0 0 4px color-mix(in srgb, var(--color-secondary-400) 25%, transparent),
+    0 0 12px color-mix(in srgb, var(--color-secondary-400) 40%, transparent),
+    0 3px 12px color-mix(in srgb, var(--color-primary-500) 30%, transparent);
   transition: box-shadow 0.2s ease;
 }
 
 .map-cluster.map-marker--highlight .cluster-ring {
-  border-color: rgba(255, 192, 32, 0.6);
+  border-color: color-mix(in srgb, var(--color-secondary-400) 50%, transparent);
   animation: cluster-ring-pulse 1.5s ease-in-out infinite;
 }
 
@@ -692,7 +692,7 @@ defineExpose({
 .map-cluster .cluster-ring {
   position: absolute;
   inset: 0;
-  border: 2px solid rgba(30, 201, 104, 0.4);
+  border: 2px solid color-mix(in srgb, var(--color-primary-500) 35%, transparent);
   border-radius: 50%;
   animation: cluster-ring-pulse 3s ease-in-out infinite;
 }
@@ -703,10 +703,10 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(145deg, #1ec968, #0fa757);
+  background: linear-gradient(145deg, var(--color-primary-400), var(--color-primary-500));
   border-radius: 50%;
   box-shadow:
-    0 3px 12px rgba(30, 201, 104, 0.4),
+    0 3px 12px color-mix(in srgb, var(--color-primary-500) 35%, transparent),
     0 1px 3px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
@@ -877,16 +877,16 @@ defineExpose({
   padding: 0;
   border: none;
   border-radius: 6px;
-  background: rgba(30, 201, 104, 0.1);
-  color: #1ec968;
+  background: color-mix(in srgb, var(--color-primary-500) 8%, transparent);
+  color: var(--color-primary-500);
   cursor: pointer;
   flex-shrink: 0;
   transition: all 0.15s ease;
 }
 
 .map-popup__zoom-btn:hover {
-  background: rgba(30, 201, 104, 0.18);
-  color: #0fa757;
+  background: color-mix(in srgb, var(--color-primary-500) 14%, transparent);
+  color: var(--color-primary-600);
   transform: scale(1.05);
 }
 
@@ -903,8 +903,8 @@ defineExpose({
 .map-popup__size {
   font-size: 11px;
   font-weight: 500;
-  color: #1ec968;
-  background: rgba(30, 201, 104, 0.1);
+  color: var(--color-primary-500);
+  background: color-mix(in srgb, var(--color-primary-500) 8%, transparent);
   padding: 2px 8px;
   border-radius: 10px;
 }
@@ -988,7 +988,7 @@ defineExpose({
   opacity: 0.7;
 }
 
-/* ─── User Report Markers (amber — secondary) ─── */
+/* ─── User Report Markers (secondary) ─── */
 .map-report-marker {
   background: transparent !important;
   border: none !important;
@@ -1001,11 +1001,11 @@ defineExpose({
   width: 12px;
   height: 12px;
   transform: translate(-50%, -50%);
-  background: linear-gradient(145deg, #f0a500, #cc7f02);
+  background: linear-gradient(145deg, var(--color-secondary-400), var(--color-secondary-500));
   border: 2px solid #fff;
   border-radius: 50%;
   box-shadow:
-    0 2px 8px rgba(240, 165, 0, 0.5),
+    0 2px 8px color-mix(in srgb, var(--color-secondary-500) 40%, transparent),
     0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
@@ -1016,7 +1016,7 @@ defineExpose({
   width: 20px;
   height: 20px;
   transform: translate(-50%, -50%);
-  background: rgba(240, 165, 0, 0.3);
+  background: color-mix(in srgb, var(--color-secondary-500) 25%, transparent);
   border-radius: 50%;
   animation: marker-pulse 2s ease-out infinite;
 }
@@ -1029,7 +1029,7 @@ defineExpose({
 .map-report-cluster .report-cluster-ring {
   position: absolute;
   inset: 0;
-  border: 2px solid rgba(240, 165, 0, 0.4);
+  border: 2px solid color-mix(in srgb, var(--color-secondary-500) 35%, transparent);
   border-radius: 50%;
   animation: cluster-ring-pulse 3s ease-in-out infinite;
 }
@@ -1040,10 +1040,10 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(145deg, #f0a500, #cc7f02);
+  background: linear-gradient(145deg, var(--color-secondary-400), var(--color-secondary-500));
   border-radius: 50%;
   box-shadow:
-    0 3px 12px rgba(240, 165, 0, 0.4),
+    0 3px 12px color-mix(in srgb, var(--color-secondary-500) 35%, transparent),
     0 1px 3px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }

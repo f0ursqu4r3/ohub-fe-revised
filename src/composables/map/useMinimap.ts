@@ -1,6 +1,6 @@
 import L from 'leaflet'
 import type { Ref, ShallowRef } from 'vue'
-import { logDevError } from '../../config/map'
+import { logDevError, getMapColors } from '../../config/map'
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -72,16 +72,17 @@ export function useMinimap(options: UseMinimapOptions, refs: MinimapRefs) {
     }).addTo(minimapInstance.value)
 
     // Add viewport rectangle
+    const c = getMapColors()
     const rect = L.rectangle(
       [
         [40, -140],
         [70, -50],
       ],
       {
-        color: '#1ec968',
+        color: c.brand,
         weight: 2,
         fill: true,
-        fillColor: '#1ec968',
+        fillColor: c.brand,
         fillOpacity: 0.25,
         interactive: false,
       },

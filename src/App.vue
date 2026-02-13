@@ -2,6 +2,7 @@
 import { watch, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDarkModeStore } from '@/stores/darkMode'
+import { refreshMapColors } from '@/config/map'
 import { useRoute } from 'vue-router'
 import EmptyLayout from '@/layouts/EmptyLayout.vue'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
@@ -17,6 +18,8 @@ watch(
   isDark,
   (dark) => {
     document.documentElement.classList.toggle('dark', dark)
+    // Re-resolve cached JS colors from CSS vars after theme switch
+    requestAnimationFrame(() => refreshMapColors())
   },
   { immediate: true },
 )
