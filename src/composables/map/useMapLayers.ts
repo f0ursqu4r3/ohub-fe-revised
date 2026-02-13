@@ -24,34 +24,38 @@ export { POLYGON_VISIBLE_ZOOM, SEARCH_COLOR, SEARCH_FILL, getMapColors }
 // ─────────────────────────────────────────────────────────────
 // Icon Factories
 // ─────────────────────────────────────────────────────────────
+const BOLT_PATH =
+  'M293.33,59.58V168c0,13.25,10.75,24,24,24h36.85c13.25,0,24,10.75,24,24a24,24,0,0,1-4.27,13.67L230.53,436.68c-7.55,10.9-22.5,13.61-33.4,6.06a24,24,0,0,1-10.33-19.77l.16-97.93a24,24,0,0,0-23.56-24.04h-38.34c-13.25,0-24-10.75-24-24a24,24,0,0,1,4-13.27L249.34,46.31c7.33-11.04,22.22-14.06,33.27-6.73a24,24,0,0,1,10.73,20Z'
+
+const boltSvg = (cls: string) =>
+  `<svg class="${cls}" viewBox="96 28 288 428" xmlns="http://www.w3.org/2000/svg"><path d="${BOLT_PATH}"/></svg>`
+
 export const createMarkerIcon = (): L.DivIcon => {
   return L.divIcon({
     html: `
       <div class="marker-pulse"></div>
-      <div class="marker-dot"></div>
+      ${boltSvg('marker-bolt')}
     `,
     className: 'map-marker',
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-    popupAnchor: [0, -12],
+    iconSize: [22, 28],
+    iconAnchor: [11, 14],
+    popupAnchor: [0, -14],
   })
 }
 
 export const createClusterIcon = (count: number): L.DivIcon => {
-  const size = count >= 100 ? 52 : count >= 20 ? 44 : count >= 5 ? 36 : 28
   const sizeClass = count >= 100 ? 'xl' : count >= 20 ? 'lg' : count >= 5 ? 'md' : 'sm'
 
   return L.divIcon({
     html: `
-      <div class="cluster-ring"></div>
-      <div class="cluster-core">
-        <span class="cluster-count">${count}</span>
-      </div>
+      <div class="marker-pulse"></div>
+      ${boltSvg('marker-bolt')}
+      <div class="cluster-badge"><span>${count}</span></div>
     `,
-    className: `map-cluster map-cluster--${sizeClass}`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    popupAnchor: [0, -size / 2],
+    className: `map-marker map-cluster map-cluster--${sizeClass}`,
+    iconSize: [22, 28],
+    iconAnchor: [11, 14],
+    popupAnchor: [0, -14],
   })
 }
 
@@ -108,12 +112,12 @@ export const createReportMarkerIcon = (): L.DivIcon => {
   return L.divIcon({
     html: `
       <div class="report-marker-pulse"></div>
-      <div class="report-marker-dot"></div>
+      ${boltSvg('report-marker-bolt')}
     `,
     className: 'map-report-marker',
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-    popupAnchor: [0, -12],
+    iconSize: [22, 28],
+    iconAnchor: [11, 14],
+    popupAnchor: [0, -14],
   })
 }
 
@@ -203,7 +207,6 @@ export interface UseMapLayersOptions {
   map: ShallowRef<L.Map | null>
   showMarkers: Ref<boolean>
   showPolygons: Ref<boolean>
-  showHeatmap: Ref<boolean>
   showReportMarkers: Ref<boolean>
   isZooming: Ref<boolean>
   /** When provided, marker clicks fire this callback instead of opening a popup */
@@ -219,9 +222,6 @@ export interface MapLayerRefs {
   /** L.GeoJSON for polygons */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   geoJsonLayer: Ref<any>
-  /** L.Layer for heatmap (leaflet.heat) */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  heatmapLayer: Ref<any>
   /** L.Marker for search result marker */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   searchMarkerLayer: Ref<any>
@@ -233,7 +233,6 @@ export interface MapLayerRefs {
   reportMarkerLayer: Ref<any>
   polygonsVisible: Ref<boolean>
   renderPending: Ref<boolean>
-  heatmapPending: Ref<boolean>
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -244,7 +243,6 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     map,
     showMarkers,
     showPolygons,
-    showHeatmap,
     showReportMarkers,
     isZooming,
     onMarkerClick,
@@ -253,13 +251,11 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
   const {
     markerLayer,
     geoJsonLayer,
-    heatmapLayer,
     searchMarkerLayer,
     searchPolygonLayer,
     reportMarkerLayer,
     polygonsVisible,
     renderPending,
-    heatmapPending,
   } = refs
 
   let debounceTimer: number | null = null
@@ -393,85 +389,6 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     })
     layer.addTo(activeMap)
     geoJsonLayer.value = layer
-  }
-
-  // Track if heatmap plugin is loaded (lazy-loaded on first use)
-  let heatmapPluginLoaded = false
-  let heatmapPluginLoading = false
-
-  const loadHeatmapPlugin = async (): Promise<boolean> => {
-    if (heatmapPluginLoaded) return true
-    if (heatmapPluginLoading) return false // Already loading, skip this render
-
-    heatmapPluginLoading = true
-    try {
-      await import('leaflet.heat')
-      heatmapPluginLoaded = true
-      heatmapPluginLoading = false
-      return true
-    } catch (e) {
-      logDevError('Failed to load leaflet.heat plugin', e)
-      heatmapPluginLoading = false
-      return false
-    }
-  }
-
-  const renderHeatmap = async (markers: MarkerData[]) => {
-    const activeMap = map.value
-    if (!activeMap) return
-
-    // Don't re-render during zoom animations to avoid errors - queue it
-    if (isZooming.value) {
-      heatmapPending.value = true
-      return
-    }
-
-    heatmapPending.value = false
-
-    // Remove existing heatmap layer safely
-    if (heatmapLayer.value) {
-      const layerToRemove = heatmapLayer.value
-      heatmapLayer.value = null
-      try {
-        layerToRemove.off()
-        layerToRemove.remove()
-      } catch (e) {
-        logDevError('Failed to remove heatmap layer', e)
-      }
-    }
-
-    // Skip if heatmap is hidden or no markers
-    if (!showHeatmap.value || !markers.length) return
-
-    // Lazy-load the heatmap plugin on first use
-    const pluginReady = await loadHeatmapPlugin()
-    if (!pluginReady) return
-
-    // Build heatmap data: [lat, lng, intensity]
-    const heatData: Array<[number, number, number]> = markers.map((marker) => {
-      const intensity = Math.min(1, 0.5 + (marker.count ?? 1) / 20)
-      return [marker.lat, marker.lng, intensity]
-    })
-
-    // Create heatmap with brand-aligned gradient
-    const c = getMapColors()
-    const heat = L.heatLayer(heatData, {
-      radius: 35,
-      blur: 10,
-      maxZoom: 14,
-      max: 1.0,
-      minOpacity: 0.4,
-      gradient: {
-        0.0: c.brandFill,
-        0.3: c.brand,
-        0.5: c.highlight,
-        0.7: 'rgba(255, 120, 0, 0.95)',
-        0.85: 'rgba(244, 67, 54, 1)',
-        1.0: 'rgba(183, 28, 28, 1)',
-      },
-    })
-    heat.addTo(activeMap)
-    heatmapLayer.value = heat
   }
 
   const renderSearchMarker = (searchMarker: { lat: number; lng: number } | null) => {
@@ -673,22 +590,12 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
   const cleanup = () => {
     if (debounceTimer) clearTimeout(debounceTimer)
     if (reportDebounceTimer) clearTimeout(reportDebounceTimer)
-
-    if (heatmapLayer.value) {
-      try {
-        heatmapLayer.value.remove()
-      } catch (e) {
-        logDevError('Failed to cleanup heatmap layer', e)
-      }
-      heatmapLayer.value = null
-    }
   }
 
   return {
     queueMarkerRender,
     renderMarkers,
     renderPolygons,
-    renderHeatmap,
     renderSearchMarker,
     renderSearchPolygon,
     queueReportMarkerRender,

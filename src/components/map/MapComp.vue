@@ -6,8 +6,6 @@ import L from 'leaflet'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ;(window as any).L = L
 
-// Note: leaflet.heat is lazy-loaded in useMapLayers when heatmap is first enabled
-
 import type { LeafletEvent } from 'leaflet'
 import { ref, watch, onMounted, onBeforeUnmount, computed, nextTick, type Ref } from 'vue'
 import type { MultiPolygon, Polygon } from 'geojson'
@@ -31,21 +29,6 @@ import {
   type TileStyle,
 } from '@/composables/map'
 import { logDevError } from '@/config/map'
-
-// Extend L namespace for heatmap
-declare module 'leaflet' {
-  function heatLayer(
-    latlngs: Array<[number, number, number?]>,
-    options?: {
-      minOpacity?: number
-      maxZoom?: number
-      max?: number
-      radius?: number
-      blur?: number
-      gradient?: Record<number, string>
-    },
-  ): L.Layer
-}
 
 // Global dark mode
 const darkModeStore = useDarkModeStore()
@@ -100,15 +83,14 @@ const isLoading = ref(true)
 const isFullscreen = ref(false)
 const isZooming = ref(false)
 const renderPending = ref(false)
-const heatmapPending = ref(false)
 const polygonsVisible = ref(false)
 const pendingFocusBounds = ref<BoundsLiteral | null>(null)
 
 // Layer visibility toggles
 const showMarkers = ref(true)
 const showPolygons = ref(true)
-const showHeatmap = ref(false)
 const showReportMarkers = ref(true)
+const showMinimap = ref(true)
 
 // Tile style - synced with global dark mode
 const tileStyle = computed<TileStyle>(() => (globalDarkMode.value ? 'dark' : 'light'))
@@ -116,7 +98,6 @@ const tileStyle = computed<TileStyle>(() => (globalDarkMode.value ? 'dark' : 'li
 // Layers
 const markerLayer = ref<L.LayerGroup | null>(null)
 const geoJsonLayer = ref<L.GeoJSON | null>(null)
-const heatmapLayer = ref<L.Layer | null>(null)
 const searchMarkerLayer = ref<L.Marker | null>(null)
 const searchPolygonLayer = ref<L.GeoJSON | null>(null)
 const reportMarkerLayer = ref<L.LayerGroup | null>(null)
@@ -181,7 +162,6 @@ const {
   queueMarkerRender,
   renderMarkers,
   renderPolygons,
-  renderHeatmap,
   renderSearchMarker,
   renderSearchPolygon,
   queueReportMarkerRender,
@@ -194,7 +174,6 @@ const {
     map: map as Ref<L.Map | null>,
     showMarkers,
     showPolygons,
-    showHeatmap,
     showReportMarkers,
     isZooming,
     onMarkerClick: (marker) => emit('markerClick', marker),
@@ -203,13 +182,11 @@ const {
   {
     markerLayer,
     geoJsonLayer,
-    heatmapLayer,
     searchMarkerLayer,
     searchPolygonLayer,
     reportMarkerLayer,
     polygonsVisible,
     renderPending,
-    heatmapPending,
   },
 )
 
@@ -326,11 +303,6 @@ useLeafletEvent(map as any, 'zoomend', (event: LeafletEvent) => {
       nextTick(() => switchTileLayer(style))
     }
 
-    // Process pending heatmap render after zoom completes
-    if (heatmapPending.value) {
-      nextTick(() => renderHeatmap(props.markers))
-    }
-
     if (renderPending.value) {
       renderPending.value = false
       renderMarkers(props.markers)
@@ -390,12 +362,7 @@ setTimeout(() => {
 // The arrays are replaced (not mutated) when data changes, so deep watching is unnecessary
 watch(
   () => props.markers,
-  () => {
-    queueMarkerRender(props.markers)
-    if (showHeatmap.value && !isZooming.value) {
-      renderHeatmap(props.markers)
-    }
-  },
+  () => queueMarkerRender(props.markers),
 )
 
 watch(
@@ -436,7 +403,6 @@ watch(map, (mapInstance) => {
 // Re-render when visibility toggles change
 watch(showMarkers, () => renderMarkers(props.markers))
 watch(showPolygons, () => renderPolygons(props.polygons))
-watch(showHeatmap, () => renderHeatmap(props.markers))
 watch(showReportMarkers, () => renderReportMarkers(props.reportMarkers))
 
 // Highlight outage on map when detail panel item is hovered
@@ -459,7 +425,6 @@ onMounted(() => {
 
     renderMarkers(props.markers)
     renderPolygons(props.polygons)
-    renderHeatmap(props.markers)
     renderSearchMarker(props.searchMarker)
     renderSearchPolygon(props.searchPolygon)
     initMinimap()
@@ -510,6 +475,7 @@ defineExpose({
 
     <!-- Minimap -->
     <div
+      v-show="showMinimap"
       ref="minimapEl"
       class="map-minimap map-control-panel absolute top-20 left-4 z-999 w-48 h-32 bg-white/92 dark:bg-slate-800/92 backdrop-blur-xl rounded-[14px] border border-primary-300/30 dark:border-primary-600/30 overflow-hidden hidden sm:block"
     ></div>
@@ -520,8 +486,8 @@ defineExpose({
       :is-fullscreen="isFullscreen"
       :show-markers="showMarkers"
       :show-polygons="showPolygons"
-      :show-heatmap="showHeatmap"
       :show-report-markers="showReportMarkers"
+      :show-minimap="showMinimap"
       @zoomIn="zoomIn"
       @zoomOut="zoomOut"
       @resetView="resetView"
@@ -530,8 +496,8 @@ defineExpose({
       @toggleDarkMode="toggleDarkMode"
       @toggleMarkers="showMarkers = !showMarkers"
       @togglePolygons="showPolygons = !showPolygons"
-      @toggleHeatmap="showHeatmap = !showHeatmap"
       @toggleReportMarkers="showReportMarkers = !showReportMarkers"
+      @toggleMinimap="showMinimap = !showMinimap"
     />
 
     <!-- Timeline Bar -->
@@ -540,6 +506,11 @@ defineExpose({
 </template>
 
 <style>
+:root {
+  --bolt-width: 2rem;
+  --bolt-height: 2.5rem;
+  --bolt-badge-font-size: 1rem;
+}
 /* Animations */
 @keyframes pulse-dot {
   0%,
@@ -559,7 +530,7 @@ defineExpose({
     opacity: 1;
   }
   100% {
-    transform: translate(-50%, -50%) scale(2);
+    transform: translate(-50%, -50%) scale(2.5);
     opacity: 0;
   }
 }
@@ -597,19 +568,19 @@ defineExpose({
   border: none !important;
 }
 
-.map-marker .marker-dot {
+.map-marker .marker-bolt {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 12px;
-  height: 12px;
+  width: var(--bolt-width);
+  height: var(--bolt-height);
   transform: translate(-50%, -50%);
-  background: linear-gradient(145deg, var(--color-primary-400), var(--color-primary-500));
-  border: 2px solid #fff;
-  border-radius: 50%;
-  box-shadow:
-    0 2px 8px color-mix(in srgb, var(--color-primary-500) 40%, transparent),
-    0 1px 2px rgba(0, 0, 0, 0.1);
+  fill: var(--color-secondary-400);
+  stroke: white;
+  stroke-width: 20;
+  paint-order: stroke fill;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
+  z-index: 0;
 }
 
 .map-marker .marker-pulse {
@@ -619,38 +590,74 @@ defineExpose({
   width: 20px;
   height: 20px;
   transform: translate(-50%, -50%);
-  background: color-mix(in srgb, var(--color-primary-500) 25%, transparent);
+  background: color-mix(in srgb, var(--color-secondary-400) 25%, transparent);
   border-radius: 50%;
   animation: marker-pulse 2s ease-out infinite;
 }
 
+/* Cluster badge (count) — centered on bolt */
+.map-cluster .cluster-badge {
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* background: var(--color-secondary-500); */
+  /* border: 1.5px solid white; */
+  border-radius: 9999px;
+  font-size: var(--bolt-badge-font-size);
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+  line-height: 1;
+  /* box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); */
+  z-index: 2;
+}
+
+.map-cluster--md .cluster-badge {
+  min-width: 18px;
+  height: 18px;
+  font-size: calc(var(--bolt-badge-font-size) * 0.833);
+}
+
+.map-cluster--lg .cluster-badge,
+.map-cluster--xl .cluster-badge {
+  min-width: 20px;
+  height: 20px;
+  font-size: calc(var(--bolt-badge-font-size) * 0.917);
+  padding: 0 5px;
+}
+
+/* Cluster bolt is slightly larger */
+.map-cluster .marker-bolt {
+  width: calc(var(--bolt-width) * 1.2);
+  height: calc(var(--bolt-height) * 1.2);
+}
+
+.map-cluster--lg .marker-bolt,
+.map-cluster--xl .marker-bolt {
+  width: calc(var(--bolt-width) * 1.2);
+  height: calc(var(--bolt-height) * 1.2);
+}
+
 /* Highlighted marker (from detail panel hover) */
-.map-marker--highlight .marker-dot {
-  background: linear-gradient(145deg, var(--color-secondary-400), var(--color-secondary-500));
-  box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--color-secondary-400) 25%, transparent),
-    0 0 12px color-mix(in srgb, var(--color-secondary-400) 40%, transparent),
-    0 2px 8px color-mix(in srgb, var(--color-secondary-400) 30%, transparent);
-  transform: translate(-50%, -50%) scale(1.3);
+.map-marker--highlight .marker-bolt {
+  fill: var(--color-primary-400);
+  filter:
+    drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary-400) 60%, transparent))
+    drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
+  transform: translate(-50%, -50%) scale(1.2);
   transition: all 0.2s ease;
 }
 
 .map-marker--highlight .marker-pulse {
-  background: color-mix(in srgb, var(--color-secondary-400) 30%, transparent);
+  background: color-mix(in srgb, var(--color-primary-400) 30%, transparent);
   animation: marker-pulse 1s ease-out infinite;
-}
-
-.map-cluster.map-marker--highlight .cluster-core {
-  box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--color-secondary-400) 25%, transparent),
-    0 0 12px color-mix(in srgb, var(--color-secondary-400) 40%, transparent),
-    0 3px 12px color-mix(in srgb, var(--color-primary-500) 30%, transparent);
-  transition: box-shadow 0.2s ease;
-}
-
-.map-cluster.map-marker--highlight .cluster-ring {
-  border-color: color-mix(in srgb, var(--color-secondary-400) 50%, transparent);
-  animation: cluster-ring-pulse 1.5s ease-in-out infinite;
 }
 
 /* CircleMarker styles (lightweight SVG markers for large datasets) */
@@ -683,53 +690,7 @@ defineExpose({
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-/* Cluster styles */
-.map-cluster {
-  background: transparent !important;
-  border: none !important;
-}
-
-.map-cluster .cluster-ring {
-  position: absolute;
-  inset: 0;
-  border: 2px solid color-mix(in srgb, var(--color-primary-500) 35%, transparent);
-  border-radius: 50%;
-  animation: cluster-ring-pulse 3s ease-in-out infinite;
-}
-
-.map-cluster .cluster-core {
-  position: absolute;
-  inset: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(145deg, var(--color-primary-400), var(--color-primary-500));
-  border-radius: 50%;
-  box-shadow:
-    0 3px 12px color-mix(in srgb, var(--color-primary-500) 35%, transparent),
-    0 1px 3px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-.map-cluster .cluster-count {
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-.map-cluster--sm .cluster-count {
-  font-size: 10px;
-}
-.map-cluster--md .cluster-count {
-  font-size: 12px;
-}
-.map-cluster--lg .cluster-count {
-  font-size: 13px;
-}
-.map-cluster--xl .cluster-count {
-  font-size: 14px;
-}
+/* Cluster styles — bolt + badge (no separate circle cluster) */
 
 /* Search marker */
 .map-search-marker {
@@ -994,29 +955,28 @@ defineExpose({
   border: none !important;
 }
 
-.map-report-marker .report-marker-dot {
+.map-report-marker .report-marker-bolt {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 12px;
-  height: 12px;
+  width: var(--bolt-width);
+  height: var(--bolt-height);
   transform: translate(-50%, -50%);
-  background: linear-gradient(145deg, var(--color-secondary-400), var(--color-secondary-500));
-  border: 2px solid #fff;
-  border-radius: 50%;
-  box-shadow:
-    0 2px 8px color-mix(in srgb, var(--color-secondary-500) 40%, transparent),
-    0 1px 2px rgba(0, 0, 0, 0.1);
+  fill: var(--color-secondary-400);
+  stroke: white;
+  stroke-width: 20;
+  paint-order: stroke fill;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
 }
 
 .map-report-marker .report-marker-pulse {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 20px;
-  height: 20px;
+  width: calc(var(--bolt-width) * 0.667);
+  height: calc(var(--bolt-height) * 0.667);
   transform: translate(-50%, -50%);
-  background: color-mix(in srgb, var(--color-secondary-500) 25%, transparent);
+  background: color-mix(in srgb, var(--color-secondary-400) 25%, transparent);
   border-radius: 50%;
   animation: marker-pulse 2s ease-out infinite;
 }

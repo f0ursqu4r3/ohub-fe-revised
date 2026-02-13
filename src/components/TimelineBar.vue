@@ -393,7 +393,7 @@ onBeforeUnmount(() => {
       <div
         v-if="open"
         key="expanded"
-        class="pointer-events-auto w-full max-w-5xl rounded-2xl border border-accented bg-(--ui-bg-elevated)/95 shadow-xl shadow-primary-900/10 backdrop-blur-sm"
+        class="pointer-events-auto w-full max-w-5xl rounded-full border border-accented bg-(--ui-bg-elevated)/95 shadow-xl shadow-primary-900/10 backdrop-blur-sm"
       >
         <div class="tl-row flex items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-3">
           <!-- Playback controls -->
@@ -513,11 +513,11 @@ onBeforeUnmount(() => {
             >
               <div class="relative h-full">
                 <span
-                  class="absolute top-0 bottom-0 left-0 w-0.5 -translate-x-1/2 rounded-full bg-secondary/70 shadow-lg"
+                  class="absolute top-0 bottom-0 left-0 w-0.5 -translate-x-1/2 rounded-full bg-secondary-400 shadow-lg"
                 ></span>
                 <!-- Draggable handle -->
                 <span
-                  class="absolute top-1/2 left-0 z-10 flex h-6 w-3 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-secondary/70 bg-secondary shadow-lg cursor-grab active:cursor-grabbing"
+                  class="absolute top-1/2 left-0 z-10 flex h-6 w-3 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-secondary-400 bg-secondary-400 shadow-lg cursor-grab active:cursor-grabbing"
                 >
                   <span class="w-px h-3 bg-black/20 rounded-full"></span>
                 </span>

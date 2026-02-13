@@ -6,8 +6,8 @@ const props = defineProps<{
   isFullscreen: boolean
   showMarkers: boolean
   showPolygons: boolean
-  showHeatmap: boolean
   showReportMarkers: boolean
+  showMinimap: boolean
 }>()
 
 const emit = defineEmits<{
@@ -19,8 +19,8 @@ const emit = defineEmits<{
   toggleDarkMode: []
   toggleMarkers: []
   togglePolygons: []
-  toggleHeatmap: []
   toggleReportMarkers: []
+  toggleMinimap: []
 }>()
 
 const layerItems = computed(() => [
@@ -43,10 +43,10 @@ const layerItems = computed(() => [
     active: props.showReportMarkers,
   },
   {
-    label: 'Heatmap',
-    icon: 'i-heroicons-fire',
-    onClick: () => emit('toggleHeatmap'),
-    active: props.showHeatmap,
+    label: 'Minimap',
+    icon: 'i-heroicons-map',
+    onClick: () => emit('toggleMinimap'),
+    active: props.showMinimap,
   },
 ])
 </script>

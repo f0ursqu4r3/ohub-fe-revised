@@ -59,11 +59,11 @@ let _colors: ReturnType<typeof resolveColors> | null = null
 
 function resolveColors() {
   return {
-    brand: cssVar('--color-primary-500'),
-    brandDark: cssVar('--color-primary-600'),
-    brandFill: hexToRgba(cssVar('--color-primary-500'), 0.18),
-    highlight: cssVar('--color-secondary-400'),
-    highlightFill: hexToRgba(cssVar('--color-secondary-400'), 0.25),
+    brand: cssVar('--color-primary-400'),
+    brandDark: cssVar('--color-primary-500'),
+    brandFill: hexToRgba(cssVar('--color-primary-400'), 0.18),
+    highlight: cssVar('--color-secondary-300'),
+    highlightFill: hexToRgba(cssVar('--color-secondary-300'), 0.25),
     search: '#6366f1',
     searchFill: 'rgba(99, 102, 241, 0.15)',
     report: cssVar('--color-secondary-500'),
