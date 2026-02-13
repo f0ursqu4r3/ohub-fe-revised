@@ -19,9 +19,30 @@ export default defineConfig({
           secondary: 'secondary',
           neutral: 'neutral',
         },
+        button: {
+          slots: {
+            base: 'font-semibold transition-all duration-150',
+          },
+        },
         card: {
           slots: {
-            root: 'shadow-sm',
+            root: 'shadow-sm ring-1 ring-[var(--ui-border)]',
+          },
+        },
+        input: {
+          slots: {
+            base: 'transition-colors duration-150',
+          },
+        },
+        modal: {
+          slots: {
+            overlay: 'bg-neutral-950/50',
+            content: 'shadow-xl ring-1 ring-[var(--ui-border)]',
+          },
+        },
+        badge: {
+          slots: {
+            base: 'font-medium',
           },
         },
       },

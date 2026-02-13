@@ -534,14 +534,6 @@ defineExpose({
       @toggleReportMarkers="showReportMarkers = !showReportMarkers"
     />
 
-    <!-- Attribution badge -->
-    <div
-      class="map-badge absolute bottom-24 left-4 z-1000 hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-primary-900 dark:text-primary-300 bg-primary-100/25 dark:bg-primary-500/20 backdrop-blur-lg border border-primary-500/30 dark:border-primary-400/40 rounded-full transition-[left] duration-200"
-    >
-      <span class="badge-dot w-1.5 h-1.5 bg-primary-500 rounded-full animate-pulse-dot"></span>
-      Live Data
-    </div>
-
     <!-- Timeline Bar -->
     <TimelineBar />
   </div>

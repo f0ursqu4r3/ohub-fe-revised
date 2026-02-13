@@ -1,0 +1,145 @@
+/*
+ * ohub Brand Theme
+ *
+ * Single source of truth for the brand color palette,
+ * typography, spacing tokens, and semantic UI variables.
+ */
+
+@theme {
+  /* Typography */
+  --font-sans: 'Space Grotesk', 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Space Grotesk', 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Fira Code', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Primary — "Pulse Green" */
+  --color-primary-50: #edfdf4;
+  --color-primary-100: #d3fbe2;
+  --color-primary-200: #aaf5ca;
+  --color-primary-300: #72ebaa;
+  --color-primary-400: #3adb88;
+  --color-primary-500: #15c466;
+  --color-primary-600: #0aa352;
+  --color-primary-700: #098343;
+  --color-primary-800: #0b6838;
+  --color-primary-900: #0b5630;
+  --color-primary-950: #03301a;
+  --color-primary: var(--color-primary-500);
+
+  /* Secondary — "Alert Amber" */
+  --color-secondary-50: #fffbeb;
+  --color-secondary-100: #fff3c4;
+  --color-secondary-200: #ffe588;
+  --color-secondary-300: #ffd149;
+  --color-secondary-400: #ffc020;
+  --color-secondary-500: #f0a500;
+  --color-secondary-600: #cc7f02;
+  --color-secondary-700: #a35d06;
+  --color-secondary-800: #854a0b;
+  --color-secondary-900: #6e3c10;
+  --color-secondary-950: #3e1e04;
+  --color-secondary: var(--color-secondary-500);
+
+  /* Neutral — "Warm Stone" */
+  --color-neutral-50: #fafaf8;
+  --color-neutral-100: #f4f4f1;
+  --color-neutral-200: #e8e8e3;
+  --color-neutral-300: #d4d4cd;
+  --color-neutral-400: #adada3;
+  --color-neutral-500: #8b8b80;
+  --color-neutral-600: #6e6e65;
+  --color-neutral-700: #5a5a52;
+  --color-neutral-800: #454540;
+  --color-neutral-900: #2f2f2b;
+  --color-neutral-950: #1a1a17;
+
+  /* Border Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+
+  /* Shadows */
+  --shadow-brand: 0 18px 50px rgba(26, 26, 23, 0.3);
+}
+
+/* ─── Light Mode ─── */
+
+:root {
+  /* Brand aliases */
+  --brand-primary: var(--color-primary-500);
+  --brand-accent: var(--color-secondary-500);
+  --brand-surface: #ffffff;
+  --brand-base: var(--color-neutral-50);
+
+  /* Nuxt UI semantic — text */
+  --ui-text-dimmed: var(--color-neutral-400);
+  --ui-text-muted: var(--color-neutral-500);
+  --ui-text-toned: var(--color-neutral-600);
+  --ui-text: var(--color-neutral-700);
+  --ui-text-highlighted: var(--color-neutral-900);
+  --ui-text-inverted: #ffffff;
+
+  /* Nuxt UI semantic — backgrounds */
+  --ui-bg: var(--color-neutral-50);
+  --ui-bg-muted: var(--color-neutral-100);
+  --ui-bg-elevated: #ffffff;
+  --ui-bg-accented: var(--color-neutral-200);
+  --ui-bg-inverted: var(--color-neutral-900);
+
+  /* Nuxt UI semantic — borders */
+  --ui-border: var(--color-neutral-200);
+  --ui-border-muted: var(--color-neutral-100);
+  --ui-border-accented: var(--color-neutral-300);
+  --ui-border-inverted: var(--color-neutral-800);
+
+  /* Nuxt UI semantic — primary */
+  --ui-primary: var(--color-primary-600);
+
+  /* Layout */
+  --ui-radius: 0.5rem;
+  --ui-container: 78rem;
+
+  color-scheme: light;
+}
+
+/* ─── Dark Mode ─── */
+
+:root.dark {
+  /* Dark surfaces — cool-tinted for a fresh feel against the green primary */
+  --dark-base: #0c1118;
+  --dark-surface: #151d28;
+  --dark-elevated: #1c2633;
+  --dark-accented: #243040;
+  --dark-text: #e2e8f0;
+  --dark-text-secondary: #94a3b8;
+
+  /* Brand aliases */
+  --brand-surface: var(--dark-surface);
+  --brand-base: var(--dark-base);
+
+  /* Nuxt UI semantic — text (cool light grays) */
+  --ui-text-dimmed: #4b5c72;
+  --ui-text-muted: #64758b;
+  --ui-text-toned: var(--dark-text-secondary);
+  --ui-text: #cbd5e1;
+  --ui-text-highlighted: var(--dark-text);
+  --ui-text-inverted: var(--dark-base);
+
+  /* Nuxt UI semantic — backgrounds (cool dark blues) */
+  --ui-bg: var(--dark-base);
+  --ui-bg-muted: var(--dark-surface);
+  --ui-bg-elevated: var(--dark-elevated);
+  --ui-bg-accented: var(--dark-accented);
+  --ui-bg-inverted: var(--dark-text);
+
+  /* Nuxt UI semantic — borders (cool slate) */
+  --ui-border: #1e293b;
+  --ui-border-muted: #1a2332;
+  --ui-border-accented: #2d3d50;
+  --ui-border-inverted: #cbd5e1;
+
+  /* Nuxt UI semantic — primary */
+  --ui-primary: var(--color-primary-400);
+
+  color-scheme: dark;
+}
