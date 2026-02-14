@@ -5,6 +5,7 @@ import AdminProvidersTab from '@/components/admin/AdminProvidersTab.vue'
 import AdminMembersTab from '@/components/admin/AdminMembersTab.vue'
 import AdminAnalyticsTab from '@/components/admin/AdminAnalyticsTab.vue'
 import AdminFeedbackTab from '@/components/admin/AdminFeedbackTab.vue'
+import AdminCustomersTab from '@/components/admin/AdminCustomersTab.vue'
 
 const adminStore = useAdminStore()
 
@@ -14,9 +15,10 @@ onMounted(() => {
 
 const tabs = [
   { label: 'Providers', icon: 'i-heroicons-building-office-2', slot: 'providers' },
-  { label: 'Members', icon: 'i-heroicons-users', slot: 'members' },
+  { label: 'Provider Members', icon: 'i-heroicons-users', slot: 'members' },
   { label: 'Analytics', icon: 'i-heroicons-chart-bar', slot: 'analytics' },
   { label: 'Feedback', icon: 'i-heroicons-chat-bubble-left-right', slot: 'feedback' },
+  { label: 'Customers', icon: 'i-heroicons-user-group', slot: 'customers' },
 ]
 </script>
 
@@ -37,6 +39,9 @@ const tabs = [
         </template>
         <template #feedback>
           <AdminFeedbackTab />
+        </template>
+        <template #customers>
+          <AdminCustomersTab />
         </template>
       </UTabs>
     </div>

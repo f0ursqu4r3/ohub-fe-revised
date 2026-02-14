@@ -387,7 +387,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="absolute bottom-0 inset-x-0 z-30 pointer-events-none flex justify-center px-2 pb-2 sm:px-4 sm:pb-4">
+  <div class="absolute bottom-0 inset-x-0 z-30 pointer-events-none flex justify-center px-2 sm:px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:pb-[max(1rem,env(safe-area-inset-bottom))]">
     <Transition name="tl-swap" mode="out-in">
       <!-- Expanded bar -->
       <div

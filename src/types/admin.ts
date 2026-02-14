@@ -67,6 +67,16 @@ export interface ProviderMemberResponse {
   role: string
 }
 
+export interface AdminCustomer {
+  id: number
+  email: string
+  company: string
+  planId: string
+  isAdmin: boolean
+  createdAt: number
+  updatedAt: number
+}
+
 export interface AdminFeedbackComment {
   id: number
   targetType: string

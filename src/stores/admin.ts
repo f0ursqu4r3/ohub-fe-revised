@@ -4,6 +4,7 @@ import { useAuthStore } from './auth'
 import type {
   AdminProviderDirectoryItem,
   AdminProviderMember,
+  AdminCustomer,
   AdminFeedbackComment,
   CreateProviderRequest,
   PatchProviderRequest,
@@ -17,6 +18,7 @@ export const useAdminStore = defineStore('admin', () => {
 
   const providers = ref<AdminProviderDirectoryItem[]>([])
   const members = ref<AdminProviderMember[]>([])
+  const customers = ref<AdminCustomer[]>([])
   const feedbackComments = ref<AdminFeedbackComment[]>([])
   const feedbackTotal = ref(0)
   const isLoading = ref(false)
@@ -241,6 +243,46 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  // -- Customers --
+
+  const fetchCustomers = async () => {
+    isLoading.value = true
+    error.value = null
+    try {
+      const headers = await authHeaders()
+      const response = await fetch(`${baseUrl}/v1/admin/customers`, { headers })
+      if (!response.ok) throw new Error('Failed to fetch customers')
+      const data = await response.json()
+      customers.value = data.customers ?? []
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Unknown error'
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const deleteCustomer = async (id: number) => {
+    isLoading.value = true
+    error.value = null
+    try {
+      const headers = await authHeaders()
+      const response = await fetch(`${baseUrl}/v1/admin/customers/${id}`, {
+        method: 'DELETE',
+        headers,
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || 'Failed to delete customer')
+      }
+      await fetchCustomers()
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete customer'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   // -- Feedback --
 
   const fetchFeedbackComments = async (limit = 100, offset = 0) => {
@@ -286,12 +328,14 @@ export const useAdminStore = defineStore('admin', () => {
   return {
     providers,
     members,
+    customers,
     feedbackComments,
     feedbackTotal,
     isLoading,
     error,
     fetchProviders,
     fetchMembers,
+    fetchCustomers,
     fetchFeedbackComments,
     createProvider,
     updateProvider,
@@ -301,6 +345,7 @@ export const useAdminStore = defineStore('admin', () => {
     enableNormAnalytics,
     disableNormAnalytics,
     kickNormAnalytics,
+    deleteCustomer,
     deleteFeedbackComment,
   }
 })

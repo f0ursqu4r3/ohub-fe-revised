@@ -1,21 +1,10 @@
 <script setup lang="ts">
-import { storeToRefs } from 'pinia'
-import { useAuthStore } from '@/stores/auth'
-import { onMounted, computed, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AppNavBar from '@/components/AppNavBar.vue'
 
-const authStore = useAuthStore()
-const { isAuthenticated } = storeToRefs(authStore)
-
 const route = useRoute()
 const collapsed = ref(false)
-
-onMounted(() => {
-  if (isAuthenticated.value) {
-    authStore.fetchCustomer()
-  }
-})
 
 const navItems = computed(() => [
   {

@@ -16,11 +16,8 @@ const route = useRoute()
 const collapsed = ref(false)
 
 onMounted(() => {
-  if (isAuthenticated.value) {
-    authStore.fetchCustomer()
-    if (!providerStore.isMembershipsLoaded) {
-      providerStore.fetchMemberships()
-    }
+  if (isAuthenticated.value && !providerStore.isMembershipsLoaded) {
+    providerStore.fetchMemberships()
   }
 })
 

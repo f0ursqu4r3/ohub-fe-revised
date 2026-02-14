@@ -14,7 +14,7 @@ import {
   type BoundsLiteral,
 } from '@/lib/utils'
 import { usePopupData } from '@/composables/map/usePopupData'
-import MapTopBar from '@/components/MapTopBar.vue'
+import AppNavBar from '@/components/AppNavBar.vue'
 import OutageDetailPanel from '@/components/OutageDetailPanel.vue'
 import MapComp from '@/components/map/MapComp.vue'
 import ReportOutageModal from '@/components/ReportOutageModal.vue'
@@ -211,7 +211,9 @@ const highlightedOutageId = ref<string | number | null>(null)
 <template>
   <div class="flex relative w-full h-full">
     <!-- Top Bar -->
-    <MapTopBar
+    <AppNavBar
+      variant="overlay"
+      show-search
       :loading="loading"
       :load-error="!!error"
       :no-outages="!loading && !error && !selectedBlockOutages.length"
