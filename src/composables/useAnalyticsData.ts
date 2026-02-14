@@ -1,4 +1,4 @@
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAnalyticsStore } from '@/stores/analytics'
 import type { ComplianceBucket } from '@/types/analytics'
@@ -365,6 +365,10 @@ export function useAnalyticsData() {
     await analyticsStore.fetchProviders()
     await loadAllSeries()
     initialized.value = true
+  })
+
+  onBeforeUnmount(() => {
+    analyticsStore.cleanup()
   })
 
   return {

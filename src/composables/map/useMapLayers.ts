@@ -30,8 +30,10 @@ const BOLT_PATH =
 const boltSvg = (cls: string) =>
   `<svg class="${cls}" viewBox="96 28 288 428" xmlns="http://www.w3.org/2000/svg"><path d="${BOLT_PATH}"/></svg>`
 
+let _cachedMarkerIcon: L.DivIcon | null = null
 export const createMarkerIcon = (): L.DivIcon => {
-  return L.divIcon({
+  if (_cachedMarkerIcon) return _cachedMarkerIcon
+  _cachedMarkerIcon = L.divIcon({
     html: `
       <div class="marker-pulse"></div>
       ${boltSvg('marker-bolt')}
@@ -41,12 +43,16 @@ export const createMarkerIcon = (): L.DivIcon => {
     iconAnchor: [11, 14],
     popupAnchor: [0, -14],
   })
+  return _cachedMarkerIcon
 }
 
+const _clusterIconCache = new Map<number, L.DivIcon>()
 export const createClusterIcon = (count: number): L.DivIcon => {
+  const cached = _clusterIconCache.get(count)
+  if (cached) return cached
   const sizeClass = count >= 100 ? 'xl' : count >= 20 ? 'lg' : count >= 5 ? 'md' : 'sm'
 
-  return L.divIcon({
+  const icon = L.divIcon({
     html: `
       <div class="marker-pulse"></div>
       ${boltSvg('marker-bolt')}
@@ -57,10 +63,14 @@ export const createClusterIcon = (count: number): L.DivIcon => {
     iconAnchor: [11, 14],
     popupAnchor: [0, -14],
   })
+  _clusterIconCache.set(count, icon)
+  return icon
 }
 
+let _cachedSearchIcon: L.DivIcon | null = null
 export const createSearchIcon = (): L.DivIcon => {
-  return L.divIcon({
+  if (_cachedSearchIcon) return _cachedSearchIcon
+  _cachedSearchIcon = L.divIcon({
     html: `
       <div class="search-marker-ring"></div>
       <div class="search-marker-dot"></div>
@@ -69,6 +79,7 @@ export const createSearchIcon = (): L.DivIcon => {
     iconSize: [28, 28],
     iconAnchor: [14, 14],
   })
+  return _cachedSearchIcon
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -108,8 +119,10 @@ export const createClusterLabelIcon = (count: number): L.DivIcon => {
 // ─────────────────────────────────────────────────────────────
 // User Report Icon Factories (violet theme)
 // ─────────────────────────────────────────────────────────────
+let _cachedReportMarkerIcon: L.DivIcon | null = null
 export const createReportMarkerIcon = (): L.DivIcon => {
-  return L.divIcon({
+  if (_cachedReportMarkerIcon) return _cachedReportMarkerIcon
+  _cachedReportMarkerIcon = L.divIcon({
     html: `
       <div class="report-marker-pulse"></div>
       ${boltSvg('report-marker-bolt')}
@@ -119,6 +132,7 @@ export const createReportMarkerIcon = (): L.DivIcon => {
     iconAnchor: [11, 14],
     popupAnchor: [0, -14],
   })
+  return _cachedReportMarkerIcon
 }
 
 export const createReportClusterIcon = (count: number): L.DivIcon => {
@@ -590,6 +604,40 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
   const cleanup = () => {
     if (debounceTimer) clearTimeout(debounceTimer)
     if (reportDebounceTimer) clearTimeout(reportDebounceTimer)
+
+    // Clear highlight state
+    unhighlightOutage()
+
+    // Release marker/outage reference maps
+    outageMarkerMap.clear()
+    outageDataMap.clear()
+
+    // Remove all layers from the map
+    const activeMap = map.value
+    if (activeMap) {
+      if (markerLayer.value) {
+        markerLayer.value.clearLayers()
+        activeMap.removeLayer(markerLayer.value)
+        markerLayer.value = null
+      }
+      if (geoJsonLayer.value) {
+        activeMap.removeLayer(geoJsonLayer.value as unknown as L.Layer)
+        geoJsonLayer.value = null
+      }
+      if (searchMarkerLayer.value) {
+        activeMap.removeLayer(searchMarkerLayer.value as unknown as L.Layer)
+        searchMarkerLayer.value = null
+      }
+      if (searchPolygonLayer.value) {
+        activeMap.removeLayer(searchPolygonLayer.value as unknown as L.Layer)
+        searchPolygonLayer.value = null
+      }
+      if (reportMarkerLayer.value) {
+        reportMarkerLayer.value.clearLayers()
+        activeMap.removeLayer(reportMarkerLayer.value)
+        reportMarkerLayer.value = null
+      }
+    }
   }
 
   return {

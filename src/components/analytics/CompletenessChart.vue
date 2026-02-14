@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import {
   select,
   scaleTime,
@@ -97,6 +97,12 @@ function render() {
 }
 
 watch(() => props.points, () => nextTick(render), { flush: 'post' })
+
+onBeforeUnmount(() => {
+  if (chartEl.value) {
+    select(chartEl.value).selectAll('*').remove()
+  }
+})
 </script>
 
 <template>

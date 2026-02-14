@@ -51,6 +51,8 @@ const addressFocused = ref(false)
 const addressActiveIndex = ref(-1)
 let addressDebounceId: number | null = null
 let addressController: AbortController | null = null
+let closeDropdownTimer: number | null = null
+let submitCloseTimer: number | null = null
 
 const showAddressDropdown = computed(
   () =>
@@ -147,7 +149,9 @@ function onAddressKeydown(event: KeyboardEvent) {
 }
 
 const closeAddressDropdown = () => {
-  setTimeout(() => {
+  if (closeDropdownTimer) clearTimeout(closeDropdownTimer)
+  closeDropdownTimer = window.setTimeout(() => {
+    closeDropdownTimer = null
     addressFocused.value = false
   }, 120)
 }
@@ -258,7 +262,8 @@ async function handleSubmit() {
       color: 'success',
       icon: 'i-heroicons-check-circle',
     })
-    setTimeout(() => {
+    submitCloseTimer = window.setTimeout(() => {
+      submitCloseTimer = null
       open.value = false
     }, 1500)
   } catch (err) {
@@ -282,6 +287,8 @@ function clearLocation() {
 
 onBeforeUnmount(() => {
   if (addressDebounceId) clearTimeout(addressDebounceId)
+  if (closeDropdownTimer) clearTimeout(closeDropdownTimer)
+  if (submitCloseTimer) clearTimeout(submitCloseTimer)
   addressController?.abort()
 })
 </script>

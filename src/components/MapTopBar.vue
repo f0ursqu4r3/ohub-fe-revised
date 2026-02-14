@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useLocationSearch, type GeocodeResult } from '@/composables/useLocationSearch'
 import type { MultiPolygon, Polygon } from 'geojson'
 import type { BoundsLiteral } from '@/components/map/types'
@@ -98,6 +98,10 @@ defineProps<{
   loadError?: boolean
   noOutages?: boolean
 }>()
+
+onBeforeUnmount(() => {
+  if (blurTimeoutId.value) window.clearTimeout(blurTimeoutId.value)
+})
 </script>
 
 <template>

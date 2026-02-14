@@ -1,7 +1,25 @@
+import { watch } from 'vue'
 import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useBillingStore } from '@/stores/billing'
 import { useProviderStore } from '@/stores/provider'
+
+/** Resolves once the auth store finishes loading (no polling). */
+function waitForAuth(authStore: ReturnType<typeof useAuthStore>): Promise<void> {
+  if (!authStore.isLoading) return Promise.resolve()
+  return new Promise<void>((resolve) => {
+    const stop = watch(
+      () => authStore.isLoading,
+      (loading) => {
+        if (!loading) {
+          stop()
+          resolve()
+        }
+      },
+      { immediate: true },
+    )
+  })
+}
 
 export const subscriptionGuard = async (
   _to: RouteLocationNormalized,
@@ -12,9 +30,7 @@ export const subscriptionGuard = async (
   const billingStore = useBillingStore()
 
   // Wait for auth to be ready
-  while (authStore.isLoading) {
-    await new Promise((resolve) => setTimeout(resolve, 50))
-  }
+  await waitForAuth(authStore)
 
   // If not authenticated, let authGuard handle it
   if (!authStore.isAuthenticated) {
@@ -55,9 +71,7 @@ export const subscribedUserGuard = async (
   const billingStore = useBillingStore()
 
   // Wait for auth to be ready
-  while (authStore.isLoading) {
-    await new Promise((resolve) => setTimeout(resolve, 50))
-  }
+  await waitForAuth(authStore)
 
   // If not authenticated, let authGuard handle it
   if (!authStore.isAuthenticated) {
@@ -98,9 +112,7 @@ export const guestOnlyGuard = async (
   const billingStore = useBillingStore()
 
   // Wait for auth to be ready
-  while (authStore.isLoading) {
-    await new Promise((resolve) => setTimeout(resolve, 50))
-  }
+  await waitForAuth(authStore)
 
   if (authStore.isAuthenticated) {
     // Fetch plans to check isFreeMode
@@ -128,9 +140,7 @@ export const providerGuard = async (
   const providerStore = useProviderStore()
 
   // Wait for auth to be ready
-  while (authStore.isLoading) {
-    await new Promise((resolve) => setTimeout(resolve, 50))
-  }
+  await waitForAuth(authStore)
 
   // If not authenticated, let authGuard handle it
   if (!authStore.isAuthenticated) {

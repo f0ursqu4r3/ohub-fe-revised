@@ -159,6 +159,17 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     }
   }
 
+  /** Cancel in-flight requests and release all cached data */
+  const cleanup = () => {
+    if (seriesAbort) {
+      seriesAbort.abort()
+      seriesAbort = null
+    }
+    seriesByProvider.value = new Map()
+    loadingProviders.value = new Set()
+    series.value = []
+  }
+
   return {
     // State
     summaries,
@@ -184,5 +195,6 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     fetchAllSeries,
     fetchWorkerHealth,
     fetchDirtyBuckets,
+    cleanup,
   }
 })

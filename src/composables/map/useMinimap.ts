@@ -46,6 +46,7 @@ export interface MinimapRefs {
 export function useMinimap(options: UseMinimapOptions, refs: MinimapRefs) {
   const { map, minimapEl, initialStyle } = options
   const { minimapInstance, minimapRect } = refs
+  let initTimer: number | null = null
 
   const initMinimap = () => {
     if (!minimapEl.value || minimapInstance.value) return
@@ -91,7 +92,10 @@ export function useMinimap(options: UseMinimapOptions, refs: MinimapRefs) {
     minimapRect.value = rect
 
     // Initial update after a small delay to ensure main map is ready
-    setTimeout(() => updateMinimapRect(), 200)
+    initTimer = window.setTimeout(() => {
+      initTimer = null
+      updateMinimapRect()
+    }, 200)
   }
 
   const updateMinimapRect = () => {
@@ -134,10 +138,12 @@ export function useMinimap(options: UseMinimapOptions, refs: MinimapRefs) {
   }
 
   const cleanup = () => {
+    if (initTimer) clearTimeout(initTimer)
     if (minimapInstance.value) {
       minimapInstance.value.remove()
       minimapInstance.value = null
     }
+    minimapRect.value = null
   }
 
   return {

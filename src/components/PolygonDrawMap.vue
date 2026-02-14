@@ -198,8 +198,16 @@ watch(
 
 onBeforeUnmount(() => {
   drawHandler.value?.disable()
-  map.value?.remove()
-  map.value = null
+  drawHandler.value = null
+  if (map.value) {
+    map.value.off(L.Draw.Event.CREATED)
+    map.value.off('draw:drawstop')
+    map.value.remove()
+    map.value = null
+  }
+  drawnItems.value = null
+  marker.value = null
+  tileLayer.value = null
 })
 </script>
 

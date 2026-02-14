@@ -349,7 +349,9 @@ watch(activeTileLayer, (layer) => {
 })
 
 // Fallback: clear loading after a short delay if tiles haven't loaded
-setTimeout(() => {
+let loadingFallbackTimer: number | null = null
+loadingFallbackTimer = window.setTimeout(() => {
+  loadingFallbackTimer = null
   if (isLoading.value) {
     isLoading.value = false
   }
@@ -417,8 +419,10 @@ watch(
 // ─────────────────────────────────────────────────────────────
 // Lifecycle
 // ─────────────────────────────────────────────────────────────
+let mountTimer: number | null = null
 onMounted(() => {
-  setTimeout(() => {
+  mountTimer = window.setTimeout(() => {
+    mountTimer = null
     if (globalDarkMode.value) {
       switchTileLayer('dark')
     }
@@ -432,8 +436,16 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (loadingFallbackTimer) clearTimeout(loadingFallbackTimer)
+  if (mountTimer) clearTimeout(mountTimer)
   cleanupLayers()
   cleanupMinimap()
+
+  // Clean up managed tile layer
+  if (activeTileLayer.value) {
+    activeTileLayer.value.remove()
+    activeTileLayer.value = null
+  }
 })
 
 // Expose methods for parent
