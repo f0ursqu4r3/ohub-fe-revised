@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useDarkModeStore } from '@/stores/darkMode'
 import { useLocationSearch, type GeocodeResult } from '@/composables/useLocationSearch'
 import type { MultiPolygon, Polygon } from 'geojson'
 import type { BoundsLiteral } from '@/components/map/types'
+
+const darkModeStore = useDarkModeStore()
+const { isDark } = storeToRefs(darkModeStore)
 
 const emit = defineEmits<{
   (
@@ -235,7 +240,39 @@ onBeforeUnmount(() => {
           @click="emit('reportOutage')"
         />
 
-        <UPopover :content="{ side: 'bottom', align: 'end' }">
+        <!-- Desktop inline nav links (hidden on mobile) -->
+        <USeparator orientation="vertical" class="hidden md:block h-5" />
+        <UButton
+          to="/analytics"
+          icon="i-heroicons-chart-bar"
+          color="neutral"
+          variant="ghost"
+          size="lg"
+          class="hidden md:inline-flex"
+        />
+        <UButton
+          to="/developers"
+          icon="i-heroicons-code-bracket"
+          color="neutral"
+          variant="ghost"
+          size="lg"
+          class="hidden md:inline-flex"
+        />
+
+        <!-- Dark mode toggle (desktop) -->
+        <UButton
+          :icon="isDark ? 'i-heroicons-sun' : 'i-heroicons-moon'"
+          color="neutral"
+          variant="ghost"
+          size="lg"
+          square
+          :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          class="hidden sm:inline-flex"
+          @click="darkModeStore.toggle()"
+        />
+
+        <!-- Mobile hamburger (hidden on md+) -->
+        <UPopover :content="{ side: 'bottom', align: 'end' }" class="md:hidden">
           <UButton
             icon="i-heroicons-bars-3"
             color="neutral"
@@ -245,7 +282,7 @@ onBeforeUnmount(() => {
             aria-label="Menu"
           />
           <template #content>
-            <div class="p-1 min-w-[140px]">
+            <div class="p-1 min-w-40">
               <UButton
                 to="/analytics"
                 icon="i-heroicons-chart-bar"
@@ -265,6 +302,17 @@ onBeforeUnmount(() => {
                 size="lg"
                 block
                 class="justify-start"
+              />
+              <USeparator class="my-1" />
+              <UButton
+                :icon="isDark ? 'i-heroicons-sun' : 'i-heroicons-moon'"
+                :label="isDark ? 'Light mode' : 'Dark mode'"
+                color="neutral"
+                variant="ghost"
+                size="lg"
+                block
+                class="justify-start"
+                @click="darkModeStore.toggle()"
               />
             </div>
           </template>

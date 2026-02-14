@@ -2,19 +2,15 @@
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useProviderStore } from '@/stores/provider'
-import { useDarkModeStore } from '@/stores/darkMode'
-
 import { onMounted, computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import AppNavBar from '@/components/AppNavBar.vue'
 
 const authStore = useAuthStore()
 const { isAuthenticated } = storeToRefs(authStore)
 
 const providerStore = useProviderStore()
 const { memberships, selectedProvider } = storeToRefs(providerStore)
-
-const darkModeStore = useDarkModeStore()
-const { isDark } = storeToRefs(darkModeStore)
 
 const route = useRoute()
 const collapsed = ref(false)
@@ -34,7 +30,9 @@ const providerOptions = computed(() =>
 
 const selectedProviderModel = computed({
   get: () => selectedProvider.value ?? undefined,
-  set: (v: string | undefined) => { selectedProvider.value = v ?? null },
+  set: (v: string | undefined) => {
+    selectedProvider.value = v ?? null
+  },
 })
 
 const navItems = computed(() => [
@@ -48,109 +46,86 @@ const navItems = computed(() => [
 </script>
 
 <template>
-  <div class="h-screen bg-default flex overflow-hidden">
-    <!-- Sidebar -->
-    <aside
-      :class="[
-        'border-r border-default bg-elevated flex flex-col shrink-0 transition-all duration-200 shadow-md',
-        collapsed ? 'w-12' : 'w-56',
-      ]"
-    >
-      <!-- Logo/Title -->
-      <div class="p-2">
-        <div class="flex items-center gap-2">
-          <UButton to="/" color="neutral" variant="ghost" square class="group">
-            <div class="relative w-5 h-5 overflow-hidden">
-              <UIcon
-                name="i-heroicons-map"
-                class="absolute inset-0 w-5 h-5 transition-transform duration-200 group-hover:-translate-x-full"
-              />
-              <UIcon
-                name="i-heroicons-chevron-left"
-                class="absolute inset-0 w-5 h-5 translate-x-full transition-transform duration-200 group-hover:translate-x-0"
-              />
-            </div>
-          </UButton>
-          <h1 v-if="!collapsed" class="text-sm font-semibold text-default">Provider Portal</h1>
-        </div>
-      </div>
+  <div class="h-screen bg-default flex flex-col overflow-hidden">
+    <AppNavBar />
 
-      <USeparator />
-
-      <!-- Provider selector -->
-      <div v-if="!collapsed && providerOptions.length > 1" class="p-2">
-        <USelect
-          v-model="selectedProviderModel"
-          :items="providerOptions"
-          size="sm"
-          class="w-full"
-        />
-      </div>
-      <div v-else-if="!collapsed && selectedProvider" class="px-3 py-2">
-        <p class="text-xs text-muted truncate">{{ selectedProvider }}</p>
-      </div>
-
-      <USeparator v-if="!collapsed" />
-
-      <!-- Navigation -->
-      <nav class="flex-1 p-2">
-        <ul class="space-y-0.5">
-          <li v-for="item in navItems" :key="item.to">
-            <UTooltip :text="item.label" :delay-open="0" side="right" :disabled="!collapsed">
-              <UButton
-                :to="item.to"
-                :icon="item.icon"
-                :label="collapsed ? undefined : item.label"
-                :color="item.active ? 'primary' : 'neutral'"
-                :variant="item.active ? 'soft' : 'ghost'"
-                :block="!collapsed"
-                :square="collapsed"
-                :class="{ 'justify-start': !collapsed }"
-              />
-            </UTooltip>
-          </li>
-        </ul>
-      </nav>
-
-      <!-- Collapse toggle -->
-      <div>
+    <div class="flex flex-1 overflow-hidden">
+      <!-- Sidebar -->
+      <aside
+        :class="[
+          'border-r border-default bg-elevated flex flex-col shrink-0 transition-all duration-200',
+          collapsed ? 'w-12' : 'w-56',
+        ]"
+      >
+        <!-- Section title -->
         <div class="p-2">
-          <UTooltip
-            :text="isDark ? 'Light mode' : 'Dark mode'"
-            :delay-open="0"
-            side="right"
-            :disabled="!collapsed"
-          >
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-building-office-2" class="w-5 h-5 text-muted shrink-0" />
+            <h2 v-if="!collapsed" class="text-sm font-semibold text-default truncate">
+              Provider Portal
+            </h2>
+          </div>
+        </div>
+
+        <USeparator />
+
+        <!-- Provider selector -->
+        <div v-if="!collapsed && providerOptions.length > 1" class="p-2">
+          <USelect
+            v-model="selectedProviderModel"
+            :items="providerOptions"
+            size="sm"
+            class="w-full"
+          />
+        </div>
+        <div v-else-if="!collapsed && selectedProvider" class="px-3 py-2">
+          <p class="text-xs text-muted truncate">{{ selectedProvider }}</p>
+        </div>
+
+        <USeparator v-if="!collapsed" />
+
+        <!-- Navigation -->
+        <nav class="flex-1 p-2">
+          <ul class="space-y-0.5">
+            <li v-for="item in navItems" :key="item.to">
+              <UTooltip :text="item.label" :delay-open="0" side="right" :disabled="!collapsed">
+                <UButton
+                  :to="item.to"
+                  :icon="item.icon"
+                  :label="collapsed ? undefined : item.label"
+                  :color="item.active ? 'primary' : 'neutral'"
+                  :variant="item.active ? 'soft' : 'ghost'"
+                  :block="!collapsed"
+                  :square="collapsed"
+                  :class="{ 'justify-start': !collapsed }"
+                />
+              </UTooltip>
+            </li>
+          </ul>
+        </nav>
+
+        <!-- Collapse toggle -->
+        <div>
+          <USeparator />
+          <div class="flex justify-end items-center p-2">
             <UButton
-              :icon="isDark ? 'i-heroicons-sun' : 'i-heroicons-moon'"
-              :label="collapsed ? undefined : isDark ? 'Light mode' : 'Dark mode'"
+              class="w-full flex justify-end"
               color="neutral"
               variant="ghost"
-              size="sm"
-              :block="!collapsed"
-              :square="collapsed"
-              :class="{ 'justify-start': !collapsed }"
-              @click="darkModeStore.toggle()"
-            />
-          </UTooltip>
+              @click="collapsed = !collapsed"
+            >
+              <UIcon
+                :name="collapsed ? 'i-heroicons-chevron-right' : 'i-heroicons-chevron-left'"
+              />
+            </UButton>
+          </div>
         </div>
-        <USeparator />
-        <div class="flex justify-end items-center p-2">
-          <UButton
-            class="w-full flex justify-end"
-            color="neutral"
-            variant="ghost"
-            @click="collapsed = !collapsed"
-          >
-            <UIcon :name="collapsed ? 'i-heroicons-chevron-right' : 'i-heroicons-chevron-left'" />
-          </UButton>
-        </div>
-      </div>
-    </aside>
+      </aside>
 
-    <!-- Main content area -->
-    <main class="flex-1 overflow-auto">
-      <slot />
-    </main>
+      <!-- Main content area -->
+      <main class="flex-1 overflow-auto">
+        <slot />
+      </main>
+    </div>
   </div>
 </template>

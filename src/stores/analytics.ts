@@ -130,7 +130,19 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     seriesByProvider.value = new Map()
     const providerNames = ['__all__', ...providers.value.map((p) => p.provider)]
     loadingProviders.value = new Set(providerNames)
-    await Promise.all(providerNames.map((p) => fetchProviderSeries(p, granularity, signal)))
+
+    // Concurrency-limited fetching (6 at a time instead of all at once)
+    const concurrency = 6
+    let idx = 0
+    const next = async (): Promise<void> => {
+      while (idx < providerNames.length) {
+        const i = idx++
+        await fetchProviderSeries(providerNames[i]!, granularity, signal)
+      }
+    }
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, providerNames.length) }, () => next()),
+    )
   }
 
   const fetchWorkerHealth = async () => {

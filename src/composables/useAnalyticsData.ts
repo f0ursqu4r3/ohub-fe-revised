@@ -231,12 +231,26 @@ export function useAnalyticsData() {
     return { key, label, loading, days: grid, numWeeks: numCols, monthLabels, overallScore, sparkPath }
   }
 
+  // Cache built tiles to avoid rebuilding all ~100 tiles when one provider's data arrives
+  const _tileCache = new Map<
+    string,
+    { buckets: ComplianceBucket[] | undefined; loading: boolean; granularity: string; tile: ProviderTile }
+  >()
+
   const tiles = computed<ProviderTile[]>(() => {
     const loading = loadingProviders.value
+    const granularity = selectedGranularity.value
     const providerNames = providers.value.map((p) => p.provider)
     const built = providerNames.map((name) => {
       const buckets = seriesByProvider.value.get(name)
-      return buildTile(name, name, buckets ?? [], loading.has(name))
+      const isLoading = loading.has(name)
+      const cached = _tileCache.get(name)
+      if (cached && cached.buckets === buckets && cached.loading === isLoading && cached.granularity === granularity) {
+        return cached.tile
+      }
+      const tile = buildTile(name, name, buckets ?? [], isLoading)
+      _tileCache.set(name, { buckets, loading: isLoading, granularity, tile })
+      return tile
     })
     built.sort((a, b) => {
       if (a.overallScore === -1 && b.overallScore === -1) return a.label.localeCompare(b.label)

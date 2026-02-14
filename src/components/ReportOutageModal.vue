@@ -294,7 +294,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <UModal v-model:open="open" title="Report an Outage">
+  <UModal v-model:open="open" title="Report an Outage" description="Help us track outages in your area by submitting a report.">
     <template #body>
       <!-- Success state -->
       <div v-if="submitted" class="flex flex-col items-center justify-center py-8 text-center">

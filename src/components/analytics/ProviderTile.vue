@@ -1,7 +1,6 @@
 <script setup lang="ts">
+import { inject } from 'vue'
 import {
-  complianceFields,
-  fieldPct,
   getCompletionOpacity,
   CELL_SIZE,
   CELL_GAP,
@@ -11,12 +10,23 @@ import {
   SPARK_H,
   dayOfWeekLabels,
 } from '@/composables/useAnalyticsData'
-import type { ProviderTile } from '@/composables/useAnalyticsData'
+import type { ProviderTile, DayCell } from '@/composables/useAnalyticsData'
+import type { CellTooltipApi } from './ProviderGrid.vue'
 
-defineProps<{
+const props = defineProps<{
   tile: ProviderTile
   granularity: string
 }>()
+
+const cellTooltip = inject<CellTooltipApi>('cellTooltip')
+
+function onCellEnter(cell: DayCell, event: MouseEvent) {
+  cellTooltip?.show(cell, props.tile.label, props.granularity, event.currentTarget as HTMLElement)
+}
+
+function onCellLeave() {
+  cellTooltip?.hide()
+}
 </script>
 
 <template>
@@ -139,96 +149,24 @@ defineProps<{
               class="invisible"
               :style="{ width: `${CELL_SIZE}px`, height: `${CELL_SIZE}px` }"
             />
-            <UPopover
+            <div
               v-else
-              mode="hover"
-              :open-delay="150"
-              :close-delay="50"
-              :content="{ side: 'top', align: 'center', sideOffset: 6 }"
+              class="rounded-[2px] cursor-pointer transition-all duration-150 z-0 hover:z-10 hover:ring-2 hover:ring-primary-400/50 hover:scale-125 bg-muted relative overflow-hidden"
+              :style="{
+                width: `${CELL_SIZE}px`,
+                height: `${CELL_SIZE}px`,
+              }"
+              @mouseenter="onCellEnter(cell, $event)"
+              @mouseleave="onCellLeave"
             >
               <div
-                class="rounded-[2px] cursor-pointer transition-all duration-150 hover:ring-2 hover:ring-primary-400/50 hover:scale-125 bg-muted relative overflow-hidden"
+                class="absolute inset-0 rounded-[2px]"
                 :style="{
-                  width: `${CELL_SIZE}px`,
-                  height: `${CELL_SIZE}px`,
+                  backgroundColor: 'var(--color-primary-500)',
+                  opacity: getCompletionOpacity(cell.value, cell.total > 0),
                 }"
-              >
-                <div
-                  class="absolute inset-0 rounded-[2px]"
-                  :style="{
-                    backgroundColor: 'var(--color-primary-500)',
-                    opacity: getCompletionOpacity(cell.value, cell.total > 0),
-                  }"
-                />
-              </div>
-              <template #content>
-                <div class="p-3 min-w-[180px] text-xs">
-                  <div class="font-semibold mb-1">
-                    {{ tile.label }}
-                  </div>
-                  <div class="text-muted mb-1">
-                    <template v-if="granularity === 'day'">
-                      {{
-                        cell.date.toLocaleDateString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })
-                      }}
-                    </template>
-                    <template v-else-if="granularity === 'week'">
-                      Week of
-                      {{
-                        cell.date.toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })
-                      }}
-                    </template>
-                    <template v-else>
-                      {{
-                        cell.date.toLocaleDateString('en-US', {
-                          month: 'long',
-                          year: 'numeric',
-                        })
-                      }}
-                    </template>
-                  </div>
-                  <template v-if="cell.total > 0">
-                    <div class="font-medium mb-2">Composite: {{ cell.value }}%</div>
-                    <div class="space-y-1">
-                      <div
-                        v-for="field in complianceFields"
-                        :key="field.value"
-                        class="flex items-center justify-between gap-4"
-                      >
-                        <span class="text-muted">{{ field.label }}</span>
-                        <span
-                          class="font-medium tabular-nums"
-                          :class="
-                            cell.bucket && fieldPct(cell.bucket, field.value) >= 80
-                              ? 'text-primary-500'
-                              : ''
-                          "
-                        >
-                          {{
-                            cell.bucket
-                              ? `${cell.bucket[field.value as keyof typeof cell.bucket] as number}/${cell.bucket.total}`
-                              : '&ndash;'
-                          }}
-                        </span>
-                      </div>
-                    </div>
-                    <div class="mt-2 pt-2 border-t border-default text-muted">
-                      Total outages: {{ cell.total }}
-                    </div>
-                  </template>
-                  <div v-else class="text-muted">No outages reported</div>
-                </div>
-              </template>
-            </UPopover>
+              />
+            </div>
           </template>
         </div>
       </div>
