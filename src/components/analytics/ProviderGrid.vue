@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, provide, onBeforeUnmount } from 'vue'
+import { ref, computed, provide, onBeforeUnmount, watch } from 'vue'
 import {
   granularityOptions,
   getCompletionOpacity,
@@ -69,6 +69,27 @@ const tooltipStyle = computed(() => {
     transform: 'translate(-50%, -100%)',
     zIndex: 9999,
   }
+})
+
+// Fade-in the grid when sort completes (loading → done)
+const sortAnimating = ref(false)
+let sortTimer: number | null = null
+
+watch(
+  () => props.isLoadingSeries,
+  (loading, wasLoading) => {
+    if (wasLoading && !loading) {
+      sortAnimating.value = true
+      sortTimer = window.setTimeout(() => {
+        sortAnimating.value = false
+        sortTimer = null
+      }, 400)
+    }
+  },
+)
+
+onBeforeUnmount(() => {
+  if (sortTimer) clearTimeout(sortTimer)
 })
 
 function formatCellDate(cell: DayCell, granularity: string): string {
@@ -160,21 +181,21 @@ function formatCellDate(cell: DayCell, granularity: string): string {
       <span class="text-sm text-muted">Loading providers...</span>
     </div>
 
-    <!-- Provider tile grid -->
-    <TransitionGroup
+    <!-- Provider tile grid — cells are keyed by index so the grid never reflows;
+         only the tile content inside each cell cross-fades on re-sort -->
+    <div
       v-else
-      name="tile"
-      tag="div"
       class="grid gap-4"
+      :class="{ 'sort-fade-in': sortAnimating }"
       style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr))"
     >
       <ProviderTile
-        v-for="tile in tiles"
-        :key="tile.key"
+        v-for="(tile, index) in tiles"
+        :key="index"
         :tile="tile"
         :granularity="granularity"
       />
-    </TransitionGroup>
+    </div>
 
     <!-- Single shared tooltip (replaces per-cell UPopover instances) -->
     <Teleport to="body">
@@ -223,8 +244,17 @@ function formatCellDate(cell: DayCell, granularity: string): string {
 </template>
 
 <style scoped>
-.tile-move {
-  transition: transform 0.5s ease;
+@keyframes sort-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.sort-fade-in {
+  animation: sort-fade 0.4s ease;
 }
 
 .tooltip-fade-enter-active,

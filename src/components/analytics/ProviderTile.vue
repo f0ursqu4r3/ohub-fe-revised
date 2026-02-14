@@ -27,6 +27,8 @@ function onCellEnter(cell: DayCell, event: MouseEvent) {
 function onCellLeave() {
   cellTooltip?.hide()
 }
+
+
 </script>
 
 <template>
@@ -68,18 +70,51 @@ function onCellLeave() {
       />
     </svg>
 
-    <!-- Loading placeholder -->
-    <div
-      v-if="tile.loading && !tile.days.length"
-      class="flex items-center justify-center"
-      :style="{
-        height:
-          granularity === 'day'
-            ? `${7 * (CELL_SIZE + CELL_GAP) + 14}px`
-            : `${CELL_SIZE + 14}px`,
-      }"
-    >
-      <div class="h-1.5 w-16 rounded-full bg-default animate-pulse" />
+    <!-- Loading skeleton -->
+    <div v-if="tile.loading && !tile.days.length" class="animate-pulse">
+      <!-- Sparkline placeholder -->
+      <div class="mb-1.5 w-full overflow-hidden" :style="{ height: `${SPARK_H}px` }">
+        <div class="h-[1.5px] mt-2.5 rounded-full bg-muted/60 w-full" />
+      </div>
+      <!-- Month label row -->
+      <div class="flex gap-6 mb-0.5 h-3.5" :style="{ marginLeft: granularity === 'day' ? `${DAY_LABEL_WIDTH}px` : '0' }">
+        <div class="h-2 w-5 rounded bg-muted/40" />
+        <div class="h-2 w-5 rounded bg-muted/40" />
+        <div class="h-2 w-5 rounded bg-muted/40" />
+      </div>
+      <!-- Grid placeholder -->
+      <div class="flex">
+        <div
+          v-if="granularity === 'day'"
+          class="shrink-0"
+          :style="{ width: `${DAY_LABEL_WIDTH}px` }"
+        />
+        <div
+          class="grid"
+          :style="
+            granularity === 'day'
+              ? {
+                  gridTemplateRows: `repeat(7, ${CELL_SIZE}px)`,
+                  gridAutoFlow: 'column',
+                  gridAutoColumns: `${CELL_SIZE}px`,
+                  gap: `${CELL_GAP}px`,
+                }
+              : {
+                  gridTemplateRows: `${CELL_SIZE}px`,
+                  gridAutoFlow: 'column',
+                  gridAutoColumns: `${CELL_SIZE}px`,
+                  gap: `${CELL_GAP}px`,
+                }
+          "
+        >
+          <div
+            v-for="n in (granularity === 'day' ? 56 : 8)"
+            :key="n"
+            class="rounded-[2px] bg-muted/30"
+            :style="{ width: `${CELL_SIZE}px`, height: `${CELL_SIZE}px` }"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- Mini heatmap -->

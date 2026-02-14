@@ -252,12 +252,17 @@ export function useAnalyticsData() {
       _tileCache.set(name, { buckets, loading: isLoading, granularity, tile })
       return tile
     })
-    built.sort((a, b) => {
-      if (a.overallScore === -1 && b.overallScore === -1) return a.label.localeCompare(b.label)
-      if (a.overallScore === -1) return 1
-      if (b.overallScore === -1) return -1
-      return b.overallScore - a.overallScore
-    })
+    // Alphabetical while loading, score-ranked once done — prevents constant reshuffling
+    if (loading.size > 0) {
+      built.sort((a, b) => a.label.localeCompare(b.label))
+    } else {
+      built.sort((a, b) => {
+        if (a.overallScore === -1 && b.overallScore === -1) return a.label.localeCompare(b.label)
+        if (a.overallScore === -1) return 1
+        if (b.overallScore === -1) return -1
+        return b.overallScore - a.overallScore
+      })
+    }
     return built
   })
 

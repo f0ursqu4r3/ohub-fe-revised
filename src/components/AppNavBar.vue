@@ -48,30 +48,27 @@ const navItems = computed(() => [
         </span>
         OutageHub
       </RouterLink>
+    </div>
 
-      <USeparator orientation="vertical" class="hidden sm:block h-5" />
-
+    <!-- Right: Dark mode + Mobile hamburger -->
+    <div class="flex items-center gap-1">
       <nav class="hidden sm:flex items-center gap-1">
         <UButton
           v-for="item in navItems"
           :key="item.to"
           :to="item.to"
           :icon="item.icon"
-          :label="item.label"
           :color="item.active ? 'primary' : 'neutral'"
           :variant="item.active ? 'soft' : 'ghost'"
-          size="sm"
+          size="lg"
         />
       </nav>
-    </div>
 
-    <!-- Right: Dark mode + Mobile hamburger -->
-    <div class="flex items-center gap-1">
       <UButton
         :icon="isDark ? 'i-heroicons-sun' : 'i-heroicons-moon'"
         color="neutral"
         variant="ghost"
-        size="sm"
+        size="lg"
         square
         :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
         class="hidden sm:inline-flex"
@@ -83,7 +80,7 @@ const navItems = computed(() => [
           icon="i-heroicons-bars-3"
           color="neutral"
           variant="ghost"
-          size="sm"
+          size="lg"
           square
           aria-label="Menu"
         />
