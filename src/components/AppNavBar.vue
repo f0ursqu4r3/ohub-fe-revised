@@ -1,33 +1,54 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { useDarkModeStore } from '@/stores/darkMode'
+import { useAuthStore } from '@/stores/auth'
 import { useRoute } from 'vue-router'
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 
 const darkModeStore = useDarkModeStore()
 const { isDark } = storeToRefs(darkModeStore)
+const authStore = useAuthStore()
 const route = useRoute()
 
-const navItems = computed(() => [
-  {
-    label: 'Map',
-    to: '/',
-    icon: 'i-heroicons-map',
-    active: route.path === '/',
-  },
-  {
-    label: 'Analytics',
-    to: '/analytics',
-    icon: 'i-heroicons-chart-bar',
-    active: route.path === '/analytics',
-  },
-  {
-    label: 'API Docs',
-    to: '/developers',
-    icon: 'i-heroicons-code-bracket',
-    active: route.path.startsWith('/developers'),
-  },
-])
+onMounted(() => {
+  if (authStore.isAuthenticated && !authStore.customer) {
+    authStore.fetchCustomer()
+  }
+})
+
+const navItems = computed(() => {
+  const items = [
+    {
+      label: 'Map',
+      to: '/',
+      icon: 'i-heroicons-map',
+      active: route.path === '/',
+    },
+    {
+      label: 'Analytics',
+      to: '/analytics',
+      icon: 'i-heroicons-chart-bar',
+      active: route.path === '/analytics',
+    },
+    {
+      label: 'API Docs',
+      to: '/developers',
+      icon: 'i-heroicons-code-bracket',
+      active: route.path.startsWith('/developers'),
+    },
+  ]
+
+  if (authStore.isAdmin) {
+    items.push({
+      label: 'Admin',
+      to: '/admin',
+      icon: 'i-heroicons-wrench-screwdriver',
+      active: route.path.startsWith('/admin'),
+    })
+  }
+
+  return items
+})
 </script>
 
 <template>

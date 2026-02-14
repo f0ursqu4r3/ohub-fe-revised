@@ -2,12 +2,14 @@
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDarkModeStore } from '@/stores/darkMode'
+import { useAuthStore } from '@/stores/auth'
 import { useLocationSearch, type GeocodeResult } from '@/composables/useLocationSearch'
 import type { MultiPolygon, Polygon } from 'geojson'
 import type { BoundsLiteral } from '@/components/map/types'
 
 const darkModeStore = useDarkModeStore()
 const { isDark } = storeToRefs(darkModeStore)
+const authStore = useAuthStore()
 
 const emit = defineEmits<{
   (
@@ -258,6 +260,15 @@ onBeforeUnmount(() => {
           size="lg"
           class="hidden md:inline-flex"
         />
+        <UButton
+          v-if="authStore.isAdmin"
+          to="/admin"
+          icon="i-heroicons-wrench-screwdriver"
+          color="neutral"
+          variant="ghost"
+          size="lg"
+          class="hidden md:inline-flex"
+        />
 
         <!-- Dark mode toggle (desktop) -->
         <UButton
@@ -299,6 +310,17 @@ onBeforeUnmount(() => {
                 color="neutral"
                 variant="ghost"
                 label="API Docs"
+                size="lg"
+                block
+                class="justify-start"
+              />
+              <UButton
+                v-if="authStore.isAdmin"
+                to="/admin"
+                icon="i-heroicons-wrench-screwdriver"
+                color="neutral"
+                variant="ghost"
+                label="Admin"
                 size="lg"
                 block
                 class="justify-start"

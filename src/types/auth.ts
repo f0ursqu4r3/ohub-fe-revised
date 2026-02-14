@@ -11,6 +11,7 @@ export interface Customer {
   email: string
   company: string
   planId: string
+  isAdmin: boolean
   createdAt: string
   updatedAt: string
 }

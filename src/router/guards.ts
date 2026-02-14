@@ -131,6 +131,31 @@ export const guestOnlyGuard = async (
   }
 }
 
+export const adminGuard = async (
+  _to: RouteLocationNormalized,
+  _from: RouteLocationNormalized,
+  next: NavigationGuardNext,
+) => {
+  const authStore = useAuthStore()
+
+  await waitForAuth(authStore)
+
+  if (!authStore.isAuthenticated) {
+    next()
+    return
+  }
+
+  if (!authStore.customer) {
+    await authStore.fetchCustomer()
+  }
+
+  if (authStore.isAdmin) {
+    next()
+  } else {
+    next({ name: 'map' })
+  }
+}
+
 export const providerGuard = async (
   _to: RouteLocationNormalized,
   _from: RouteLocationNormalized,

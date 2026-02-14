@@ -11,6 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => auth0.isAuthenticated.value)
   const user = computed(() => auth0.user.value as User | undefined)
   const isLoading = computed(() => auth0.isLoading.value || isLoadingCustomer.value)
+  const isAdmin = computed(() => customer.value?.isAdmin === true)
 
   const fetchCustomer = async () => {
     if (!isAuthenticated.value) return
@@ -53,6 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     user,
     isLoading,
+    isAdmin,
     fetchCustomer,
     login,
     signup,

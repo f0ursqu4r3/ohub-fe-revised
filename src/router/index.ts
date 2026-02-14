@@ -1,6 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { authGuard } from '@auth0/auth0-vue'
-import { guestOnlyGuard, providerGuard, subscribedUserGuard, subscriptionGuard } from './guards'
+import {
+  adminGuard,
+  guestOnlyGuard,
+  providerGuard,
+  subscribedUserGuard,
+  subscriptionGuard,
+} from './guards'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -102,6 +108,13 @@ const router = createRouter({
       component: () => import('../views/provider/ProviderOutagesView.vue'),
       meta: { layout: 'provider' },
       beforeEnter: [authGuard, providerGuard],
+    },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('../views/admin/AdminView.vue'),
+      meta: { layout: 'default' },
+      beforeEnter: [authGuard, adminGuard],
     },
     // catch-all route to main page for undefined routes
     {
