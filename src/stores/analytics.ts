@@ -5,6 +5,7 @@ import type {
   ComplianceBucket,
   ProviderSummary,
   ProvidersResponse,
+  ProviderDirectoryItem,
   WorkerRun,
   DirtyBucketsResponse,
   Granularity,
@@ -20,6 +21,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
   const series = ref<ComplianceBucket[]>([])
   const seriesByProvider = ref<Map<string, ComplianceBucket[]>>(new Map())
   const loadingProviders = ref<Set<string>>(new Set())
+  const providerDirectory = ref<Map<string, ProviderDirectoryItem>>(new Map())
   const workerRun = ref<WorkerRun | null>(null)
   const dirtyBuckets = ref<DirtyBucketsResponse | null>(null)
   const isLoading = ref(false)
@@ -62,6 +64,19 @@ export const useAnalyticsStore = defineStore('analytics', () => {
       error.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
       isLoading.value = false
+    }
+  }
+
+  const fetchProviderDirectory = async () => {
+    try {
+      const response = await fetch(`${baseUrl}/v1/providers/directory`)
+      if (!response.ok) throw new Error('Failed to fetch provider directory')
+      const data: { providers: ProviderDirectoryItem[] } = await response.json()
+      const map = new Map<string, ProviderDirectoryItem>()
+      for (const p of data.providers) map.set(p.name, p)
+      providerDirectory.value = map
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Unknown error'
     }
   }
 
@@ -190,6 +205,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     series,
     seriesByProvider,
     loadingProviders,
+    providerDirectory,
     workerRun,
     dirtyBuckets,
     isLoading,
@@ -202,6 +218,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     // Actions
     fetchSummaries,
     fetchProviders,
+    fetchProviderDirectory,
     fetchSeries,
     fetchProviderSeries,
     fetchAllSeries,

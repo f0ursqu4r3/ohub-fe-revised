@@ -169,6 +169,7 @@ export function useAnalyticsData() {
   const {
     providers,
     seriesByProvider,
+    providerDirectory,
     loadingProviders,
     isLoading,
     isLoadingSeries,
@@ -381,7 +382,7 @@ export function useAnalyticsData() {
   })
 
   onMounted(async () => {
-    await analyticsStore.fetchProviders()
+    await Promise.all([analyticsStore.fetchProviders(), analyticsStore.fetchProviderDirectory()])
     await loadAllSeries()
     initialized.value = true
   })
@@ -395,6 +396,8 @@ export function useAnalyticsData() {
     selectedGranularity,
     isLoading,
     isLoadingSeries,
+    seriesByProvider,
+    providerDirectory,
 
     // Computed data
     tiles,

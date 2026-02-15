@@ -17,6 +17,8 @@ const {
   kpiProviderCount,
   kpiTotalOutages,
   kpiAvgCompleteness,
+  providerDirectory,
+  seriesByProvider,
 } = useAnalyticsData()
 </script>
 
@@ -207,6 +209,8 @@ const {
       :is-loading-series="isLoadingSeries"
       :loading-progress="loadingProgress"
       :provider-count="kpiProviderCount"
+      :provider-directory="providerDirectory"
+      :series-by-provider="seriesByProvider"
       @update:granularity="selectedGranularity = $event as 'day' | 'week' | 'month'"
     />
 

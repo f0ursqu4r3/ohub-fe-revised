@@ -7,7 +7,9 @@ import {
   fieldPct,
 } from '@/composables/useAnalyticsData'
 import type { ProviderTile as ProviderTileType, DayCell } from '@/composables/useAnalyticsData'
+import type { ProviderDirectoryItem, ComplianceBucket } from '@/types/analytics'
 import ProviderTile from './ProviderTile.vue'
+import ProviderSpotlightModal from './ProviderSpotlightModal.vue'
 
 export type CellTooltipApi = {
   show: (cell: DayCell, label: string, granularity: string, el: HTMLElement) => void
@@ -21,6 +23,8 @@ const props = defineProps<{
   isLoadingSeries: boolean
   loadingProgress: { done: number; total: number }
   providerCount: number
+  providerDirectory: Map<string, ProviderDirectoryItem>
+  seriesByProvider: Map<string, ComplianceBucket[]>
 }>()
 
 const emit = defineEmits<{
@@ -106,6 +110,19 @@ function formatCellDate(cell: DayCell, granularity: string): string {
   }
   return cell.date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
+
+// --- Spotlight modal ---
+const spotlightOpen = ref(false)
+const spotlightKey = ref('')
+
+function openSpotlight(key: string) {
+  spotlightKey.value = key
+  spotlightOpen.value = true
+}
+
+const spotlightTile = computed(() => props.tiles.find((t) => t.key === spotlightKey.value) ?? null)
+const spotlightDirectory = computed(() => props.providerDirectory.get(spotlightKey.value) ?? null)
+const spotlightBuckets = computed(() => props.seriesByProvider.get(spotlightKey.value) ?? [])
 </script>
 
 <template>
@@ -194,6 +211,7 @@ function formatCellDate(cell: DayCell, granularity: string): string {
         :key="index"
         :tile="tile"
         :granularity="granularity"
+        @click="openSpotlight"
       />
     </div>
 
@@ -240,6 +258,16 @@ function formatCellDate(cell: DayCell, granularity: string): string {
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Spotlight modal -->
+    <ProviderSpotlightModal
+      v-model:open="spotlightOpen"
+      :provider-name="spotlightKey"
+      :directory="spotlightDirectory"
+      :tile="spotlightTile"
+      :buckets="spotlightBuckets"
+      :granularity="granularity"
+    />
   </section>
 </template>
 

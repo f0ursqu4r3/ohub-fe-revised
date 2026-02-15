@@ -70,4 +70,15 @@ export interface DirtyBucketsResponse {
   sample: DirtyBucketSample[]
 }
 
+export interface ProviderDirectoryItem {
+  name: string
+  niceName: string | null
+  mapLink: string | null
+  blurb: string | null
+  contactLink: string | null
+  picScenic: string | null
+  picOffice: string | null
+  picUtility: string | null
+}
+
 export type Granularity = 'day' | 'week' | 'month'

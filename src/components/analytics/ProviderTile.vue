@@ -18,6 +18,10 @@ const props = defineProps<{
   granularity: string
 }>()
 
+const emit = defineEmits<{
+  click: [key: string]
+}>()
+
 const cellTooltip = inject<CellTooltipApi>('cellTooltip')
 
 function onCellEnter(cell: DayCell, event: MouseEvent) {
@@ -32,7 +36,10 @@ function onCellLeave() {
 </script>
 
 <template>
-  <div class="rounded-lg border border-default bg-elevated p-3 shadow-sm">
+  <div
+    class="rounded-lg border border-default bg-elevated p-3 shadow-sm cursor-pointer transition-all duration-150 hover:ring-2 hover:ring-primary-400/50 hover:shadow-md"
+    @click="emit('click', tile.key)"
+  >
     <!-- Provider name + score + loading -->
     <div class="flex items-center gap-1.5 mb-2">
       <span class="text-xs font-medium text-default truncate">{{ tile.label }}</span>

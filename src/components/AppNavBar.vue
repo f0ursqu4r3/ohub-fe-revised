@@ -193,7 +193,7 @@ const navItems = computed(() => {
             ></span>
             <span class="relative inline-flex h-2 w-2 rounded-full bg-primary-500"></span>
           </span>
-          OHub
+          OutageHub
         </div>
       </div>
 
