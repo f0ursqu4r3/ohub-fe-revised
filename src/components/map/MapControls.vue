@@ -8,6 +8,7 @@ const props = defineProps<{
   showPolygons: boolean
   showReportMarkers: boolean
   showMinimap: boolean
+  showWeather: boolean
 }>()
 
 const emit = defineEmits<{
@@ -21,6 +22,7 @@ const emit = defineEmits<{
   togglePolygons: []
   toggleReportMarkers: []
   toggleMinimap: []
+  toggleWeather: []
 }>()
 
 const layerItems = computed(() => [
@@ -41,6 +43,12 @@ const layerItems = computed(() => [
     icon: 'i-heroicons-user-group',
     onClick: () => emit('toggleReportMarkers'),
     active: props.showReportMarkers,
+  },
+  {
+    label: 'Weather Radar',
+    icon: 'i-heroicons-cloud',
+    onClick: () => emit('toggleWeather'),
+    active: props.showWeather,
   },
   {
     label: 'Minimap',
@@ -128,7 +136,7 @@ const layerItems = computed(() => [
             v-for="item in layerItems"
             :key="item.label"
             @click="item.onClick"
-            class="w-full flex items-center justify-between gap-4 px-3 py-2 rounded-md hover:bg-accented transition-colors text-left"
+            class="w-full min-w-52 flex items-center justify-between gap-4 px-3 py-2 rounded-md hover:bg-accented transition-colors text-left"
           >
             <div class="flex items-center gap-2">
               <UIcon :name="item.icon" class="w-4 h-4" />

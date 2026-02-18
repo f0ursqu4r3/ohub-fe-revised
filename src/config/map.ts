@@ -84,3 +84,39 @@ export function refreshMapColors() {
 // Legacy named exports for consumers that import individual constants
 export const SEARCH_COLOR = '#6366f1'
 export const SEARCH_FILL = 'rgba(99, 102, 241, 0.15)'
+
+// ─────────────────────────────────────────────────────────────
+// Weather Radar (Environment Canada MSC GeoMet WMS)
+// ─────────────────────────────────────────────────────────────
+/** MSC GeoMet WMS endpoint */
+export const GEOMET_WMS_URL = 'https://geo.weather.gc.ca/geomet'
+
+/** WMS radar layer — rain precipitation rate (mm/hr) */
+export const GEOMET_RADAR_LAYERS = 'RADAR_1KM_RRAI'
+
+/** How often to re-fetch available timestamps (ms) — radar updates every 6 min */
+export const WEATHER_REFRESH_INTERVAL_MS = 6 * 60 * 1000
+
+/** Default opacity for the weather radar tile overlay */
+export const WEATHER_RADAR_OPACITY = 0.5
+
+/** z-index for the custom weather pane (between tilePane=200 and overlayPane=400) */
+export const WEATHER_PANE_Z_INDEX = 250
+
+// ─────────────────────────────────────────────────────────────
+// Historical Precipitation (Open-Meteo Forecast API)
+// ─────────────────────────────────────────────────────────────
+/** Open-Meteo forecast endpoint (use past_days for historical hourly data) */
+export const OPENMETEO_API_URL = 'https://api.open-meteo.com/v1/forecast'
+
+/** Grid spacing in degrees for precipitation sampling (~2° ≈ 220 km) */
+export const PRECIP_GRID_SPACING_DEG = 2.0
+
+/** Grid bounds covering southern Canada's populated corridor */
+export const PRECIP_GRID_BOUNDS = { latMin: 42, latMax: 60, lngMin: -140, lngMax: -52 } as const
+
+/** Number of grid points per Open-Meteo API batch request (Open-Meteo rejects large batches) */
+export const PRECIP_API_BATCH_SIZE = 8
+
+/** CircleMarker radius (pixels) for precipitation overlay dots */
+export const PRECIP_MARKER_RADIUS = 22

@@ -6,6 +6,26 @@ import L from 'leaflet'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ;(window as any).L = L
 
+// Patch: Several Leaflet layer types (GridLayer, Marker, Renderer) listen to the
+// map's `zoomanim` event and access `this._map` without a null guard. If a layer
+// is removed while a CSS zoom transition is still in-flight, the queued callback
+// fires on the detached layer and crashes (e.g. "null is not an object").
+// Guard all of them with a single helper.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const _patchAnimateZoom = (proto: any) => {
+  const orig = proto?._animateZoom
+  if (!orig) return
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  proto._animateZoom = function (e: any) {
+    if (!this._map) return
+    orig.call(this, e)
+  }
+}
+_patchAnimateZoom(L.GridLayer.prototype)
+_patchAnimateZoom(L.Marker.prototype)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+_patchAnimateZoom((L as any).Renderer?.prototype)
+
 import type { LeafletEvent } from 'leaflet'
 import { ref, watch, onMounted, onBeforeUnmount, computed, nextTick, type Ref } from 'vue'
 import type { MultiPolygon, Polygon } from 'geojson'
@@ -17,6 +37,7 @@ import {
 } from 'vue-use-leaflet'
 import { storeToRefs } from 'pinia'
 import { useDarkModeStore } from '@/stores/darkMode'
+import { useOutageStore } from '@/stores/outages'
 import type { MarkerData, PolygonData, ReportMarkerData, BoundsLiteral } from './types'
 import MapControls from './MapControls.vue'
 import TimelineBar from '@/components/TimelineBar.vue'
@@ -24,6 +45,7 @@ import {
   useMapLayers,
   useMapControls,
   useMinimap,
+  useWeatherLayer,
   POLYGON_VISIBLE_ZOOM,
   TILE_LAYERS,
   type TileStyle,
@@ -33,6 +55,10 @@ import { logDevError } from '@/config/map'
 // Global dark mode
 const darkModeStore = useDarkModeStore()
 const { isDark: globalDarkMode } = storeToRefs(darkModeStore)
+
+// Outage store — scrubber timestamp for weather sync
+const outageStore = useOutageStore()
+const { selectedOutageTs } = storeToRefs(outageStore)
 
 // ─────────────────────────────────────────────────────────────
 // Props & Emits
@@ -91,6 +117,7 @@ const showMarkers = ref(true)
 const showPolygons = ref(true)
 const showReportMarkers = ref(true)
 const showMinimap = ref(true)
+const showWeather = ref(false)
 
 // Tile style - synced with global dark mode
 const tileStyle = computed<TileStyle>(() => (globalDarkMode.value ? 'dark' : 'light'))
@@ -102,6 +129,7 @@ const searchMarkerLayer = ref<L.Marker | null>(null)
 const searchPolygonLayer = ref<L.GeoJSON | null>(null)
 const reportMarkerLayer = ref<L.LayerGroup | null>(null)
 const activeTileLayer = ref<L.TileLayer | null>(null)
+const weatherTileLayer = ref<L.TileLayer | null>(null)
 
 // Minimap
 const minimapEl = ref<HTMLElement | null>(null)
@@ -207,6 +235,22 @@ const {
   },
 )
 
+const {
+  initWeatherLayer,
+  syncToTimestamp: syncWeatherToTimestamp,
+  setVisible: setWeatherVisible,
+  cleanup: cleanupWeather,
+} = useWeatherLayer(
+  {
+    map: map as Ref<L.Map | null>,
+    showWeather,
+    selectedTs: selectedOutageTs,
+  },
+  {
+    weatherTileLayer,
+  },
+)
+
 // ─────────────────────────────────────────────────────────────
 // Tile Layer Switching
 // ─────────────────────────────────────────────────────────────
@@ -214,8 +258,11 @@ const switchTileLayer = (style: TileStyle) => {
   const activeMap = map.value
   if (!activeMap) return
 
-  // Don't switch tiles during zoom to avoid errors - queue it instead
-  if (isZooming.value) {
+  // Don't switch tiles during zoom to avoid errors - queue it instead.
+  // Also check Leaflet's internal _animatingZoom flag to catch CSS transitions
+  // that haven't yet fired the zoomend event.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (isZooming.value || (activeMap as any)._animatingZoom) {
     pendingTileStyle.value = style
     return
   }
@@ -406,6 +453,8 @@ watch(map, (mapInstance) => {
 watch(showMarkers, () => renderMarkers(props.markers))
 watch(showPolygons, () => renderPolygons(props.polygons))
 watch(showReportMarkers, () => renderReportMarkers(props.reportMarkers))
+watch(showWeather, (visible) => setWeatherVisible(visible))
+watch(selectedOutageTs, () => syncWeatherToTimestamp())
 
 // Highlight outage on map when detail panel item is hovered
 watch(
@@ -432,14 +481,32 @@ onMounted(() => {
     renderSearchMarker(props.searchMarker)
     renderSearchPolygon(props.searchPolygon)
     initMinimap()
+    initWeatherLayer()
   }, 100)
 })
 
 onBeforeUnmount(() => {
   if (loadingFallbackTimer) clearTimeout(loadingFallbackTimer)
   if (mountTimer) clearTimeout(mountTimer)
+
+  // Stop any in-progress zoom animation before removing layers.
+  // Removing tile layers while Leaflet's CSS zoom animation is still running
+  // causes a "null is not an object (evaluating 'map.project')" error because
+  // the animation callback fires on the detached layer whose _map is null.
+  const activeMap = map.value
+  if (activeMap) {
+    try {
+      activeMap.stop()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(activeMap as any)._animatingZoom = false
+    } catch {
+      // Ignore — map may already be partially destroyed
+    }
+  }
+
   cleanupLayers()
   cleanupMinimap()
+  cleanupWeather()
 
   // Clean up managed tile layer
   if (activeTileLayer.value) {
@@ -500,6 +567,7 @@ defineExpose({
       :show-polygons="showPolygons"
       :show-report-markers="showReportMarkers"
       :show-minimap="showMinimap"
+      :show-weather="showWeather"
       @zoomIn="zoomIn"
       @zoomOut="zoomOut"
       @resetView="resetView"
@@ -510,6 +578,7 @@ defineExpose({
       @togglePolygons="showPolygons = !showPolygons"
       @toggleReportMarkers="showReportMarkers = !showReportMarkers"
       @toggleMinimap="showMinimap = !showMinimap"
+      @toggleWeather="showWeather = !showWeather"
     />
 
     <!-- Timeline Bar -->
