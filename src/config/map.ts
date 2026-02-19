@@ -106,6 +106,9 @@ export const WEATHER_PANE_Z_INDEX = 250
 // ─────────────────────────────────────────────────────────────
 // Historical Precipitation (Open-Meteo Forecast API)
 // ─────────────────────────────────────────────────────────────
+/** Whether to enable fetching historical precipitation data from Open-Meteo API */
+export const USE_OPENMETEO_API = false
+
 /** Open-Meteo forecast endpoint (use past_days for historical hourly data) */
 export const OPENMETEO_API_URL = 'https://api.open-meteo.com/v1/forecast'
 

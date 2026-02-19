@@ -15,6 +15,7 @@ import {
   WEATHER_REFRESH_INTERVAL_MS,
   WEATHER_RADAR_OPACITY,
   WEATHER_PANE_Z_INDEX,
+  USE_OPENMETEO_API,
   OPENMETEO_API_URL,
   PRECIP_GRID_SPACING_DEG,
   PRECIP_GRID_BOUNDS,
@@ -272,9 +273,14 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
     const oldest = availableTimes[0]!
     const newest = availableTimes[availableTimes.length - 1]!
 
-    // If scrubber is outside the radar window, don't show
-    if (scrubberMs < oldest - 3 * 60 * 1000 || scrubberMs > newest + 3 * 60 * 1000) {
+    // Scrubber is before radar window — no radar data, fall back to Open-Meteo
+    if (scrubberMs < oldest - 3 * 60 * 1000) {
       return null
+    }
+
+    // Scrubber is ahead of latest radar frame — clamp to newest available
+    if (scrubberMs > newest + 3 * 60 * 1000) {
+      return toWmsTime(newest)
     }
 
     const closest = findClosest(availableTimes, scrubberMs)
@@ -436,6 +442,11 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
 
     // Outside radar window — fall back to Open-Meteo historical precipitation
     removeLayer()
+
+    if (!USE_OPENMETEO_API) {
+      removePrecipLayer()
+      return
+    }
 
     const ts = selectedTs.value
     if (ts === null) {
