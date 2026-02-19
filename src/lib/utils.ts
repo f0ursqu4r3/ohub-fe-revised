@@ -10,7 +10,7 @@ const KM_PER_DEGREE = 111.32
 export const CANADA_BOUNDS_BBOX: [number, number, number, number] = [-170, 10, -40, 90]
 const CLUSTER_ZOOM_RANGE: [number, number] = [4, 16] // start easing clustering at 4, end right before singletons
 const CLUSTER_RADIUS_PX_RANGE: [number, number] = [64, 18] // heavy grouping at low zoom, light at high zoom
-const CLUSTER_CACHE_LIMIT = 8
+const CLUSTER_CACHE_LIMIT = 16
 
 type OutageFeatureProps = {
   outage: Outage

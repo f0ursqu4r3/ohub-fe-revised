@@ -7,8 +7,15 @@ import {
 } from '@/lib/utils'
 import type { PopupData } from '@/components/map/types'
 
+const POPUP_CACHE_MAX = 16
+const popupCache = new Map<string, PopupData>()
+
 export const usePopupData = () => {
   const buildPopupData = (group: GroupedOutage, blockTs: number | null): PopupData | undefined => {
+    // Cache key: outage IDs + blockTs (captures exact cluster + time)
+    const cacheKey = `${group.outages.map((o) => o.id).join(',')}:${blockTs}`
+    const cached = popupCache.get(cacheKey)
+    if (cached) return cached
     const outages = group.outages
     if (!outages.length) return undefined
 
@@ -74,7 +81,7 @@ export const usePopupData = () => {
       }
     })
 
-    return {
+    const result: PopupData = {
       title,
       timeLabel,
       startTs,
@@ -83,6 +90,15 @@ export const usePopupData = () => {
       geoJsonText: geometry ? JSON.stringify(geometry) : null,
       coordsText: group.polygon ?? null,
     }
+
+    // Store in cache with LRU eviction
+    popupCache.set(cacheKey, result)
+    if (popupCache.size > POPUP_CACHE_MAX) {
+      const firstKey = popupCache.keys().next().value
+      if (firstKey !== undefined) popupCache.delete(firstKey)
+    }
+
+    return result
   }
 
   return { buildPopupData }

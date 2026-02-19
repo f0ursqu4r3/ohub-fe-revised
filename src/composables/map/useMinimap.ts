@@ -47,6 +47,7 @@ export function useMinimap(options: UseMinimapOptions, refs: MinimapRefs) {
   const { map, minimapEl, initialStyle } = options
   const { minimapInstance, minimapRect } = refs
   let initTimer: number | null = null
+  let rectRafId: number | null = null
 
   const initMinimap = () => {
     if (!minimapEl.value || minimapInstance.value) return
@@ -98,7 +99,7 @@ export function useMinimap(options: UseMinimapOptions, refs: MinimapRefs) {
     }, 200)
   }
 
-  const updateMinimapRect = () => {
+  const updateMinimapRectImmediate = () => {
     const activeMap = map.value
     if (!activeMap || !minimapRect.value || !minimapInstance.value) return
 
@@ -114,6 +115,15 @@ export function useMinimap(options: UseMinimapOptions, refs: MinimapRefs) {
     } catch (e) {
       logDevError('Failed to update minimap rect', e)
     }
+  }
+
+  /** Throttled via requestAnimationFrame to avoid excessive redraws during pan */
+  const updateMinimapRect = () => {
+    if (rectRafId !== null) return
+    rectRafId = requestAnimationFrame(() => {
+      rectRafId = null
+      updateMinimapRectImmediate()
+    })
   }
 
   const updateMinimapTiles = (style: TileStyle) => {
@@ -139,6 +149,7 @@ export function useMinimap(options: UseMinimapOptions, refs: MinimapRefs) {
 
   const cleanup = () => {
     if (initTimer) clearTimeout(initTimer)
+    if (rectRafId !== null) cancelAnimationFrame(rectRafId)
     if (minimapInstance.value) {
       minimapInstance.value.remove()
       minimapInstance.value = null

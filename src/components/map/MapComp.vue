@@ -196,6 +196,7 @@ const {
   renderReportMarkers,
   highlightOutage,
   unhighlightOutage,
+  cancelPendingRenders,
   cleanup: cleanupLayers,
 } = useMapLayers(
   {
@@ -327,6 +328,8 @@ watch(globalDarkMode, (isDark) => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 useLeafletEvent(map as any, 'zoomstart', () => {
   isZooming.value = true
+  // Cancel any pending debounced renders to prevent mid-zoom rendering
+  cancelPendingRenders()
   // Close any open popup to prevent _map null errors during zoom animation
   map.value?.closePopup()
 })
@@ -352,9 +355,9 @@ useLeafletEvent(map as any, 'zoomend', (event: LeafletEvent) => {
 
     if (renderPending.value) {
       renderPending.value = false
-      renderMarkers(props.markers)
+      renderMarkers(props.markers, true)
       renderPolygons(props.polygons)
-      renderReportMarkers(props.reportMarkers)
+      renderReportMarkers(props.reportMarkers, true)
       return
     }
 
@@ -449,10 +452,10 @@ watch(map, (mapInstance) => {
   }
 })
 
-// Re-render when visibility toggles change
-watch(showMarkers, () => renderMarkers(props.markers))
+// Re-render when visibility toggles change (force bypass fingerprint check)
+watch(showMarkers, () => renderMarkers(props.markers, true))
 watch(showPolygons, () => renderPolygons(props.polygons))
-watch(showReportMarkers, () => renderReportMarkers(props.reportMarkers))
+watch(showReportMarkers, () => renderReportMarkers(props.reportMarkers, true))
 watch(showWeather, (visible) => setWeatherVisible(visible))
 watch(selectedOutageTs, () => syncWeatherToTimestamp())
 

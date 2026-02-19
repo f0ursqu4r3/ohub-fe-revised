@@ -43,6 +43,8 @@ export type MarkerData = {
   /** Block timestamp for lazy popup computation */
   blockTs?: number | null
   count?: number
+  /** Pre-built tooltip HTML (avoids building during render loop) */
+  tooltipHtml?: string
 }
 
 export type PolygonData = {

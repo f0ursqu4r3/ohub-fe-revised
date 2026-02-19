@@ -14,6 +14,7 @@ import {
   type BoundsLiteral,
 } from '@/lib/utils'
 import { usePopupData } from '@/composables/map/usePopupData'
+import { buildTooltipContent } from '@/composables/map/useMapLayers'
 import AppNavBar from '@/components/AppNavBar.vue'
 import OutageDetailPanel from '@/components/OutageDetailPanel.vue'
 import MapComp from '@/components/map/MapComp.vue'
@@ -29,6 +30,7 @@ type MapMarker = {
   outageGroup?: GroupedOutage
   blockTs?: number | null
   count: number
+  tooltipHtml?: string
 }
 
 type MapPolygon = {
@@ -64,13 +66,17 @@ const eventsAtZoomLevel = computed<GroupedOutage[]>(() => {
 })
 
 const mapMarkers = computed<MapMarker[]>(() =>
-  eventsAtZoomLevel.value.map((group) => ({
-    lat: group.center[0],
-    lng: group.center[1],
-    count: group.outages.length,
-    outageGroup: group,
-    blockTs: selectedOutageTs.value,
-  })),
+  eventsAtZoomLevel.value.map((group) => {
+    const marker: MapMarker = {
+      lat: group.center[0],
+      lng: group.center[1],
+      count: group.outages.length,
+      outageGroup: group,
+      blockTs: selectedOutageTs.value,
+    }
+    marker.tooltipHtml = buildTooltipContent(marker)
+    return marker
+  }),
 )
 
 const mapPolygons = computed<MapPolygon[]>(() =>

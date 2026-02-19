@@ -24,10 +24,10 @@ export const POLYGON_VISIBLE_ZOOM = 5
 // Performance Thresholds
 // ─────────────────────────────────────────────────────────────
 /** Switch to lightweight CircleMarkers when marker count exceeds this */
-export const CIRCLE_MARKER_THRESHOLD = 150
+export const CIRCLE_MARKER_THRESHOLD = 200
 
 /** Debounce delay (ms) for marker rendering during rapid updates */
-export const MARKER_RENDER_DEBOUNCE_MS = 80
+export const MARKER_RENDER_DEBOUNCE_MS = 120
 
 // ─────────────────────────────────────────────────────────────
 // Popup & Tooltip

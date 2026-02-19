@@ -1,3 +1,4 @@
+import { onBeforeUnmount } from 'vue'
 import type { Ref, ShallowRef } from 'vue'
 import type L from 'leaflet'
 import type { BoundsLiteral } from '../../components/map/types'
@@ -37,16 +38,22 @@ export function useMapControls(options: UseMapControlsOptions) {
     )
   }
 
+  const onFullscreenChange = () => {
+    isFullscreen.value = !!document.fullscreenElement
+    setTimeout(() => map.value?.invalidateSize(), 100)
+  }
+  document.addEventListener('fullscreenchange', onFullscreenChange)
+  onBeforeUnmount(() => {
+    document.removeEventListener('fullscreenchange', onFullscreenChange)
+  })
+
   const toggleFullscreen = async () => {
     if (!wrapperEl.value) return
     if (!document.fullscreenElement) {
       await wrapperEl.value.requestFullscreen()
-      isFullscreen.value = true
     } else {
       await document.exitFullscreen()
-      isFullscreen.value = false
     }
-    setTimeout(() => map.value?.invalidateSize(), 100)
   }
 
   const zoomToBounds = (bounds: BoundsLiteral) => {

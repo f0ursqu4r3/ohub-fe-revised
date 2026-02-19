@@ -46,6 +46,7 @@ export const createMarkerIcon = (): L.DivIcon => {
   return _cachedMarkerIcon
 }
 
+const ICON_CACHE_MAX = 64
 const _clusterIconCache = new Map<number, L.DivIcon>()
 export const createClusterIcon = (count: number): L.DivIcon => {
   const cached = _clusterIconCache.get(count)
@@ -64,6 +65,11 @@ export const createClusterIcon = (count: number): L.DivIcon => {
     popupAnchor: [0, -14],
   })
   _clusterIconCache.set(count, icon)
+  // Evict oldest entry when cache exceeds limit
+  if (_clusterIconCache.size > ICON_CACHE_MAX) {
+    const firstKey = _clusterIconCache.keys().next().value
+    if (firstKey !== undefined) _clusterIconCache.delete(firstKey)
+  }
   return icon
 }
 
@@ -187,6 +193,9 @@ const buildReportTooltipContent = (marker: ReportMarkerData): string => {
 // Tooltip & Popup Builders
 // ─────────────────────────────────────────────────────────────
 export const buildTooltipContent = (data: MarkerData): string => {
+  // Use pre-built tooltip HTML if available (avoids work during render loop)
+  if (data.tooltipHtml) return data.tooltipHtml
+
   // Use pre-computed popupData if available (legacy path)
   if (data.popupData) {
     const { title, timeLabel } = data.popupData
@@ -274,6 +283,26 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
 
   let debounceTimer: number | null = null
 
+  // ── Skip redundant renders ──
+  let lastMarkerKey = ''
+  let lastReportMarkerKey = ''
+
+  /** Build a cheap fingerprint from marker data to detect changes */
+  const markerFingerprint = (markers: MarkerData[]): string => {
+    if (!markers.length) return ''
+    // Use length + first/last lat/lng/count as a fast proxy
+    const first = markers[0]!
+    const last = markers[markers.length - 1]!
+    return `${markers.length}:${first.lat},${first.lng},${first.count}:${last.lat},${last.lng},${last.count}`
+  }
+
+  const reportMarkerFingerprint = (markers: ReportMarkerData[]): string => {
+    if (!markers.length) return ''
+    const first = markers[0]!
+    const last = markers[markers.length - 1]!
+    return `${markers.length}:${first.lat},${first.lng},${first.count}:${last.lat},${last.lng},${last.count}`
+  }
+
   // ── Highlight tracking ──
   // Maps outage ID → the Leaflet marker layer that contains it
   const outageMarkerMap = new Map<string | number, L.Layer>()
@@ -293,7 +322,7 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     }, MARKER_RENDER_DEBOUNCE_MS)
   }
 
-  const renderMarkers = (markers: MarkerData[]) => {
+  const renderMarkers = (markers: MarkerData[], force = false) => {
     const activeMap = map.value
     if (!activeMap || !activeMap.getContainer()) return
 
@@ -301,6 +330,11 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
       renderPending.value = true
       return
     }
+
+    // Skip re-render if marker data hasn't changed
+    const key = markerFingerprint(markers)
+    if (!force && key === lastMarkerKey && markerLayer.value) return
+    lastMarkerKey = key
 
     // Initialize marker layer
     if (!markerLayer.value) {
@@ -469,7 +503,7 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     }, MARKER_RENDER_DEBOUNCE_MS)
   }
 
-  const renderReportMarkers = (markers: ReportMarkerData[]) => {
+  const renderReportMarkers = (markers: ReportMarkerData[], force = false) => {
     const activeMap = map.value
     if (!activeMap || !activeMap.getContainer()) return
 
@@ -477,6 +511,11 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
       renderPending.value = true
       return
     }
+
+    // Skip re-render if report marker data hasn't changed
+    const key = reportMarkerFingerprint(markers)
+    if (!force && key === lastReportMarkerKey && reportMarkerLayer.value) return
+    lastReportMarkerKey = key
 
     if (!reportMarkerLayer.value) {
       const layer = L.layerGroup()
@@ -601,9 +640,20 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     activeHighlightId = null
   }
 
+  /** Cancel any pending debounced renders (call on zoomstart to prevent mid-zoom rendering) */
+  const cancelPendingRenders = () => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = null
+    }
+    if (reportDebounceTimer) {
+      clearTimeout(reportDebounceTimer)
+      reportDebounceTimer = null
+    }
+  }
+
   const cleanup = () => {
-    if (debounceTimer) clearTimeout(debounceTimer)
-    if (reportDebounceTimer) clearTimeout(reportDebounceTimer)
+    cancelPendingRenders()
 
     // Clear highlight state
     unhighlightOutage()
@@ -650,6 +700,7 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     renderReportMarkers,
     highlightOutage,
     unhighlightOutage,
+    cancelPendingRenders,
     cleanup,
   }
 }
