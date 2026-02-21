@@ -170,6 +170,13 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
     const activeMap = map.value
     if (!activeMap || paneCreated) return
 
+    // Guard against pane already existing on the map (e.g. after component re-mount)
+    const existing = activeMap.getPane('weatherPane')
+    if (existing) {
+      paneCreated = true
+      return
+    }
+
     const pane = activeMap.createPane('weatherPane')
     pane.style.zIndex = String(WEATHER_PANE_Z_INDEX)
     pane.style.pointerEvents = 'none'
@@ -223,7 +230,7 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
     }
   }
 
-  /** Create a fresh WMS tile layer for the given time and add it to the map */
+  /** Apply a WMS time to the weather layer, reusing the existing layer when possible */
   const applyTime = (wmsTime: string, addToMap: boolean) => {
     if (wmsTime === activeWmsTime && weatherTileLayer.value) return
 
@@ -231,12 +238,19 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
     if (!activeMap) return
 
     ensurePane()
-
-    // Remove old layer before creating new one
-    removeLayer()
-
     activeWmsTime = wmsTime
 
+    if (weatherTileLayer.value) {
+      // Reuse existing layer — setParams updates the TIME param and triggers a
+      // redraw while keeping old tiles visible until the new ones load (no flash)
+      weatherTileLayer.value.setParams({ time: wmsTime })
+      if (addToMap && !activeMap.hasLayer(weatherTileLayer.value)) {
+        weatherTileLayer.value.addTo(activeMap)
+      }
+      return
+    }
+
+    // First time — create the layer
     const layer = L.tileLayer.wms(`${GEOMET_WMS_URL}?`, {
       layers: GEOMET_RADAR_LAYERS,
       version: '1.3.0',
@@ -429,7 +443,7 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
   const syncToTimestamp = async () => {
     const gen = ++syncGeneration
     const activeMap = map.value
-    if (!activeMap) return
+    if (!activeMap || !showWeather.value) return
 
     const wmsTime = resolveRadarTime()
 
@@ -483,18 +497,8 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
     }
   }
 
-  /** Force WMS tile layer to redraw after zoom */
-  const onZoomEnd = () => {
-    if (weatherTileLayer.value && showWeather.value && weatherTileLayer.value._map) {
-      weatherTileLayer.value.redraw()
-    }
-  }
-
   /** Initialize: fetch available times, create layer, start refresh timer */
   const initWeatherLayer = async () => {
-    // Attach zoom handler so WMS tiles refresh at new zoom levels
-    map.value?.on('zoomend', onZoomEnd)
-
     try {
       const ok = await fetchAvailableTimes()
       if (ok) syncToTimestamp()
@@ -504,6 +508,7 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
 
     // Refresh available times periodically so the latest frame stays current
     refreshTimer = window.setInterval(async () => {
+      if (!showWeather.value) return
       try {
         const ok = await fetchAvailableTimes()
         if (ok) syncToTimestamp()
@@ -515,7 +520,6 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
 
   /** Cleanup: remove all layers and stop timers */
   const cleanup = () => {
-    map.value?.off('zoomend', onZoomEnd)
     if (refreshTimer) {
       clearInterval(refreshTimer)
       refreshTimer = null
