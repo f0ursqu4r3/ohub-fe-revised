@@ -245,7 +245,7 @@ const {
 
 const {
   initWeatherLayer,
-  syncToTimestamp: syncWeatherToTimestamp,
+  debouncedSyncToTimestamp: syncWeatherToTimestamp,
   setVisible: setWeatherVisible,
   cleanup: cleanupWeather,
 } = useWeatherLayer(

@@ -75,6 +75,35 @@ function mergeChunk(state: AccumulatedState, response: OutageResponse): void {
   }
 }
 
+/** Convert a TimeInterval enum value to seconds */
+function intervalToSeconds(iv: TimeInterval): number {
+  switch (iv) {
+    case TimeInterval.OneMinute: return 60
+    case TimeInterval.FiveMinutes: return 300
+    case TimeInterval.FifteenMinutes: return 900
+    case TimeInterval.ThirtyMinutes: return 1800
+    case TimeInterval.OneHour: return 3600
+    case TimeInterval.OneDay: return 86400
+    case TimeInterval.SevenDays: return 604800
+    case TimeInterval.ThirtyDays: return 2592000
+    case TimeInterval.OneYear: return 31536000
+    default: return 900
+  }
+}
+
+/**
+ * Ensure blocks exist for the full time range so the timeline extends to "now".
+ * Inserts empty blocks (count=0) for any missing interval-aligned timestamps.
+ */
+function padBlocks(state: AccumulatedState, startEpoch: number, endEpoch: number, stepSec: number): void {
+  const alignedStart = Math.ceil(startEpoch / stepSec) * stepSec
+  for (let t = alignedStart; t <= endEpoch; t += stepSec) {
+    if (!state.blocksByTs.has(t)) {
+      state.blocksByTs.set(t, { ts: t, indexes: [], count: 0 })
+    }
+  }
+}
+
 /**
  * Split a time range into chunks ordered by proximity to an anchor timestamp.
  * The chunk containing the anchor is returned first, then alternating outward.
@@ -195,6 +224,7 @@ export const useOutageStore = defineStore('outages', () => {
 
     const startEpoch = dateToEpochSeconds(startTime.value)
     const endEpoch = dateToEpochSeconds(endTime.value)
+    const stepSec = intervalToSeconds(interval.value)
     const anchor = selectedOutageTs.value ?? endEpoch
     const chunks = computeChunks(startEpoch, endEpoch, anchor)
     chunksTotal.value = chunks.length
@@ -224,6 +254,7 @@ export const useOutageStore = defineStore('outages', () => {
           if (signal.aborted) return
 
           mergeChunk(_state, data)
+          padBlocks(_state, startEpoch, endEpoch, stepSec)
 
           // Snapshot to reactive refs
           accOutages.value = [..._state.outages]
@@ -255,6 +286,16 @@ export const useOutageStore = defineStore('outages', () => {
   }
 
   const refetch = () => loadChunks()
+
+  /** Refresh time range to "now" if stale (e.g. after route navigation) */
+  const refreshTimeRange = () => {
+    const now = Date.now()
+    const current = endTime.value?.getTime() ?? 0
+    if (now - current > 60_000) {
+      endTime.value = new Date(now)
+      startTime.value = new Date(now - 3 * 24 * 60 * 60 * 1000)
+    }
+  }
 
   // Trigger chunk loading when time range or interval changes
   watch([startTime, endTime, interval], () => loadChunks(), { immediate: true })
@@ -333,6 +374,7 @@ export const useOutageStore = defineStore('outages', () => {
     loadingProgress,
     error,
     refetch,
+    refreshTimeRange,
     fetchOutages,
     fetchOutage,
     fetchProviders,

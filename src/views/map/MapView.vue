@@ -133,6 +133,7 @@ const syncProviderFromRoute = () => {
 }
 
 onMounted(async () => {
+  outageStore.refreshTimeRange()
   await outageStore.loadProviders()
   syncProviderFromRoute()
   userOutageStore.fetchReports()

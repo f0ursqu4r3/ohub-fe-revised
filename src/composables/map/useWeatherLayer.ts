@@ -152,6 +152,16 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
   let refreshTimer: number | null = null
   let paneCreated = false
   let activeWmsTime = ''
+  let syncDebounceTimer: number | null = null
+  /** Old layer kept visible while new layer loads (double-buffer) */
+  let retiredLayer: L.TileLayer.WMS | null = null
+  let retiredLayerTimer: number | null = null
+
+  /** Max retries for failed WMS tiles */
+  const TILE_MAX_RETRIES = 2
+  const TILE_RETRY_DELAY_MS = 1000
+  /** Max time (ms) to keep the old layer visible while the new one loads */
+  const CROSSFADE_TIMEOUT_MS = 8000
 
   /** Available radar timestamps (Unix ms), fetched from GetCapabilities */
   let availableTimes: number[] = []
@@ -228,29 +238,41 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
       }
       weatherTileLayer.value = null
     }
+    discardRetiredLayer()
   }
 
-  /** Apply a WMS time to the weather layer, reusing the existing layer when possible */
-  const applyTime = (wmsTime: string, addToMap: boolean) => {
-    if (wmsTime === activeWmsTime && weatherTileLayer.value) return
-
-    const activeMap = map.value
-    if (!activeMap) return
-
-    ensurePane()
-    activeWmsTime = wmsTime
-
-    if (weatherTileLayer.value) {
-      // Reuse existing layer — setParams updates the TIME param and triggers a
-      // redraw while keeping old tiles visible until the new ones load (no flash)
-      weatherTileLayer.value.setParams({ time: wmsTime })
-      if (addToMap && !activeMap.hasLayer(weatherTileLayer.value)) {
-        weatherTileLayer.value.addTo(activeMap)
-      }
-      return
+  /** Immediately remove the retired (old) layer kept for cross-fade */
+  const discardRetiredLayer = () => {
+    if (retiredLayerTimer) {
+      clearTimeout(retiredLayerTimer)
+      retiredLayerTimer = null
     }
+    if (retiredLayer) {
+      const activeMap = map.value
+      if (activeMap && activeMap.hasLayer(retiredLayer)) {
+        activeMap.removeLayer(retiredLayer)
+      }
+      retiredLayer = null
+    }
+  }
 
-    // First time — create the layer
+  /** Attach retry logic to a WMS tile layer so failed tiles get a second chance */
+  const attachTileRetry = (layer: L.TileLayer.WMS) => {
+    layer.on('tileerror', (event: L.TileErrorEvent) => {
+      const tile = event.tile as HTMLImageElement & { _retryCount?: number }
+      const retries = tile._retryCount ?? 0
+      if (retries >= TILE_MAX_RETRIES) return
+
+      tile._retryCount = retries + 1
+      const delay = TILE_RETRY_DELAY_MS * tile._retryCount
+      setTimeout(() => {
+        tile.src = tile.src // eslint-disable-line no-self-assign
+      }, delay)
+    })
+  }
+
+  /** Create a fresh WMS tile layer with the given time param */
+  const createWmsLayer = (wmsTime: string): L.TileLayer.WMS => {
     const layer = L.tileLayer.wms(`${GEOMET_WMS_URL}?`, {
       layers: GEOMET_RADAR_LAYERS,
       version: '1.3.0',
@@ -258,15 +280,66 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
       transparent: true,
       opacity: WEATHER_RADAR_OPACITY,
       pane: 'weatherPane',
+      keepBuffer: 4,
       attribution:
         '&copy; <a href="https://eccc-msc.github.io/open-data/licence/readme_en/">ECCC</a>',
       time: wmsTime,
     } as L.WMSOptions & { time: string })
+    attachTileRetry(layer)
+    return layer
+  }
 
-    weatherTileLayer.value = layer
+  /**
+   * Apply a WMS time to the weather layer using double-buffering.
+   * A new layer is created and added on top of the old one; the old layer
+   * is only removed once the new one has finished loading (or after a timeout).
+   * This prevents blank tiles, banding, and flashing during time changes.
+   */
+  const applyTime = (wmsTime: string, addToMap: boolean) => {
+    const activeMap = map.value
+    if (!activeMap) return
+
+    // Same time and layer already exists — just ensure it's on the map if needed
+    if (wmsTime === activeWmsTime && weatherTileLayer.value) {
+      if (addToMap && !activeMap.hasLayer(weatherTileLayer.value)) {
+        weatherTileLayer.value.addTo(activeMap)
+      }
+      return
+    }
+
+    ensurePane()
+    activeWmsTime = wmsTime
+
+    // Retire the current layer (it stays visible while the new one loads)
+    discardRetiredLayer()
+    if (weatherTileLayer.value && activeMap.hasLayer(weatherTileLayer.value)) {
+      retiredLayer = weatherTileLayer.value as L.TileLayer.WMS
+    } else if (weatherTileLayer.value) {
+      // Layer exists but isn't on the map — just discard it
+      weatherTileLayer.value = null
+    }
+
+    // Create a new layer with the updated time
+    const newLayer = createWmsLayer(wmsTime)
+    weatherTileLayer.value = newLayer
 
     if (addToMap) {
-      layer.addTo(activeMap)
+      newLayer.addTo(activeMap)
+
+      if (retiredLayer) {
+        // Remove old layer once new layer finishes loading
+        const onLoaded = () => {
+          // Only discard if this retired layer is still the one we're tracking
+          if (retiredLayer === oldRef) discardRetiredLayer()
+        }
+        const oldRef = retiredLayer
+        newLayer.once('load', onLoaded)
+        // Safety timeout in case 'load' never fires (some tiles permanently fail)
+        retiredLayerTimer = window.setTimeout(onLoaded, CROSSFADE_TIMEOUT_MS)
+      }
+    } else {
+      // Not adding to map — just clean up old layer immediately
+      discardRetiredLayer()
     }
   }
 
@@ -488,6 +561,7 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
     if (visible) {
       syncToTimestamp()
     } else {
+      discardRetiredLayer()
       if (weatherTileLayer.value && activeMap.hasLayer(weatherTileLayer.value)) {
         activeMap.removeLayer(weatherTileLayer.value)
       }
@@ -518,12 +592,30 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
     }, WEATHER_REFRESH_INTERVAL_MS)
   }
 
+  /**
+   * Debounced version of syncToTimestamp for the scrubber watcher.
+   * Prevents overwhelming the WMS server during rapid scrubbing/playback
+   * while letting Leaflet handle zoom transitions naturally.
+   */
+  const debouncedSyncToTimestamp = () => {
+    if (syncDebounceTimer) clearTimeout(syncDebounceTimer)
+    syncDebounceTimer = window.setTimeout(() => {
+      syncDebounceTimer = null
+      syncToTimestamp()
+    }, 300)
+  }
+
   /** Cleanup: remove all layers and stop timers */
   const cleanup = () => {
     if (refreshTimer) {
       clearInterval(refreshTimer)
       refreshTimer = null
     }
+    if (syncDebounceTimer) {
+      clearTimeout(syncDebounceTimer)
+      syncDebounceTimer = null
+    }
+    discardRetiredLayer()
     if (weatherTileLayer.value) {
       weatherTileLayer.value.remove()
       weatherTileLayer.value = null
@@ -538,7 +630,10 @@ export function useWeatherLayer(options: UseWeatherLayerOptions, refs: WeatherLa
 
   return {
     initWeatherLayer,
+    /** Immediate sync — used by setVisible and init */
     syncToTimestamp,
+    /** Debounced sync — used by the scrubber timestamp watcher */
+    debouncedSyncToTimestamp,
     setVisible,
     cleanup,
   }
