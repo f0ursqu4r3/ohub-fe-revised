@@ -214,8 +214,8 @@ export function useClusterTransitions(options: UseClusterTransitionsOptions) {
         } else if (item.type === 'merge') {
           // Move to parent position and shrink
           el.style.transition = `transform ${CLUSTER_ANIMATION_DURATION_MS}ms ${CLUSTER_ANIMATION_EASING}, opacity ${CLUSTER_ANIMATION_DURATION_MS}ms ${CLUSTER_ANIMATION_EASING}`
-          el.style.transform += ` translate(${item.dx}px, ${item.dy}px) scale(0.4)`
-          el.style.opacity = '0.3'
+          el.style.transform += ` translate(${item.dx}px, ${item.dy}px)`
+          // el.style.opacity = '0.3'
         } else {
           // Static: just translate
           if (item.dx !== 0 || item.dy !== 0) {

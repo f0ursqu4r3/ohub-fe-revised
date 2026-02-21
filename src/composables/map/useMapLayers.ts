@@ -314,6 +314,41 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
   let activeHighlightId: string | number | null = null
   let highlightPolygonLayer: L.GeoJSON | null = null
 
+  // ── Shared hover tooltip (single DOM element, avoids L.Tooltip + zoomanim crash) ──
+  let tooltipEl: HTMLDivElement | null = null
+
+  function ensureTooltipEl(activeMap: L.Map) {
+    if (tooltipEl?.parentElement) return
+    tooltipEl = document.createElement('div')
+    tooltipEl.className = 'leaflet-tooltip leaflet-tooltip-top map-tooltip-container'
+    tooltipEl.style.pointerEvents = 'none'
+    tooltipEl.style.display = 'none'
+    activeMap.getPane('tooltipPane')?.appendChild(tooltipEl)
+    activeMap.on('zoomstart', hideHoverTooltip)
+  }
+
+  function hideHoverTooltip() {
+    if (tooltipEl) tooltipEl.style.display = 'none'
+  }
+
+  function bindHoverTooltip(
+    m: L.Marker | L.CircleMarker,
+    html: string,
+    yOffset: number,
+    activeMap: L.Map,
+  ) {
+    m.on('mouseover', () => {
+      ensureTooltipEl(activeMap)
+      tooltipEl!.innerHTML = html
+      const pt = activeMap.latLngToLayerPoint(m.getLatLng())
+      tooltipEl!.style.left = `${pt.x}px`
+      tooltipEl!.style.top = `${pt.y + yOffset}px`
+      tooltipEl!.style.transform = 'translate(-50%, -100%)'
+      tooltipEl!.style.display = ''
+    })
+    m.on('mouseout', hideHoverTooltip)
+  }
+
   const queueMarkerRender = (markers: MarkerData[]) => {
     if (debounceTimer) clearTimeout(debounceTimer)
     debounceTimer = window.setTimeout(() => {
@@ -360,13 +395,8 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
               icon: count > 1 ? createClusterIcon(count) : createMarkerIcon(),
             })
 
-        // Bind tooltip
-        m.bindTooltip(buildTooltipContent(marker), {
-          className: 'map-tooltip-container',
-          direction: 'top',
-          offset: useCircleMarkers ? [0, -8] : [0, -10],
-          opacity: 1,
-        })
+        // Hover tooltip (raw DOM, avoids L.Tooltip zoomanim crash)
+        bindHoverTooltip(m, buildTooltipContent(marker), useCircleMarkers ? -14 : -22, activeMap)
 
         if (onMarkerClick) {
           m.on('click', () => onMarkerClick(marker))
@@ -537,12 +567,7 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
               icon: count > 1 ? createReportClusterIcon(count) : createReportMarkerIcon(),
             })
 
-        m.bindTooltip(buildReportTooltipContent(marker), {
-          className: 'map-tooltip-container',
-          direction: 'top',
-          offset: useCircleMarkers ? [0, -8] : [0, -10],
-          opacity: 1,
-        })
+        bindHoverTooltip(m, buildReportTooltipContent(marker), useCircleMarkers ? -14 : -22, activeMap)
 
         if (onReportMarkerClick) {
           m.on('click', () => onReportMarkerClick(marker))
@@ -664,6 +689,13 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
 
   const cleanup = () => {
     cancelPendingRenders()
+
+    // Remove shared hover tooltip
+    if (tooltipEl) {
+      tooltipEl.remove()
+      tooltipEl = null
+    }
+    if (map.value) map.value.off('zoomstart', hideHoverTooltip)
 
     // Clear highlight state
     unhighlightOutage()

@@ -47,7 +47,6 @@ import {
   useMapControls,
   useMinimap,
   useWeatherLayer,
-  POLYGON_VISIBLE_ZOOM,
   TILE_LAYERS,
   type TileStyle,
 } from '@/composables/map'
