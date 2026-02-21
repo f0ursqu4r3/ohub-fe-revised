@@ -30,6 +30,18 @@ export const CIRCLE_MARKER_THRESHOLD = 200
 export const MARKER_RENDER_DEBOUNCE_MS = 120
 
 // ─────────────────────────────────────────────────────────────
+// Cluster Buckets & Animation
+// ─────────────────────────────────────────────────────────────
+/** Fixed cluster radius (px) for pre-computed zoom buckets (single Supercluster index) */
+export const CLUSTER_BUCKET_RADIUS_PX = 50
+
+/** Duration (ms) for cluster split/merge CSS transition */
+export const CLUSTER_ANIMATION_DURATION_MS = 250
+
+/** CSS easing function for cluster split/merge transitions */
+export const CLUSTER_ANIMATION_EASING = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+
+// ─────────────────────────────────────────────────────────────
 // Popup & Tooltip
 // ─────────────────────────────────────────────────────────────
 /** Maximum items to show in popup before showing "+X more" */

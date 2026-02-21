@@ -39,6 +39,7 @@ import { storeToRefs } from 'pinia'
 import { useDarkModeStore } from '@/stores/darkMode'
 import { useOutageStore } from '@/stores/outages'
 import type { MarkerData, PolygonData, ReportMarkerData, BoundsLiteral } from './types'
+import type { ClusterBucketResult } from '@/composables/map/useClusterBuckets'
 import MapControls from './MapControls.vue'
 import TimelineBar from '@/components/TimelineBar.vue'
 import {
@@ -50,6 +51,7 @@ import {
   TILE_LAYERS,
   type TileStyle,
 } from '@/composables/map'
+import { useClusterTransitions } from '@/composables/map/useClusterTransitions'
 import { logDevError } from '@/config/map'
 
 // Global dark mode
@@ -74,6 +76,10 @@ const props = withDefaults(
     searchPolygon?: Polygon | MultiPolygon | null
     /** Outage ID to highlight on the map (marker + polygon) */
     highlightedOutageId?: string | number | null
+    /** Pre-computed cluster buckets for animated transitions */
+    bucketResult?: ClusterBucketResult | null
+    /** Previous zoom level (for transition direction) */
+    previousZoom?: number
   }>(),
   {
     zoomLevel: 4,
@@ -83,6 +89,8 @@ const props = withDefaults(
     searchMarker: null,
     searchPolygon: null,
     highlightedOutageId: null,
+    bucketResult: null,
+    previousZoom: 4,
   },
 )
 
@@ -146,7 +154,7 @@ const map = useLeafletMap(el, {
   preferCanvas: true,
   zoomControl: false,
   zoomAnimation: true,
-  markerZoomAnimation: false,
+  markerZoomAnimation: true,
   maxBoundsViscosity: 1.0,
   bounceAtZoomLimits: true,
   inertia: true,
@@ -252,6 +260,17 @@ const {
   },
 )
 
+// Cluster transitions (animated split/merge on zoom)
+const bucketResultRef = computed(() => props.bucketResult)
+const {
+  animate: animateTransition,
+  cancelAnimation,
+  cleanup: cleanupTransitions,
+} = useClusterTransitions({
+  map: map as Ref<L.Map | null>,
+  bucketResult: bucketResultRef,
+})
+
 // ─────────────────────────────────────────────────────────────
 // Tile Layer Switching
 // ─────────────────────────────────────────────────────────────
@@ -330,6 +349,8 @@ useLeafletEvent(map as any, 'zoomstart', () => {
   isZooming.value = true
   // Cancel any pending debounced renders to prevent mid-zoom rendering
   cancelPendingRenders()
+  // Cancel any in-flight cluster transition animation
+  cancelAnimation()
   // Close any open popup to prevent _map null errors during zoom animation
   map.value?.closePopup()
 })
@@ -337,14 +358,20 @@ useLeafletEvent(map as any, 'zoomstart', () => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 useLeafletEvent(map as any, 'zoomend', (event: LeafletEvent) => {
   const target = event.target
+  const newZoom = target instanceof L.Map ? target.getZoom() : props.zoomLevel
   if (target instanceof L.Map) {
-    emit('setZoom', target.getZoom())
+    emit('setZoom', newZoom)
   }
 
   // Small delay to ensure all zoom animations are complete
   requestAnimationFrame(() => {
     isZooming.value = false
     updateMinimapRect()
+
+    // Cancel any watcher-triggered debounced renders — the zoomend handler owns
+    // the render path now (either via animation or direct renderFinal)
+    cancelPendingRenders()
+    renderPending.value = false
 
     // Process pending tile style switch after zoom completes
     if (pendingTileStyle.value) {
@@ -353,19 +380,18 @@ useLeafletEvent(map as any, 'zoomend', (event: LeafletEvent) => {
       nextTick(() => switchTileLayer(style))
     }
 
-    if (renderPending.value) {
-      renderPending.value = false
+    const renderFinal = () => {
       renderMarkers(props.markers, true)
       renderPolygons(props.polygons)
       renderReportMarkers(props.reportMarkers, true)
-      return
     }
 
-    const currentZoom = (target as L.Map).getZoom()
-    const shouldShowPolygons = currentZoom >= POLYGON_VISIBLE_ZOOM
-    if (shouldShowPolygons !== polygonsVisible.value) {
-      queueMarkerRender(props.markers)
-      renderPolygons(props.polygons)
+    // Animate cluster split/merge transition if bucket data is available
+    const oldZoom = props.previousZoom ?? newZoom
+    if (props.bucketResult && oldZoom !== newZoom) {
+      animateTransition(oldZoom, newZoom, markerLayer.value as L.LayerGroup | null, renderFinal)
+    } else {
+      renderFinal()
     }
   })
 })
@@ -412,14 +438,19 @@ loadingFallbackTimer = window.setTimeout(() => {
 // ─────────────────────────────────────────────────────────────
 // Use shallow comparison for markers/polygons arrays
 // The arrays are replaced (not mutated) when data changes, so deep watching is unnecessary
+// Skip during zoom — the zoomend handler owns the render path (animation or direct)
 watch(
   () => props.markers,
-  () => queueMarkerRender(props.markers),
+  () => {
+    if (!isZooming.value) queueMarkerRender(props.markers)
+  },
 )
 
 watch(
   () => props.polygons,
-  () => renderPolygons(props.polygons),
+  () => {
+    if (!isZooming.value) renderPolygons(props.polygons)
+  },
 )
 
 watch(
@@ -441,7 +472,9 @@ watch(
 
 watch(
   () => props.reportMarkers,
-  () => queueReportMarkerRender(props.reportMarkers),
+  () => {
+    if (!isZooming.value) queueReportMarkerRender(props.reportMarkers)
+  },
 )
 
 // Handle pending focus after map init
@@ -510,6 +543,7 @@ onBeforeUnmount(() => {
   cleanupLayers()
   cleanupMinimap()
   cleanupWeather()
+  cleanupTransitions()
 
   // Clean up managed tile layer
   if (activeTileLayer.value) {
@@ -1097,5 +1131,10 @@ defineExpose({
   font-weight: 700;
   color: #fff;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Cluster transition animation markers */
+.leaflet-marker-icon {
+  will-change: transform, opacity;
 }
 </style>

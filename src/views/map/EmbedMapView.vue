@@ -4,12 +4,12 @@ import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { useOutageStore } from '@/stores/outages'
 import {
-  clusterOutages,
   wktToGeoJSON,
   slugToProvider,
   type GeoPolygon,
   type GroupedOutage,
 } from '@/lib/utils'
+import { useClusterBuckets } from '@/composables/map/useClusterBuckets'
 import MapComp from '@/components/map/MapComp.vue'
 
 type MapMarker = {
@@ -49,15 +49,14 @@ watch(
   { immediate: true },
 )
 
-const eventsAtZoomLevel = computed<GroupedOutage[]>(() => {
-  const zoom = zoomLevel.value
-  const outages = selectedBlockOutages.value
-  if (!outages.length) return []
-  return clusterOutages(outages, zoom)
+// Pre-computed cluster buckets for all zoom levels
+const { currentGroups } = useClusterBuckets({
+  outages: selectedBlockOutages,
+  zoomLevel,
 })
 
 const mapMarkers = computed<MapMarker[]>(() =>
-  eventsAtZoomLevel.value.map((group) => ({
+  currentGroups.value.map((group) => ({
     lat: group.center[0],
     lng: group.center[1],
     count: group.outages.length,
@@ -67,7 +66,7 @@ const mapMarkers = computed<MapMarker[]>(() =>
 )
 
 const mapPolygons = computed<MapPolygon[]>(() =>
-  eventsAtZoomLevel.value.flatMap((group) => {
+  currentGroups.value.flatMap((group) => {
     if (!group.polygon) return []
     const geometry = wktToGeoJSON(group.polygon)
     if (!geometry) return []

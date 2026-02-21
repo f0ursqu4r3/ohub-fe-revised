@@ -336,65 +336,70 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     if (!force && key === lastMarkerKey && markerLayer.value) return
     lastMarkerKey = key
 
-    // Initialize marker layer
-    if (!markerLayer.value) {
-      const layer = L.layerGroup()
-      layer.addTo(activeMap)
-      markerLayer.value = layer
-    }
-    markerLayer.value.clearLayers()
+    // Clear lookup maps (rebuilt below)
     outageMarkerMap.clear()
     outageDataMap.clear()
     unhighlightOutage()
 
-    // Skip if markers are hidden
-    if (!showMarkers.value) return
+    // Build new markers in a fresh layer (double-buffer to prevent flash)
+    const newLayer = L.layerGroup()
 
-    // Use CircleMarkers for large datasets (better performance)
-    const useCircleMarkers = markers.length > CIRCLE_MARKER_THRESHOLD
-    usingCircleMarkers = useCircleMarkers
+    if (showMarkers.value) {
+      // Use CircleMarkers for large datasets (better performance)
+      const useCircleMarkers = markers.length > CIRCLE_MARKER_THRESHOLD
+      usingCircleMarkers = useCircleMarkers
 
-    // Add markers with tooltips
-    for (const marker of markers) {
-      const count = marker.count ?? 1
+      // Add markers with tooltips
+      for (const marker of markers) {
+        const count = marker.count ?? 1
 
-      // Create either CircleMarker (fast) or Marker with DivIcon (pretty)
-      const m = useCircleMarkers
-        ? L.circleMarker([marker.lat, marker.lng], createCircleMarkerOptions(count))
-        : L.marker([marker.lat, marker.lng], {
-            icon: count > 1 ? createClusterIcon(count) : createMarkerIcon(),
+        // Create either CircleMarker (fast) or Marker with DivIcon (pretty)
+        const m = useCircleMarkers
+          ? L.circleMarker([marker.lat, marker.lng], createCircleMarkerOptions(count))
+          : L.marker([marker.lat, marker.lng], {
+              icon: count > 1 ? createClusterIcon(count) : createMarkerIcon(),
+            })
+
+        // Bind tooltip
+        m.bindTooltip(buildTooltipContent(marker), {
+          className: 'map-tooltip-container',
+          direction: 'top',
+          offset: useCircleMarkers ? [0, -8] : [0, -10],
+          opacity: 1,
+        })
+
+        if (onMarkerClick) {
+          m.on('click', () => onMarkerClick(marker))
+        }
+
+        newLayer.addLayer(m)
+
+        // Index outage IDs → this marker layer for highlighting
+        if (marker.outageGroup) {
+          for (const outage of marker.outageGroup.outages) {
+            outageMarkerMap.set(outage.id, m)
+            outageDataMap.set(outage.id, outage)
+          }
+        }
+
+        // Add count label for CircleMarker clusters
+        if (useCircleMarkers && count > 1) {
+          const label = L.marker([marker.lat, marker.lng], {
+            icon: createClusterLabelIcon(count),
+            interactive: false, // Don't intercept clicks - let them pass to circle
           })
-
-      // Bind tooltip
-      m.bindTooltip(buildTooltipContent(marker), {
-        className: 'map-tooltip-container',
-        direction: 'top',
-        offset: useCircleMarkers ? [0, -8] : [0, -10],
-        opacity: 1,
-      })
-
-      if (onMarkerClick) {
-        m.on('click', () => onMarkerClick(marker))
-      }
-
-      markerLayer.value!.addLayer(m)
-
-      // Index outage IDs → this marker layer for highlighting
-      if (marker.outageGroup) {
-        for (const outage of marker.outageGroup.outages) {
-          outageMarkerMap.set(outage.id, m)
-          outageDataMap.set(outage.id, outage)
+          newLayer.addLayer(label)
         }
       }
+    }
 
-      // Add count label for CircleMarker clusters
-      if (useCircleMarkers && count > 1) {
-        const label = L.marker([marker.lat, marker.lng], {
-          icon: createClusterLabelIcon(count),
-          interactive: false, // Don't intercept clicks - let them pass to circle
-        })
-        markerLayer.value!.addLayer(label)
-      }
+    // Atomic swap: add new layer before removing old to prevent flash
+    newLayer.addTo(activeMap)
+    const oldLayer = markerLayer.value
+    markerLayer.value = newLayer
+    if (oldLayer) {
+      oldLayer.clearLayers()
+      activeMap.removeLayer(oldLayer)
     }
   }
 
@@ -517,46 +522,51 @@ export function useMapLayers(options: UseMapLayersOptions, refs: MapLayerRefs) {
     if (!force && key === lastReportMarkerKey && reportMarkerLayer.value) return
     lastReportMarkerKey = key
 
-    if (!reportMarkerLayer.value) {
-      const layer = L.layerGroup()
-      layer.addTo(activeMap)
-      reportMarkerLayer.value = layer
-    }
-    reportMarkerLayer.value.clearLayers()
+    // Build new markers in a fresh layer (double-buffer to prevent flash)
+    const newLayer = L.layerGroup()
 
-    if (!showReportMarkers.value || !markers.length) return
+    if (showReportMarkers.value && markers.length) {
+      const useCircleMarkers = markers.length > CIRCLE_MARKER_THRESHOLD
 
-    const useCircleMarkers = markers.length > CIRCLE_MARKER_THRESHOLD
+      for (const marker of markers) {
+        const count = marker.count
 
-    for (const marker of markers) {
-      const count = marker.count
+        const m = useCircleMarkers
+          ? L.circleMarker([marker.lat, marker.lng], createReportCircleMarkerOptions(count))
+          : L.marker([marker.lat, marker.lng], {
+              icon: count > 1 ? createReportClusterIcon(count) : createReportMarkerIcon(),
+            })
 
-      const m = useCircleMarkers
-        ? L.circleMarker([marker.lat, marker.lng], createReportCircleMarkerOptions(count))
-        : L.marker([marker.lat, marker.lng], {
-            icon: count > 1 ? createReportClusterIcon(count) : createReportMarkerIcon(),
-          })
-
-      m.bindTooltip(buildReportTooltipContent(marker), {
-        className: 'map-tooltip-container',
-        direction: 'top',
-        offset: useCircleMarkers ? [0, -8] : [0, -10],
-        opacity: 1,
-      })
-
-      if (onReportMarkerClick) {
-        m.on('click', () => onReportMarkerClick(marker))
-      }
-
-      reportMarkerLayer.value!.addLayer(m)
-
-      if (useCircleMarkers && count > 1) {
-        const label = L.marker([marker.lat, marker.lng], {
-          icon: createClusterLabelIcon(count),
-          interactive: false,
+        m.bindTooltip(buildReportTooltipContent(marker), {
+          className: 'map-tooltip-container',
+          direction: 'top',
+          offset: useCircleMarkers ? [0, -8] : [0, -10],
+          opacity: 1,
         })
-        reportMarkerLayer.value!.addLayer(label)
+
+        if (onReportMarkerClick) {
+          m.on('click', () => onReportMarkerClick(marker))
+        }
+
+        newLayer.addLayer(m)
+
+        if (useCircleMarkers && count > 1) {
+          const label = L.marker([marker.lat, marker.lng], {
+            icon: createClusterLabelIcon(count),
+            interactive: false,
+          })
+          newLayer.addLayer(label)
+        }
       }
+    }
+
+    // Atomic swap: add new layer before removing old to prevent flash
+    newLayer.addTo(activeMap)
+    const oldLayer = reportMarkerLayer.value
+    reportMarkerLayer.value = newLayer
+    if (oldLayer) {
+      oldLayer.clearLayers()
+      activeMap.removeLayer(oldLayer)
     }
   }
 

@@ -5,7 +5,6 @@ import { useRoute } from 'vue-router'
 import { useOutageStore } from '@/stores/outages'
 import { useUserOutageStore } from '@/stores/userOutages'
 import {
-  clusterOutages,
   clusterUserReports,
   wktToGeoJSON,
   slugToProvider,
@@ -14,6 +13,7 @@ import {
   type BoundsLiteral,
 } from '@/lib/utils'
 import { usePopupData } from '@/composables/map/usePopupData'
+import { useClusterBuckets, type ClusterBucketResult } from '@/composables/map/useClusterBuckets'
 import { buildTooltipContent } from '@/composables/map/useMapLayers'
 import AppNavBar from '@/components/AppNavBar.vue'
 import OutageDetailPanel from '@/components/OutageDetailPanel.vue'
@@ -58,15 +58,14 @@ const focusBounds = ref<BoundsLiteral | null>(null)
 const searchMarker = ref<{ lat: number; lng: number } | null>(null)
 const searchPolygon = ref<Polygon | MultiPolygon | null>(null)
 
-const eventsAtZoomLevel = computed<GroupedOutage[]>(() => {
-  const zoom = zoomLevel.value
-  const outages = selectedBlockOutages.value
-  if (!outages.length) return []
-  return clusterOutages(outages, zoom)
+// Pre-computed cluster buckets for all zoom levels
+const { currentGroups, bucketResult, previousZoom } = useClusterBuckets({
+  outages: selectedBlockOutages,
+  zoomLevel,
 })
 
 const mapMarkers = computed<MapMarker[]>(() =>
-  eventsAtZoomLevel.value.map((group) => {
+  currentGroups.value.map((group) => {
     const marker: MapMarker = {
       lat: group.center[0],
       lng: group.center[1],
@@ -80,7 +79,7 @@ const mapMarkers = computed<MapMarker[]>(() =>
 )
 
 const mapPolygons = computed<MapPolygon[]>(() =>
-  eventsAtZoomLevel.value.flatMap((group) => {
+  currentGroups.value.flatMap((group) => {
     if (!group.polygon) return []
     const geometry = wktToGeoJSON(group.polygon)
     if (!geometry) return []
@@ -239,6 +238,8 @@ const highlightedOutageId = ref<string | number | null>(null)
       :search-marker="searchMarker"
       :search-polygon="searchPolygon"
       :highlighted-outage-id="highlightedOutageId"
+      :bucket-result="bucketResult"
+      :previous-zoom="previousZoom"
       class="z-0"
       @setZoom="setZoomLevel"
       @markerClick="onMarkerClick"
