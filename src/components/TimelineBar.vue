@@ -528,7 +528,7 @@ onBeforeUnmount(() => {
           <div class="hidden sm:block h-8 w-px bg-border shrink-0"></div>
 
           <!-- Time display & info -->
-          <div class="shrink-0 text-right">
+          <div class="shrink-0 min-w-20 text-right">
             <p class="text-sm sm:text-lg font-semibold leading-tight text-default">{{ selectedLabel }}</p>
             <p class="hidden sm:block text-xs text-muted">{{ selectedDateLabel }}</p>
             <p

@@ -1,6 +1,5 @@
-import { ref, computed, watch, type ComputedRef } from 'vue'
+import { ref, shallowRef, computed, watch, type ComputedRef } from 'vue'
 import { defineStore } from 'pinia'
-import { useFetch } from '@vueuse/core'
 import {
   TimeInterval,
   type OutageResponse,
@@ -8,69 +7,146 @@ import {
   type OutageBlock,
   type FetchOutageParams,
 } from '../types/outage'
+import {
+  OUTAGE_CHUNK_DURATION_SEC,
+  OUTAGE_CHUNK_CONCURRENCY,
+} from '../config/map'
+
+// ─── Internal merge state (not reactive — mutated during chunk merging) ───
+interface AccumulatedState {
+  outages: Outage[]
+  idToIndex: Map<number, number>
+  blocksByTs: Map<number, OutageBlock>
+  maxCount: number
+}
+
+function createAccumulatedState(): AccumulatedState {
+  return { outages: [], idToIndex: new Map(), blocksByTs: new Map(), maxCount: 0 }
+}
+
+/**
+ * Merge a chunk response into accumulated state.
+ * Deduplicates outages by id and remaps block indexes to global positions.
+ */
+function mergeChunk(state: AccumulatedState, response: OutageResponse): void {
+  const localToGlobal = new Map<number, number>()
+
+  for (let localIdx = 0; localIdx < response.outages.length; localIdx++) {
+    const outage = response.outages[localIdx]!
+    const existing = state.idToIndex.get(outage.id)
+    if (existing !== undefined) {
+      localToGlobal.set(localIdx, existing)
+    } else {
+      const globalIdx = state.outages.length
+      state.outages.push(outage)
+      state.idToIndex.set(outage.id, globalIdx)
+      localToGlobal.set(localIdx, globalIdx)
+    }
+  }
+
+  const rawBlocks: OutageBlock[] = Array.isArray(response.blocks)
+    ? response.blocks
+    : response.blocks instanceof Map
+      ? Array.from(response.blocks.values())
+      : Object.values(response.blocks as Record<string, OutageBlock>)
+
+  for (const block of rawBlocks) {
+    const remapped = block.indexes
+      .map((i) => localToGlobal.get(i))
+      .filter((i): i is number => i !== undefined)
+
+    const existing = state.blocksByTs.get(block.ts)
+    if (existing) {
+      const merged = new Set([...existing.indexes, ...remapped])
+      existing.indexes = Array.from(merged)
+      existing.count = existing.indexes.length
+    } else {
+      state.blocksByTs.set(block.ts, {
+        ts: block.ts,
+        indexes: remapped,
+        count: remapped.length,
+      })
+    }
+  }
+
+  state.maxCount = 0
+  for (const block of state.blocksByTs.values()) {
+    if ((block.count ?? 0) > state.maxCount) state.maxCount = block.count ?? 0
+  }
+}
+
+/**
+ * Split a time range into chunks ordered by proximity to an anchor timestamp.
+ * The chunk containing the anchor is returned first, then alternating outward.
+ */
+function computeChunks(
+  startEpoch: number,
+  endEpoch: number,
+  anchorTs: number,
+  chunkDuration: number = OUTAGE_CHUNK_DURATION_SEC,
+): { start: number; end: number }[] {
+  const chunks: { start: number; end: number }[] = []
+  for (let t = startEpoch; t < endEpoch; t += chunkDuration) {
+    chunks.push({ start: t, end: Math.min(t + chunkDuration, endEpoch) })
+  }
+  if (!chunks.length) return []
+
+  let priorityIdx = chunks.findIndex((c) => anchorTs >= c.start && anchorTs < c.end)
+  if (priorityIdx === -1) priorityIdx = chunks.length - 1
+
+  const ordered: typeof chunks = [chunks[priorityIdx]!]
+  for (let offset = 1; ordered.length < chunks.length; offset++) {
+    if (priorityIdx + offset < chunks.length) ordered.push(chunks[priorityIdx + offset]!)
+    if (priorityIdx - offset >= 0) ordered.push(chunks[priorityIdx - offset]!)
+  }
+  return ordered
+}
+
+// ─── Store ───────────────────────────────────────────────────
 
 export const useOutageStore = defineStore('outages', () => {
   const baseApiUrl = import.meta.env.VITE_BASE_API_URL || ''
 
   const interval = ref<TimeInterval>(TimeInterval.FifteenMinutes)
-  const startTime = ref<Date | null>(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)) // Default to the last 3 days
+  const startTime = ref<Date | null>(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000))
   const endTime = ref<Date | null>(new Date())
   const selectedOutageTs = ref<number | null>(null)
   const selectedProvider = ref<string | null>(null)
   const providers = ref<string[]>([])
 
-  const url = computed(() => {
-    const url = `${baseApiUrl}/outages`
-    const params = new URLSearchParams()
-    params.append('interval', interval.value)
-    if (startTime.value) {
-      params.append('start', dateToEpochSeconds(startTime.value).toString())
-    }
-    if (endTime.value) {
-      params.append('end', dateToEpochSeconds(endTime.value).toString())
-    }
-    // TODO: uncomment when backend ?provider= is implemented
-    // if (selectedProvider.value) {
-    //   params.append('provider', selectedProvider.value)
-    // }
-    return `${url}?${params.toString()}`
-  })
+  // ─── Accumulated state (reactive snapshots updated after each chunk) ───
+  const accOutages = shallowRef<Outage[]>([])
+  const accBlocks = shallowRef<OutageBlock[]>([])
+  const accMaxCount = ref(0)
+  const chunksLoaded = ref(0)
+  const chunksTotal = ref(0)
+  const priorityChunkLoaded = ref(false)
+  const isLoadingChunks = ref(false)
+  const error = ref<string | null>(null)
 
-  const {
-    data,
-    isFetching: loading,
-    error,
-    execute: refetch,
-  } = useFetch(url, {
-    immediate: true,
-    refetch: true,
-  }).json<OutageResponse>()
+  let _state = createAccumulatedState()
+  let _chunksAbort: AbortController | null = null
 
-  const outages: ComputedRef<Outage[]> = computed(() => data.value?.outages ?? [])
-  const blocks: ComputedRef<OutageBlock[]> = computed(() => {
-    const raw = data.value?.blocks
+  /** Loading is true only until the priority (first) chunk arrives */
+  const loading = computed(() => isLoadingChunks.value && !priorityChunkLoaded.value)
 
-    if (!raw) return []
+  /** Progress 0→1 for optional UI indicators */
+  const loadingProgress = computed(() =>
+    chunksTotal.value > 0 ? chunksLoaded.value / chunksTotal.value : 0,
+  )
 
-    const iterable: OutageBlock[] = Array.isArray(raw)
-      ? raw
-      : raw instanceof Map
-        ? Array.from(raw.values())
-        : Object.values(raw as Record<string, OutageBlock>)
+  // ─── Derived state (same API surface as before) ───
+  const outages: ComputedRef<Outage[]> = computed(() => accOutages.value)
 
-    return iterable
-      .map((block) => ({
-        ...block,
-        count: block.count ?? block.indexes?.length ?? 0,
-      }))
-      .sort((a, b) => a.ts - b.ts)
-  })
-  // Raw blocks from the API, with provider-filtered counts when applicable
+  const blocks: ComputedRef<OutageBlock[]> = computed(() => accBlocks.value)
+
   const filteredBlocks: ComputedRef<OutageBlock[]> = computed(() => {
     if (!selectedProvider.value) return blocks.value
     const provider = selectedProvider.value
     return blocks.value.map((block) => {
-      const count = block.indexes.filter((i) => outages.value[i]?.provider === provider).length
+      const count = block.indexes.filter(
+        (i) => outages.value[i]?.provider === provider,
+      ).length
       return { ...block, count }
     })
   })
@@ -79,7 +155,7 @@ export const useOutageStore = defineStore('outages', () => {
     if (selectedProvider.value) {
       return Math.max(0, ...filteredBlocks.value.map((b) => b.count ?? 0))
     }
-    return data.value?.maxCount ?? 0
+    return accMaxCount.value
   })
 
   const selectedBlockOutages: ComputedRef<Outage[]> = computed(() => {
@@ -89,12 +165,121 @@ export const useOutageStore = defineStore('outages', () => {
     let result = block.indexes
       .map((index) => outages.value[index])
       .filter((o): o is Outage => o !== undefined)
-    // Client-side provider filter until backend ?provider= is implemented
     if (selectedProvider.value) {
       result = result.filter((o) => o.provider === selectedProvider.value)
     }
     return result.sort((a, b) => a.startTs - b.startTs)
   })
+
+  // ─── Progressive chunk loading ────────────────────────────
+
+  const loadChunks = async () => {
+    if (_chunksAbort) _chunksAbort.abort()
+    _chunksAbort = new AbortController()
+    const { signal } = _chunksAbort
+
+    // Reset
+    _state = createAccumulatedState()
+    accOutages.value = []
+    accBlocks.value = []
+    accMaxCount.value = 0
+    chunksLoaded.value = 0
+    priorityChunkLoaded.value = false
+    isLoadingChunks.value = true
+    error.value = null
+
+    if (!startTime.value || !endTime.value) {
+      isLoadingChunks.value = false
+      return
+    }
+
+    const startEpoch = dateToEpochSeconds(startTime.value)
+    const endEpoch = dateToEpochSeconds(endTime.value)
+    const anchor = selectedOutageTs.value ?? endEpoch
+    const chunks = computeChunks(startEpoch, endEpoch, anchor)
+    chunksTotal.value = chunks.length
+
+    if (!chunks.length) {
+      isLoadingChunks.value = false
+      return
+    }
+
+    // Concurrency-limited fetch (same pattern as analytics.ts)
+    let idx = 0
+    const next = async (): Promise<void> => {
+      while (idx < chunks.length) {
+        const chunk = chunks[idx++]!
+        if (signal.aborted) return
+
+        try {
+          const params = new URLSearchParams({
+            interval: interval.value,
+            start: chunk.start.toString(),
+            end: chunk.end.toString(),
+          })
+          const res = await fetch(`${baseApiUrl}/outages?${params}`, { signal })
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          const data: OutageResponse = await res.json()
+
+          if (signal.aborted) return
+
+          mergeChunk(_state, data)
+
+          // Snapshot to reactive refs
+          accOutages.value = [..._state.outages]
+          accBlocks.value = Array.from(_state.blocksByTs.values()).sort(
+            (a, b) => a.ts - b.ts,
+          )
+          accMaxCount.value = _state.maxCount
+          chunksLoaded.value++
+          if (chunksLoaded.value === 1) priorityChunkLoaded.value = true
+        } catch (err) {
+          if (err instanceof DOMException && err.name === 'AbortError') return
+          console.warn('[OutageStore] Chunk fetch failed:', err)
+        }
+      }
+    }
+
+    try {
+      await Promise.all(
+        Array.from(
+          { length: Math.min(OUTAGE_CHUNK_CONCURRENCY, chunks.length) },
+          () => next(),
+        ),
+      )
+    } finally {
+      if (!signal.aborted) {
+        isLoadingChunks.value = false
+      }
+    }
+  }
+
+  const refetch = () => loadChunks()
+
+  // Trigger chunk loading when time range or interval changes
+  watch([startTime, endTime, interval], () => loadChunks(), { immediate: true })
+
+  // ─── Auto-select last block when blocks first arrive ──────
+
+  watch(
+    [blocks, selectedOutageTs],
+    ([blockList, selected]) => {
+      if (!blockList.length) {
+        if (selected !== null) selectedOutageTs.value = null
+        return
+      }
+
+      if (selected === null) {
+        const lastBlock = blockList[blockList.length - 1]
+        if (lastBlock) {
+          selectedOutageTs.value = lastBlock.ts
+        }
+      }
+    },
+    { immediate: true },
+  )
+
+  // ─── One-off fetch helpers (unchanged) ────────────────────
 
   const fetchOutages = async (params: FetchOutageParams): Promise<Response> => {
     const fetchUrl = new URL(`${baseApiUrl}/outages`)
@@ -132,24 +317,6 @@ export const useOutageStore = defineStore('outages', () => {
     }
   }
 
-  watch(
-    [blocks, selectedOutageTs],
-    ([blockList, selected]) => {
-      if (!blockList.length) {
-        if (selected !== null) selectedOutageTs.value = null
-        return
-      }
-
-      if (selected === null) {
-        const lastBlock = blockList[blockList.length - 1]
-        if (lastBlock) {
-          selectedOutageTs.value = lastBlock.ts
-        }
-      }
-    },
-    { immediate: true },
-  )
-
   return {
     // State
     timeInterval: interval,
@@ -163,6 +330,7 @@ export const useOutageStore = defineStore('outages', () => {
     selectedProvider,
     providers,
     loading,
+    loadingProgress,
     error,
     refetch,
     fetchOutages,

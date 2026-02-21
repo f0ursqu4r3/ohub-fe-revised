@@ -48,6 +48,15 @@ export const CLUSTER_ANIMATION_EASING = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
 export const POPUP_MAX_ITEMS = 6
 
 // ─────────────────────────────────────────────────────────────
+// Progressive Outage Loading
+// ─────────────────────────────────────────────────────────────
+/** Duration (seconds) of each chunk when progressively loading outages */
+export const OUTAGE_CHUNK_DURATION_SEC = 6 * 3600
+
+/** Maximum concurrent chunk fetches */
+export const OUTAGE_CHUNK_CONCURRENCY = 3
+
+// ─────────────────────────────────────────────────────────────
 // Playback
 // ─────────────────────────────────────────────────────────────
 /** Base interval (ms) for time playback (divided by speed multiplier) */
